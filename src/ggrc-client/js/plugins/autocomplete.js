@@ -9,6 +9,7 @@ import {
 } from './utils/query-api-utils';
 import RefreshQueue from '../models/refresh_queue';
 import Search from '../models/service-models/search';
+import {bindXHRToButton} from '../plugins/utils/modals';
 import {getInstance} from '../plugins/utils/models-utils';
 import * as businessModels from '../models/business-models';
 
@@ -49,12 +50,10 @@ import * as businessModels from '../models/business-models';
 
         dfd.then(function (objects) {
           this.last_stubs = objects;
-          can.each(
-            objects.slice(request.start, request.start + MAX_RESULTS),
+          objects.slice(request.start, request.start + MAX_RESULTS).forEach(
             function (object) {
               queue.enqueue(object);
-            }
-          );
+            });
           queue.trigger().then(function (objs) {
             objs = this.options.apply_filter(objs, request);
             if (objs.length || isNextPage) {
@@ -76,8 +75,7 @@ import * as businessModels from '../models/business-models';
         }.bind(this));
 
         if (this.options.controller) {
-          this.options.controller.bindXHRToButton(dfd,
-            $(this.element), null, false);
+          bindXHRToButton(dfd, $(this.element), null, false);
         }
       }, SEARCH_DEBOUNCE),
 
@@ -124,7 +122,7 @@ import * as businessModels from '../models/business-models';
           .then(function (searchResult) {
             let objects = [];
 
-            can.each(that.options.searchtypes, function (searchtype) {
+            _.forEach(that.options.searchtypes, function (searchtype) {
               objects.push(...searchResult.getResultsForType(searchtype));
             });
             return objects;
@@ -301,7 +299,7 @@ import * as businessModels from '../models/business-models';
         let queryField = this.element.attr('data-query-field') || 'title';
         let queryRelevantType = this.element.attr('data-query-relevant-type');
         let queryRelevantId = this.element.attr('data-query-relevant-id');
-        let dfd = can.Deferred();
+        let dfd = $.Deferred();
         let objName = this.options.searchtypes[0];
         let relevant;
         let filter = {expression: {

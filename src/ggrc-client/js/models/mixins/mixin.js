@@ -52,7 +52,7 @@ export default can.Construct.extend('can.Model.Mixin', {
                 break;
             }
           } else if (aspect === 'extend') {
-            obj[key] = can.extend(obj[key], fn);
+            obj[key] = Object.assign(obj[key], fn);
           } else {
             obj[key] = fn;
           }
@@ -66,7 +66,7 @@ export default can.Construct.extend('can.Model.Mixin', {
       Object.keys(this).forEach(function (key) {
         setupFns(cls)(this[key], key);
       }.bind(this));
-      can.each(this.prototype, setupFns(cls.prototype));
+      _.forEach(this.prototype, setupFns(cls.prototype));
     }
   },
 }, {});

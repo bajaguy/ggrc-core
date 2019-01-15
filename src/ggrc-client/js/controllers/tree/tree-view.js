@@ -64,7 +64,7 @@ export default TreeLoader({
 
     this.options = new can.Map(defaults).attr(defaultOptions).attr(opts);
     if (opts instanceof can.Map) {
-      this.options = can.extend(this.options, opts);
+      this.options = Object.assign(this.options, opts);
     }
   },
 
@@ -104,12 +104,12 @@ export default TreeLoader({
       }
     });
     this.options.attr('child_options', this.options.child_options.slice(0));
-    can.each(this.options.child_options, function (options, i) {
+    _.forEach(this.options.child_options, function (options, i) {
       this.options.child_options.attr(i,
-        new can.Map(can.extend(options.attr(), allowed)));
+        new can.Map(Object.assign(options.attr(), allowed)));
     }.bind(this));
 
-    this._attached_deferred = can.Deferred();
+    this._attached_deferred = $.Deferred();
     if (this.element && this.element.closest('body').length) {
       this._attached_deferred.resolve();
     }
@@ -275,7 +275,7 @@ export default TreeLoader({
     v.attr('child_count', can.compute(function () {
       let totalChildren = 0;
       if (v.attr('child_options')) {
-        can.each(v.attr('child_options'), function (childCptions) {
+        _.forEach(v.attr('child_options'), function (childCptions) {
           let list = childCptions.attr('list');
           if (list) {
             totalChildren += list.attr('length');
@@ -311,7 +311,7 @@ export default TreeLoader({
     let that = this;
     let realAdd = [];
 
-    can.each(newVals, function (newVal) {
+    _.forEach(newVals, function (newVal) {
       if (that.element) {
         realAdd.push(newVal);
       }
@@ -345,7 +345,7 @@ export default TreeLoader({
     let BATCH = 200;
     let opId = this._add_child_lists_id = (this._add_child_lists_id || 0) + 1;
 
-    can.each(currentList, function (item) {
+    currentList.forEach(function (item) {
       listWindow.push(item);
       if (listWindow.length >= BATCH) {
         queue.push(listWindow);
@@ -359,7 +359,7 @@ export default TreeLoader({
     this.options.attr('filteredList', []);
     finalDfd = _.reduce(queue, function (dfd, listWindow) {
       return dfd.then(function () {
-        let res = can.Deferred();
+        let res = $.Deferred();
         if (that._add_child_lists_id !== opId) {
           return dfd;
         }
@@ -381,7 +381,7 @@ export default TreeLoader({
         }, 0);
         return res;
       });
-    }, can.Deferred().resolve());
+    }, $.Deferred().resolve());
 
     finalDfd.done(this._ifNotRemoved(function () {
       let shown = this.element[0].children.length;

@@ -548,6 +548,42 @@ class ProductGroupFactory(TitledFactory):
     model = all_models.ProductGroup
 
 
+class CalendarEventFactory(TitledFactory):
+
+  class Meta:
+    model = all_models.CalendarEvent
+
+
+class RevisionFactory(ModelFactory):
+
+  class Meta:
+    model = all_models.Revision
+
+  @classmethod
+  def _create(cls, target_class, *args, **kwargs):
+    """Fix context related_object when audit is created"""
+    kwargs["action"] = kwargs.get("action", "created")
+    kwargs["content"] = kwargs.get("content", {})
+    kwargs["modified_by_id"] = kwargs.get(
+        "modified_by_id", PersonFactory().id
+    )
+    kwargs["obj"] = kwargs.get("obj", ControlFactory())
+
+    event = EventFactory(
+        modified_by_id=kwargs["modified_by_id"],
+        action="POST",
+        resource_id=kwargs["obj"].id,
+        resource_type=kwargs["obj"].__class__.__name__,
+    )
+
+    rev = target_class(*args, **kwargs)
+    rev.event_id = event.id
+    db.session.add(rev)
+    if getattr(db.session, "single_commit", True):
+      db.session.commit()
+    return rev
+
+
 def get_model_factory(model_name):
   """Get object factory for provided model name"""
   from integration.ggrc_workflows.models import factories as wf_factories
@@ -558,6 +594,7 @@ def get_model_factory(model_name):
       "Assessment": AssessmentFactory,
       "AssessmentTemplate": AssessmentTemplateFactory,
       "Audit": AuditFactory,
+      "CalendarEvent": CalendarEventFactory,
       "Contract": ContractFactory,
       "Control": ControlFactory,
       "Cycle": wf_factories.CycleFactory,
@@ -590,6 +627,7 @@ def get_model_factory(model_name):
       "Requirement": RequirementFactory,
       "Risk": RiskFactory,
       "Review": ReviewFactory,
+      "Revision": RevisionFactory,
       "RiskAssessment": RiskAssessmentFactory,
       "Standard": StandardFactory,
       "System": SystemFactory,

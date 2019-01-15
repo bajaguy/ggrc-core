@@ -13,6 +13,7 @@ import html2text
 from ggrc import utils as ggrc_utils
 from ggrc.integrations import issues
 from ggrc.integrations import integrations_errors
+from ggrc.integrations import constants
 from ggrc.integrations.constants import DEFAULT_ISSUETRACKER_VALUES as \
     default_values
 from ggrc.models.hooks.issue_tracker import integration_utils
@@ -50,9 +51,9 @@ class BaseIssueTrackerParamsBuilder(object):
   )
 
   COMMENT_TMPL = (
-      u"A new comment is added by '{author}' to the '{model}': '{comment}'.\n"
-      u"Use the following to link to get more information from the "
-      u"GGRC '{model}'. Link - {link}"
+      u"A new comment is added by '{author}' to the '{model}': \n\n"
+      u"'{comment}'\n\n Use the following to link to get more "
+      u"information from the GGRC '{model}'. Link - {link}"
   )
 
   ISSUE_TRACKER_INFO_FIELDS_TO_CHECK = (
@@ -61,8 +62,6 @@ class BaseIssueTrackerParamsBuilder(object):
       "issue_severity",
       "issue_priority",
   )
-
-  OBSOLET_ISSUE_STATUS = "OBSOLETE"
 
   def __init__(self):
     """Basic initialization."""
@@ -124,7 +123,7 @@ class BaseIssueTrackerParamsBuilder(object):
 
   def build_params_for_comment(self, sync_obj, comment, author):
     """Build query to Issue tracker for adding comment to issue."""
-    comment = html2text.HTML2Text().handle(comment).strip("\n")
+    comment = html2text.HTML2Text().handle(comment).strip()
     self.params.add_comment(self.COMMENT_TMPL.format(
         author=author,
         comment=comment,
@@ -254,7 +253,7 @@ class IssueParamsBuilder(BaseIssueTrackerParamsBuilder):
   def build_detach_comment(self, new_ticket):
     """Build request for old Issue Tracker ticket detach."""
     self.params.add_comment(self.DETACH_TMPL.format(new_ticket_id=new_ticket))
-    self.params.status = self.OBSOLET_ISSUE_STATUS
+    self.params.status = constants.OBSOLETE_ISSUE_STATUS
     return self.params
 
   def _handle_emails_from_response(self, response):
@@ -356,5 +355,5 @@ class AssessmentParamsBuilder(BaseIssueTrackerParamsBuilder):
   def build_detach_comment(self, new_ticket):
     """Build request for old Issue Tracker ticket detach."""
     self.params.add_comment(self.DETACH_TMPL.format(new_ticket_id=new_ticket))
-    self.params.status = self.OBSOLET_ISSUE_STATUS
+    self.params.status = constants.OBSOLETE_ISSUE_STATUS
     return self.params

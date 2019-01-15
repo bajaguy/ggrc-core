@@ -41,7 +41,7 @@ function _getCurrentUser() {
 const widgetModules = [];
 function initWidgets() {
   // Ensure each extension has had a chance to initialize widgets
-  can.each(widgetModules, function (module) {
+  widgetModules.forEach(function (module) {
     if (module.init_widgets) {
       module.init_widgets();
     }
@@ -147,7 +147,7 @@ function initWidgetCounts(widgets, type, id) {
  * @param {Array|Object} widgets - list of widgets
  * @param {String} type - Type of parent object
  * @param {Number} id - ID of parent object
- * @return {can.Deferred} - resolved deferred object
+ * @return {$.Deferred} - resolved deferred object
  */
 function _initWidgetCounts(widgets, type, id) {
   // Request params generation logic should be moved in
@@ -178,7 +178,7 @@ function _initWidgetCounts(widgets, type, id) {
 
   // Perform requests only if params are defined
   if (!params.length) {
-    return can.Deferred().resolve();
+    return $.Deferred().resolve();
   }
 
   return $.when(...params).then((...data) => {
@@ -202,7 +202,7 @@ function refreshCounts() {
   let location = window.location.pathname;
 
   if (!pageInstance) {
-    return can.Deferred().resolve();
+    return $.Deferred().resolve();
   }
 
   widgets = getWidgetModels(pageInstance.constructor.shortName, location);

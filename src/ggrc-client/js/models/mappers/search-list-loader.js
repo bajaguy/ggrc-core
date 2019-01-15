@@ -120,9 +120,9 @@ import Cacheable from '../cacheable';
       } else {
         result = this.query_function(binding);
         result.pipe(function (mappings) {
-          can.each(mappings, function (entry, i) {
-            let _class = (can.getObject('CMS.Models.' + entry.type) ||
-            can.getObject('GGRC.Models.' + entry.type));
+          _.forEach(mappings, function (entry, i) {
+            let _class = CMS.Models[entry.type] ||
+              GGRC.Models[entry.type];
             mappings[i] = new _class({id: entry.id});
           });
 

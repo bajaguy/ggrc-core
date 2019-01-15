@@ -100,7 +100,7 @@ import {changeUrl} from '../router';
       let dirty = false;
 
       // Generate a hash of the form values
-      can.each(this.$form().serializeArray(), function (field) {
+      this.$form().serializeArray().forEach(function (field) {
         let val;
         if (cache[field.name]) {
           val = cache[field.name] + ',' + field.value;
@@ -115,7 +115,7 @@ import {changeUrl} from '../router';
         this._cached_values = cache;
       } else {
         // Otherwise compute a diff to determine whether the form is dirty
-        can.each(cache, function (value, key) {
+        _.forEach(cache, function (value, key) {
           if (!dirty) {
             dirty = (value !== that._cached_values[key] &&
               (!!value || that._cached_values[key] !== undefined));
@@ -177,7 +177,6 @@ import {changeUrl} from '../router';
 
     hide: function (e, verifyChanges) {
       let instance = this.instance;
-      let pending;
       let hasPending;
       let changedInstance;
 
@@ -233,10 +232,6 @@ import {changeUrl} from '../router';
 
       // Hide the modal like normal
       if (instance) {
-        pending = instance.attr('_pending_joins');
-        if (pending && pending.length) {
-          instance.attr('_pending_joins', []);
-        }
         can.trigger(instance, 'modal:dismiss');
       }
       $.fn.modal.Constructor.prototype.hide.apply(this, [e]);

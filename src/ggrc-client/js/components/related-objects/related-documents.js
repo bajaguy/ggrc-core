@@ -21,7 +21,6 @@ import Context from '../../models/service-models/context';
 import Evidence from '../../models/business-models/evidence';
 import Document from '../../models/business-models/document';
 import * as businessModels from '../../models/business-models';
-import Permission from '../../permission';
 
 let DOCUMENT_KIND_MAP = {
   FILE: 'documents_file',
@@ -159,7 +158,7 @@ export default can.Component.extend({
         document, this.instance);
       if (!relationship.id) {
         console.warn('Unable to find relationship');
-        return can.Deferred().reject({
+        return $.Deferred().reject({
           error: 'Unable to find relationship',
         });
       }
@@ -200,7 +199,6 @@ export default can.Component.extend({
       this.attr('isLoading', true);
 
       return this.saveDocument(document)
-        .then(() => Permission.refresh())
         .then(() => {
           this.dispatch({
             type: 'addMappings',

@@ -38,7 +38,7 @@ const viewModel = can.Map.extend({
   getItems: function () {
     let source = this.attr('source');
     let sourceList = can.isArray(source) ? source : can.makeArray(source);
-    let deferred = can.Deferred();
+    let deferred = $.Deferred();
     let readyItemsList;
 
     if (!sourceList.length) {
@@ -65,7 +65,7 @@ const viewModel = can.Map.extend({
     const rq = new RefreshQueue();
     const Type = this.attr('type');
 
-    can.each(items, function (item) {
+    _.forEach(items, function (item) {
       rq.enqueue(Type.model(item));
     });
 

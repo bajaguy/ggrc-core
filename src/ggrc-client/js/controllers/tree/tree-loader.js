@@ -54,7 +54,7 @@ export default can.Control.extend({
       return this._prepare_deferred;
     }
 
-    this._prepare_deferred = can.Deferred();
+    this._prepare_deferred = $.Deferred();
     this._prepare_deferred.resolve();
 
     this._attached_deferred.then(function () {
@@ -108,7 +108,7 @@ export default can.Control.extend({
     if (this._draw_list_deferred) {
       return this._draw_list_deferred;
     }
-    this._draw_list_deferred = can.Deferred();
+    this._draw_list_deferred = $.Deferred();
     if (this.element && !this.element.closest('body').length) {
       return undefined;
     }
@@ -143,7 +143,7 @@ export default can.Control.extend({
     let $contentContainer;
 
     if (!this._loading_deferred) {
-      this._loading_deferred = can.Deferred();
+      this._loading_deferred = $.Deferred();
 
       // for some reason, .closest(<selector>) does not work, thus need to use
       // using a bit less roboust .parent()
@@ -198,7 +198,8 @@ export default can.Control.extend({
 
     if (this.options.attr('is_subtree')) {
       // Check the list of items to be inserted for any duplicate items.
-      can.each(this.options.list || [], function (item) {
+
+      _.forEach(this.options.list, function (item) {
         idMap[item.instance.type + item.instance.id] = true;
       });
       toInsert = _.filter(items, function (item) {
@@ -208,7 +209,7 @@ export default can.Control.extend({
       toInsert = items;
     }
 
-    can.each(toInsert, function (item) {
+    _.forEach(toInsert, function (item) {
       let prepped = that.prepare_child_options(item, forcePrepareChildren);
       // Should we skip items without selfLink?
       if (prepped.instance.selfLink) {
@@ -220,7 +221,7 @@ export default can.Control.extend({
       this.options.list.push(...preppedItems);
       dfd = this.add_child_lists(preppedItems);
     } else {
-      dfd = can.Deferred().resolve();
+      dfd = $.Deferred().resolve();
     }
 
     return dfd;

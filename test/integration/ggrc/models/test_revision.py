@@ -2,6 +2,9 @@
 # Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 
 """ Tests for ggrc.models.Revision """
+from datetime import datetime
+
+from freezegun import freeze_time
 import ddt
 import mock
 
@@ -12,6 +15,7 @@ from integration.ggrc import TestCase
 
 from integration.ggrc.models import factories
 from integration.ggrc import api_helper
+from integration.ggrc import query_helper
 from integration.ggrc.review import build_reviewer_acl
 
 
@@ -36,13 +40,17 @@ def _project_content(content):
 
 
 @ddt.ddt
-class TestRevisions(TestCase):
+class TestRevisions(query_helper.WithQueryApi, TestCase):
   """ Tests for ggrc.models.Revision """
+
+  @classmethod
+  def setUpClass(cls):
+    """Sets up objects common to all tests."""
+    cls.gen = integration.ggrc.generator.ObjectGenerator()
+    cls.api_helper = api_helper.Api()
 
   def setUp(self):
     super(TestRevisions, self).setUp()
-    self.gen = integration.ggrc.generator.ObjectGenerator()
-    self.api_helper = api_helper.Api()
     self.api_helper.client.get("/login")
 
   def test_revisions(self):
@@ -238,21 +246,21 @@ class TestRevisions(TestCase):
                                      attribute_value,
                                      is_global):
     """Population cavs and cads depend on is_global flag and send params."""
-    control = factories.ControlFactory()
-    control_id = control.id
+    asmnt = factories.AssessmentFactory()
+    asmnt_id = asmnt.id
     cad_params = {
         "title": "test_cad",
-        "definition_type": "control",
+        "definition_type": "assessment",
         "attribute_type": attribute_type
     }
     if not is_global:
-      cad_params["definition_id"] = control_id
+      cad_params["definition_id"] = asmnt_id
     with factories.single_commit():
       cad = factories.CustomAttributeDefinitionFactory(**cad_params)
     cad_id = cad.id
     revisions = ggrc.models.Revision.query.filter(
-        ggrc.models.Revision.resource_id == control_id,
-        ggrc.models.Revision.resource_type == "Control",
+        ggrc.models.Revision.resource_id == asmnt_id,
+        ggrc.models.Revision.resource_type == "Assessment",
     ).order_by(ggrc.models.Revision.id.desc()).all()
     self.assertEqual(1, len(revisions))
     revision = revisions[0]
@@ -264,8 +272,8 @@ class TestRevisions(TestCase):
     self.assertIn("custom_attribute_values", revision.content)
     self.assertEqual(
         [{
-            'attributable_id': control_id,
-            'attributable_type': u'Control',
+            'attributable_id': asmnt_id,
+            'attributable_type': 'Assessment',
             'attribute_object': None,
             'attribute_object_id': None,
             'attribute_value': attribute_value,
@@ -314,27 +322,27 @@ class TestRevisions(TestCase):
   def test_revisions_invalid_cavs(self, value, _):
     """Test filtering of Checkbox CAVs."""
     with factories.single_commit():
-      program = factories.ProgramFactory()
+      asmnt = factories.AssessmentFactory()
       ca_def = factories.CustomAttributeDefinitionFactory(
-          definition_id=program.id,
-          definition_type="program",
+          definition_id=asmnt.id,
+          definition_type="assessment",
           title="CA",
           attribute_type="Checkbox",
       )
 
     self.gen.api.modify_object(
-        program, {
+        asmnt, {
             "custom_attribute_values": [{
-                "attributable_id": program.id,
-                "attributable_type": "program",
+                "attributable_id": asmnt.id,
+                "attributable_type": "assessment",
                 "attribute_value": value,
                 "custom_attribute_id": ca_def.id,
             }, ],
         },
     )
     revisions = ggrc.models.Revision.query.filter(
-        ggrc.models.Revision.resource_id == program.id,
-        ggrc.models.Revision.resource_type == "Program",
+        ggrc.models.Revision.resource_id == asmnt.id,
+        ggrc.models.Revision.resource_type == "Assessment",
     ).order_by(ggrc.models.Revision.id.desc()).all()
     content = revisions[0].content
     self.assertEqual(
@@ -387,3 +395,74 @@ class TestRevisions(TestCase):
     }
 
     self.assertEqual(review, expected)
+
+  def test_revision_ordering(self):
+    """Test revision ordering by created_at with query api"""
+    with factories.single_commit():
+      # pylint: disable=expression-not-assigned
+      [factories.ControlFactory() for i in range(10)]
+      # pylint: enable=expression-not-assigned
+
+    query = self._make_query_dict(
+        "Revision", expression=("resource_type", "=", "Control"),
+        order_by=[{"name": "created_at", "desc": True}]
+    )
+
+    self.client.get("/login")
+    result = self._get_first_result_set(query, "Revision")
+    count, values = result["count"], result["values"]
+
+    datetime_format = "%Y-%m-%dT%H:%M:%S"
+    for value in values:
+      value["created_at"] = datetime.strptime(value["created_at"],
+                                              datetime_format)
+    self.assertTrue(
+        all(values[i]["created_at"] >= values[i + 1]["created_at"]
+            for i in range(count - 1))
+    )
+
+  def test_created_at_filtering(self):
+    """Test revision could be filtered by created_at."""
+    with freeze_time("2019-01-08 12:00:00"):
+      control = factories.ControlFactory()
+      control_id = control.id
+      factories.RevisionFactory(obj=control)
+
+    expected_ids = set()
+    with freeze_time("2019-01-08 23:59:59"):
+      rev = factories.RevisionFactory(obj=control)
+      expected_ids.add(rev.id)
+
+    self.client.get("/login")
+    resp = self._get_first_result_set(
+        {
+            "object_name": "Revision",
+            "type": "ids",
+            "filters": {
+                "expression": {
+                    "op": {"name": "AND"},
+                    "left": {
+                        "op": {"name": "AND"},
+                        "left": {
+                            "op": {"name": "="},
+                            "left": "resource_type",
+                            "right": "Control"
+                        },
+                        "right": {
+                            "op": {"name": "="},
+                            "left": "resource_id",
+                            "right": control_id
+                        }
+                    },
+                    "right": {
+                        "op": {"name": ">"},
+                        "left": "created_at",
+                        "right": "2019-01-08 12:00:00"
+                    }
+                }
+            }
+        },
+        "Revision",
+        "ids"
+    )
+    self.assertItemsEqual(resp, expected_ids)

@@ -212,6 +212,7 @@ class Workflow(roleable.Roleable,
 
   @classmethod
   def first_work_day(cls, day):
+    """Get first work day."""
     holidays = google_holidays.GoogleHolidays()
     while day.isoweekday() > cls.WORK_WEEK_LEN or day in holidays:
       day -= relativedelta.relativedelta(days=1)
@@ -304,6 +305,12 @@ class Workflow(roleable.Roleable,
   def workflow_state(self):
     return WorkflowState.get_workflow_state(self.cycles)
 
+  @property
+  def workflow_archived(self):
+    """Determines whether workflow is archived."""
+    return bool(self.unit and not self.recurrences and
+                self.next_cycle_start_date)
+
   _sanitize_html = [
       'notify_custom_message',
   ]
@@ -352,7 +359,8 @@ class Workflow(roleable.Roleable,
       "is_verification_needed": {
           "display_name": "Need Verification",
           "mandatory": True,
-          "description": "This field is not changeable\nafter creation.",
+          "description": "This field is not changeable\nafter "
+                         "workflow activation.",
       },
       "notify_custom_message": "Custom email message",
       "notify_on_change": {

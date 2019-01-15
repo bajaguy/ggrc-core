@@ -6,8 +6,13 @@
 import Mappings from './mappers/mappings';
 import * as businessModels from './business-models';
 import * as serviceModels from './service-models';
+import * as mappingModels from './mapping-models';
 
-const allModels = Object.assign({}, businessModels, serviceModels);
+const allModels = Object.assign({},
+  businessModels,
+  serviceModels,
+  mappingModels
+);
 
 /*  RefreshQueue
  *
@@ -100,7 +105,7 @@ const RefreshQueueManager = can.Construct({}, {
 
     if (!force) {
       // Check if the ID is already contained in another queue
-      can.each(this.queues, function (queue) {
+      this.queues.forEach(function (queue) {
         if (!foundQueue &&
           queue.model === model && queue.ids.indexOf(id) > -1) {
           foundQueue = queue;
@@ -109,7 +114,7 @@ const RefreshQueueManager = can.Construct({}, {
     }
 
     if (!foundQueue) {
-      can.each(this.queues, function (queue) {
+      this.queues.forEach(function (queue) {
         if (!foundQueue &&
           queue.model === model &&
           !queue.triggered && queue.ids.length < 150) {
@@ -137,7 +142,7 @@ const RefreshQueueManager = can.Construct({}, {
 const RefreshQueue = can.Construct({
   refresh_queue_manager: new RefreshQueueManager(),
   refresh_all: function (instance, props, force) {
-    let dfd = new can.Deferred();
+    let dfd = new $.Deferred();
 
     refreshAll(instance, props, dfd);
     return dfd;
@@ -171,8 +176,8 @@ const RefreshQueue = can.Construct({
       if (deferred) {
         deferred.then(function (refreshedItems) {
           if (nextProps.length) {
-            can.each(refreshedItems, function (item) {
-              let df = new can.Deferred();
+            _.forEach(refreshedItems, function (item) {
+              let df = new $.Deferred();
               refreshAll(item, nextProps, df);
               dfds.push(df);
             });
@@ -219,9 +224,9 @@ const RefreshQueue = can.Construct({
       return null;
     }
     if (objs.push) {
-      can.each(objs, function (obj) {
+      _.forEach(objs, (obj) => {
         this.enqueue(obj, force);
-      }, this);
+      });
       return this;
     }
 
@@ -243,7 +248,7 @@ const RefreshQueue = can.Construct({
     }
 
     this.triggered = true;
-    can.each(this.queues, function (queue) {
+    this.queues.forEach(function (queue) {
       deferreds.push(
         queue.trigger_with_debounce(delay,
           self.constructor.refresh_queue_manager));

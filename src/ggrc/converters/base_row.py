@@ -17,6 +17,7 @@ from ggrc.converters import get_importables
 from ggrc.converters import pre_commit_checks
 from ggrc.login import get_current_user_id
 from ggrc.models import all_models
+from ggrc.models import cache
 from ggrc.models.exceptions import StatusValidationError
 from ggrc.models.mixins import issue_tracker
 from ggrc.rbac import permissions
@@ -235,6 +236,7 @@ class ImportRowConverter(RowConverter):
         self.add_error(errors.VALIDATION_ERROR,
                        column_name=role,
                        message=msg)
+    self._check_secondary_objects()
     if self.block_converter.converter.dry_run:
       return
     try:
@@ -278,6 +280,20 @@ class ImportRowConverter(RowConverter):
     if checker and callable(checker):
       checker(self)
 
+  def _check_secondary_objects(self):
+    """Check object if it has any pre commit checks
+    after setup of secondary objects.
+
+    The check functions can mutate the row_converter object and mark it
+    to be ignored if there are any errors detected.
+
+    Args:
+        row_converter: Row converter for the row we want to check.
+    """
+    checker = pre_commit_checks.SECONDARY_CHECKS.get(type(self.obj).__name__)
+    if checker and callable(checker):
+      checker(self)
+
   def flush_object(self):
     """Flush dirty data related to the current row."""
     if self.block_converter.converter.dry_run or self.ignore:
@@ -312,6 +328,8 @@ class ImportRowConverter(RowConverter):
     if self.block_converter.converter.dry_run or self.ignore:
       return
     try:
+      if not self.is_new:
+        cache.Cache.add_to_cache(self.obj)
       modified_objects = get_modified_objects(db.session)
       import_event = log_event(db.session, None)
       cache_utils.update_memcache_before_commit(

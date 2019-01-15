@@ -13,32 +13,32 @@ export default function (completeTransaction, timeout) {
   let timeoutId = null;
 
   let sequence = {
-    transactionDfd: can.Deferred().resolve(),
+    transactionDfd: $.Deferred().resolve(),
     callbackAdded: false,
   };
 
   function runBatch(batch) {
-    can.each(batch, function (actionItem) {
+    _.forEach(batch, function (actionItem) {
       actionItem.action();
     });
   }
 
   function resolveBatch(batch, batchDfd, ...result) {
-    can.each(batch, function (actionItem) {
+    _.forEach(batch, function (actionItem) {
       actionItem.deferred.resolve(...result);
     });
     batchDfd.resolve();
   }
 
   function rejectBatch(batch, batchDfd, ...result) {
-    can.each(batch, function (actionItem) {
+    _.forEach(batch, function (actionItem) {
       actionItem.deferred.reject(...result);
     });
     batchDfd.resolve();
   }
 
   function processQueue() {
-    let batchDfd = can.Deferred();
+    let batchDfd = $.Deferred();
     let currentBatch = deferredQueue.splice(0, deferredQueue.length);
 
     runBatch(currentBatch);
@@ -59,7 +59,7 @@ export default function (completeTransaction, timeout) {
   }
 
   function processSequentially() {
-    sequence.transactionDfd = can.Deferred();
+    sequence.transactionDfd = $.Deferred();
     sequence.callbackAdded = false;
     processQueue().then(sequence.transactionDfd.resolve);
   }
@@ -77,7 +77,7 @@ export default function (completeTransaction, timeout) {
    * @return {object} - The canJS promise indicates result of the transaction.
    */
   this.push = function (action) {
-    let dfd = can.Deferred();
+    let dfd = $.Deferred();
     deferredQueue.push({
       deferred: dfd,
       action: action,
@@ -94,7 +94,7 @@ export default function (completeTransaction, timeout) {
    * @return {object} - The canJS promise indicates result of the transaction.
    */
   this.execute = function (action) {
-    let dfd = can.Deferred();
+    let dfd = $.Deferred();
     deferredQueue.push({
       deferred: dfd,
       action: action,

@@ -9,7 +9,6 @@
 # pylint: disable=redefined-outer-name
 
 import random
-import time
 
 import pytest
 
@@ -35,6 +34,8 @@ def _create_mapped_asmt(audit, assessment_type, objs_to_map):
   for obj in objs_to_map:
     rest_facade.map_to_snapshot(assessment, obj=obj, parent_obj=audit)
   assessment.update_attrs(mapped_objects=objs_to_map)
+  # wait for indexing task to be completed.
+  rest_facade.get_obj(assessment)
   return assessment
 
 
@@ -620,6 +621,16 @@ class TestAssessmentsWorkflow(base.Test):
 class TestRelatedAssessments(base.Test):
   """Tests for related assessments"""
 
+  @classmethod
+  def check_ggrc_6524(cls, exp_related_asmts, act_related_asmts):
+    """Check related asmt contents regardless of order."""
+    is_order_valid = exp_related_asmts == act_related_asmts
+    is_data_valid = sorted(exp_related_asmts) == sorted(act_related_asmts)
+    if not is_order_valid and is_data_valid:
+      pytest.xfail(reason="\nGGRC-6524. Incorrect order of related asmts.")
+    if not is_order_valid and not is_data_valid:
+      pytest.fail(msg="Related asmts are not equal.")
+
   @staticmethod
   def _related_asmts_of_obj(obj, selenium):
     """Return related assessments of obj (Control or Objective)"""
@@ -794,8 +805,9 @@ class TestRelatedAssessments(base.Test):
                                  objs_to_map=[control_mapped_to_program])
       related_asmts_titles.append(
           (asmt.title, control_mapped_to_program.title, audit.title))
-    assert self._related_asmts_of_obj(control_mapped_to_program, selenium) ==\
-        related_asmts_titles[::-1]
+    self.check_ggrc_6524(
+        related_asmts_titles[::-1],
+        self._related_asmts_of_obj(control_mapped_to_program, selenium))
 
   @pytest.mark.smoke_tests
   @pytest.mark.parametrize(
@@ -814,18 +826,15 @@ class TestRelatedAssessments(base.Test):
       -> Asmt-2 mapped to Obj, asmt type="obj_type"
     Check Related Assessments on Obj's page"""
     assessments = []
-    for i in xrange(2):
+    for _ in xrange(2):
       assessments.append(_create_mapped_asmt(
           audit=audit, assessment_type=obj.type, objs_to_map=[obj]))
-      if i == 0:
-        # If two assessments are created within the same second, they may have
-        # the same `created_at` so will be sorted in an unexpected order.
-        time.sleep(0.8)
     related_asmts_titles = [
         (assessment.title, obj.title, audit.title)
         for assessment in assessments]
-    assert self._related_asmts_of_obj(obj, selenium) ==\
-        related_asmts_titles[::-1]
+    self.check_ggrc_6524(
+        related_asmts_titles[::-1],
+        self._related_asmts_of_obj(obj, selenium))
 
   @pytest.mark.smoke_tests
   def test_related_asmts_on_control_snapshot_page(

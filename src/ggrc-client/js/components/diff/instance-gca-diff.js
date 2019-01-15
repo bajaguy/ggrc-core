@@ -6,7 +6,7 @@
 import {REFRESH_PROPOSAL_DIFF} from '../../events/eventTypes';
 import DiffBaseVM from './diff-base-vm';
 import template from './templates/instance-diff-items.mustache';
-import {getPersonInfo} from '../../../js/plugins/ggrc_utils';
+import {getPersonInfo} from '../../../js/plugins/utils/user-utils';
 import {formatDate} from '../../../js/plugins/utils/date-utils';
 const tag = 'instance-gca-diff';
 
@@ -75,7 +75,7 @@ const viewModel = DiffBaseVM.extend({
   buildPersonDiff(modifiedAttr, currentAttr) {
     const val = currentAttr.value;
     const def = currentAttr.def;
-    const dfd = can.Deferred();
+    const dfd = $.Deferred();
     const diffObject = {
       attrName: def.title,
       currentVal: [this.attr('emptyValue')],

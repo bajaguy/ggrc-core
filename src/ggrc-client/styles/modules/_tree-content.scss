@@ -160,12 +160,6 @@ ul.new-tree {
         }
       }
     }
-    > .snapshot-object {
-       background: $snapshotBgnd;
-       border: 1px solid $shapshotBorder;
-       border-radius: 2px;
-       margin: 2px 0;
-    }
     &:last-child {
       > .item-wrap {
         border-bottom: none;
@@ -266,19 +260,7 @@ ul.new-tree {
   .parent {
     @include opacity(0.6);
   }
-  .tree-description {
-    line-height:18px;
-    margin-right:60px;
-    font-size:13px;
-    &.short {
-      height:36px;
-      overflow:hidden;
-    }
-    p {
-      line-height:18px;
-      font-size:13px;
-    }
-  }
+
   .view-more-paging {
     line-height: 31px;
     min-height: 31px;
@@ -289,18 +271,7 @@ ul.new-tree {
       margin-top: 7px;
     }
   }
-  a.show-long {
-    color:$disabled;
-    float:left;
-    display:block;
-    font-size:13px;
-    line-height:18px;
-    text-decoration:underline;
-    &:hover {
-      color:$link;
-      text-decoration:underline;
-    }
-  }
+
   .tree-info {
     @extend %oneline;
     vertical-align: middle;
@@ -478,9 +449,6 @@ ul.new-tree {
     font-style: italic;
     font-size: 13px;
   }
-  .top-space {
-    margin-top: 6px;
-  }
   .tree-info {
     line-height: 18px;
   }
@@ -586,4 +554,3 @@ ul.new-tree {
 .ordered-item-data {
   padding-left: 5px;
 }
-

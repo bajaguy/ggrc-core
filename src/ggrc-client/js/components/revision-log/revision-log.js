@@ -24,7 +24,6 @@ let _DATE_FIELDS = {
   start_date: 1,
   end_date: 1,
   requested_on: 1,
-  due_on: 1,
   finished_date: 1,
   verified_date: 1,
 };
@@ -61,7 +60,7 @@ export default can.Component.extend({
     instance: null,
     review: null,
     isLoading: true,
-    personLoadingDfd: can.Deferred,
+    personLoadingDfd: $.Deferred,
     fullHistory: [],
     showLastReviewUpdates: false,
     currentPage: 0,
@@ -109,7 +108,7 @@ export default can.Component.extend({
      * The `instance` here refers to the instance of an object currently being
      * handled by the component.
      *
-     * @return {can.Deferred} - an object representing the async operation of
+     * @return {$.Deferred} - an object representing the async operation of
      *   fetching the data from the server. On success it is resolved with an
      *   object containing the following Revision data, order by date from
      *   oldest to newest:
@@ -329,7 +328,7 @@ export default can.Component.extend({
       if (refreshQueue.objects.length) {
         this.attr('personLoadingDfd', refreshQueue.trigger());
       } else {
-        this.attr('personLoadingDfd', can.Deferred().resolve());
+        this.attr('personLoadingDfd', $.Deferred().resolve());
       }
     },
     /**
@@ -458,7 +457,7 @@ export default can.Component.extend({
       diff.updatedAt = rev2.updated_at;
       diff.role = this._getRoleAtTime(madeByPersonId, rev2.updated_at);
 
-      can.each(rev2.content, function (value, fieldName) {
+      _.forEach(rev2.content, function (value, fieldName) {
         let origVal = rev1.content[fieldName];
         let displayName;
         let unifyValue = function (value) {

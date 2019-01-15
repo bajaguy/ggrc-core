@@ -44,7 +44,6 @@ export default Cacheable('CMS.Models.Workflow', {
     show_all_tabs: true,
   },
   tree_view_options: {
-    attr_view: GGRC.mustache_path + '/workflows/tree-item-attr.mustache',
     attr_list: [
       {attr_title: 'Title', attr_name: 'title'},
       {attr_title: 'Code', attr_name: 'slug'},
@@ -71,10 +70,10 @@ export default Cacheable('CMS.Models.Workflow', {
    * Saves or updates workflow
    * @param {Boolean} createDefaultTaskGroup if set to true default TaskGroup
    *                                         is created after workflow saving
-   * @return {can.Deferred}
+   * @return {$.Deferred}
   **/
   save: function (createDefaultTaskGroup = true) {
-    const dfd = new can.Deferred();
+    const dfd = new $.Deferred();
     let taskGroupTitle = this.task_group_title;
     let isNew = this.isNew();
     let redirectLink;
@@ -88,7 +87,7 @@ export default Cacheable('CMS.Models.Workflow', {
           !isNew || instance.clone) {
           dfd.resolve(instance);
           // skip next 'then' chain
-          return can.Deferred().reject();
+          return $.Deferred().reject();
         }
         taskGroup = new TaskGroup({
           title: taskGroupTitle,

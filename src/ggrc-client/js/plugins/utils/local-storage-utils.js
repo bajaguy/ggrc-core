@@ -14,7 +14,7 @@ function get(key) {
 
   let result = [];
 
-  can.each(ids, (id) => {
+  ids.forEach((id) => {
     let data = window.localStorage.getItem(`${key}:${id}`);
 
     if (data) {
@@ -45,7 +45,7 @@ function create(key, data) {
   window.localStorage.setItem(`${key}:ids`, JSON.stringify(ids));
 
   // create new
-  let item = can.extend({id}, data);
+  let item = Object.assign({id}, data);
   window.localStorage.setItem(`${key}:${id}`, JSON.stringify(item));
 
   return item;
@@ -96,7 +96,7 @@ function clear(key) {
 
   let ids = window.localStorage.getItem(`${key}:ids`);
   ids = JSON.parse(ids) || [];
-  can.each(ids, (id) => {
+  ids.forEach((id) => {
     window.localStorage.removeItem(`${key}:${id}`);
   });
   window.localStorage.removeItem(`${key}:ids`);

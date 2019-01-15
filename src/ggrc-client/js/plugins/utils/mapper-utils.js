@@ -5,11 +5,11 @@
 
 import RefreshQueue from '../../models/refresh_queue';
 import {backendGdriveClient} from '../ggrc-gapi-client';
-import TaskGroupObject from '../../models/join-models/task-group-object';
+import TaskGroupObject from '../../models/service-models/task-group-object';
 import Relationship from '../../models/service-models/relationship';
 
 async function mapObjects(instance, objects, {
-  useSnapshots,
+  useSnapshots = false,
 } = {}) {
   let defer = [];
   let que = new RefreshQueue();
@@ -60,7 +60,7 @@ function getMapping(source, destination, context) {
 }
 
 function unmapObjects(instance, objects) {
-  const pendingUnmap = objects.map((object) =>
+  const pendingUnmap = _.map(objects, (object) =>
     Relationship.findRelationship(instance, object)
       .then((relationship) => relationship.destroy())
   );

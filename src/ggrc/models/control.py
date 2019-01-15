@@ -15,6 +15,7 @@ from ggrc.access_control.roleable import Roleable
 from ggrc.models.categorization import Categorizable
 from ggrc.models.category import CategoryBase
 from ggrc.models.mixins import base
+from ggrc.models.mixins.synchronizable import Synchronizable
 from ggrc.models import mixins, review
 from ggrc.models.mixins.with_last_assessment_date import WithLastAssessmentDate
 from ggrc.models.deferred import deferred
@@ -159,7 +160,8 @@ class AssertionCategorized(Categorizable):
     )
 
 
-class Control(WithLastAssessmentDate,
+class Control(Synchronizable,
+              WithLastAssessmentDate,
               review.Reviewable,
               Roleable,
               Relatable,
@@ -250,6 +252,7 @@ class Control(WithLastAssessmentDate,
       "Admin",
       "Control Operators",
       "Control Owners",
+      "Other Contacts",
   ])
 
   @classmethod

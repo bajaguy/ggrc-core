@@ -6,7 +6,7 @@
 import Permission from '../permission';
 import {makeFakeInstance} from '../../js_specs/spec_helpers';
 import * as CurrentPageUtils from '../plugins/utils/current-page-utils';
-import UserRole from '../models/join-models/user-role';
+import UserRole from '../models/service-models/user-role';
 import Audit from '../models/business-models/audit';
 import {getInstance} from '../plugins/utils/models-utils';
 
@@ -609,7 +609,7 @@ describe('Permission', function () {
     });
     beforeEach(function () {
       spyOn($, 'ajax')
-        .and.returnValue(new can.Deferred().resolve('permissions'));
+        .and.returnValue(new $.Deferred().resolve('permissions'));
     });
     afterEach(function () {
       GGRC.permissions = GGRC_PERMISSIONS;

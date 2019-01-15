@@ -19,6 +19,7 @@ from ggrc.integrations.synchronization_jobs import sync_utils
 from ggrc.models import all_models, inflector
 from ggrc.models import exceptions as ggrc_exceptions
 from ggrc.models.hooks.issue_tracker import integration_utils
+from ggrc.models.hooks.issue_tracker import assessment_integration
 from ggrc import utils
 from ggrc.notifications import common
 from ggrc.notifications.data_handlers import get_object_url
@@ -30,16 +31,13 @@ logger = logging.getLogger(__name__)
 WRONG_COMPONENT_ERR = "Component {} does not exist"
 WRONG_HOTLIST_ERR = "No Hotlist with id: {}"
 
-# Email title
-ISSUETRACKER_SYNC_TITLE = "Tickets generation status"
-
 
 class IssueTrackerBulkCreator(object):
   """Class with methods for bulk tickets creation in issuetracker."""
 
   # IssueTracker integration modules with handlers for specific models
   INTEGRATION_HANDLERS = {
-      "Assessment": models.hooks.issue_tracker.assessment_integration,
+      "Assessment": assessment_integration.AssessmentTrackerHandler,
       "Issue": models.hooks.issue_tracker.issue_integration,
   }
 
@@ -63,6 +61,8 @@ class IssueTrackerBulkCreator(object):
       'assessments or issues that were not updated.'
   )
   EXCEPTION_TEXT = "Something went wrong, we are looking into it."
+
+  ISSUETRACKER_SYNC_TITLE = "Ticket generation status"
 
   def __init__(self):
     self.break_on_errs = False
@@ -229,6 +229,8 @@ class IssueTrackerBulkCreator(object):
 
     if not issue_json.get("assignee") and result:
       issue_json["assignee"] = result.get("issueState", {}).get("assignee")
+    if not issue_json.get("reporter") and result:
+      issue_json["reporter"] = result.get("issueState", {}).get("reporter")
 
   @staticmethod
   def _add_error(error_list, object_, error):
@@ -241,9 +243,7 @@ class IssueTrackerBulkCreator(object):
     del issue_id
     return sync_utils.create_issue(
         self.client,
-        issue_json,
-        max_attempts=10,
-        interval=10
+        issue_json
     )
 
   @staticmethod
@@ -322,6 +322,7 @@ class IssueTrackerBulkCreator(object):
         "issue_priority": expr.bindparam("issue_priority"),
         "issue_severity": expr.bindparam("issue_severity"),
         "assignee": expr.bindparam("assignee"),
+        "reporter": expr.bindparam("reporter"),
         "issue_id": expr.bindparam("issue_id"),
         "issue_url": expr.bindparam("issue_url"),
     })
@@ -359,6 +360,7 @@ class IssueTrackerBulkCreator(object):
         "issue_priority": info["priority"],
         "issue_severity": info["severity"],
         "assignee": info["assignee"],
+        "reporter": info["reporter"],
         "issue_id": info["issue_id"],
         "issue_url": info["issue_url"],
     } for (obj_type, obj_id), info in issue_info.items()]
@@ -464,7 +466,7 @@ class IssueTrackerBulkCreator(object):
       data["email_text"] = self.SUCCESS_TEXT.format(filename=filename)
       body = settings.EMAIL_BULK_SYNC_SUCCEEDED.render(sync_data=data)
 
-    common.send_email(recipient, ISSUETRACKER_SYNC_TITLE, body)
+    common.send_email(recipient, self.ISSUETRACKER_SYNC_TITLE, body)
 
 
 class IssueTrackerBulkUpdater(IssueTrackerBulkCreator):
@@ -488,6 +490,7 @@ class IssueTrackerBulkUpdater(IssueTrackerBulkCreator):
       'sufficient access to generate/update the tickets. Here is the list '
       'of assessments or issues that were not updated.'
   )
+  ISSUETRACKER_SYNC_TITLE = "Ticket update status"
 
   @staticmethod
   def get_issuetracked_objects(obj_type, obj_ids):
@@ -514,9 +517,7 @@ class IssueTrackerBulkUpdater(IssueTrackerBulkCreator):
     return sync_utils.update_issue(
         self.client,
         issue_id,
-        issue_json,
-        max_attempts=10,
-        interval=10
+        issue_json
     )
 
   def update_db_issues(self, issues_info, errors):
@@ -630,8 +631,11 @@ class IssueTrackerBulkChildCreator(IssueTrackerBulkCreator):
     )
     return allow_func(obj)
 
-  @staticmethod
-  def send_notification(parent_type, parent_id, errors=None, failed=False):
+  def send_notification(self,
+                        parent_type,
+                        parent_id,
+                        errors=None,
+                        failed=False):
     """Send mail notification with information about errors."""
     parent_model = models.get_model(parent_type)
     parent = parent_model.query.get(parent_id)
@@ -652,7 +656,7 @@ class IssueTrackerBulkChildCreator(IssueTrackerBulkCreator):
       body = settings.EMAIL_BULK_CHILD_SYNC_SUCCEEDED.render(sync_data=data)
 
     receiver = login.get_current_user()
-    common.send_email(receiver.email, ISSUETRACKER_SYNC_TITLE, body)
+    common.send_email(receiver.email, self.ISSUETRACKER_SYNC_TITLE, body)
 
 
 class IssuetrackedObjInfo(collections.namedtuple(

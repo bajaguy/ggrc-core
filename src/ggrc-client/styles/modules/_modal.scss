@@ -329,13 +329,22 @@
         color: $red;
         font-weight: bold;
       }
-      i {
-        @include opacity(0.2);
-        cursor: pointer;
-        margin: 0 4px 0 0;
-        &:hover {
-          @include opacity(0.7);
-        }
+    }
+    .heavy-label {
+      text-transform: uppercase;
+      font-size: 12px;
+      font-weight: bold;
+      line-height: 28px;
+      margin-bottom: 5px;
+    }
+    .input-label {
+      display: flex;
+      align-items: center;
+      font-size: 14px;
+      margin-bottom: 16px;
+
+      input[type="checkbox"] {
+        margin: 0 10px 0 0;
       }
     }
     h2 {
@@ -374,19 +383,8 @@
       }
     }
     .mandatory-dropdown {
-      .field-title {
-        display: flex;
-
-        .fa-asterisk {
-          margin-left: 5px;
-          color: $icon-color-empty;
-          font-size: 11px;
-          opacity: 1;
-        }
-      }
-
       &.select-failure {
-        .field-title {
+        .form-label {
           color: $red;
         }
 

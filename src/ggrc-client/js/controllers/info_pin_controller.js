@@ -10,9 +10,7 @@ import '../components/assessment/info-pane/info-pane';
 import '../components/folder-attachments-list/folder-attachments-list';
 import '../components/issue-tracker/info-issue-tracker-fields';
 import '../components/issue-tracker/generate-issues-in-bulk-button';
-import '../components/comment/comment-data-provider';
-import '../components/comment/comment-add-form';
-import '../components/comment/mapped-comments';
+import '../components/comment/comments-section';
 import '../components/object-list-item/document-object-list-item';
 import '../components/object-list-item/editable-document-object-list-item';
 import '../components/show-related-assessments-button/show-related-assessments-button';
@@ -114,7 +112,7 @@ export default can.Control({
   },
   setInstance: function (opts, el, maximizedState) {
     let instance = opts.attr('instance');
-    let infoPaneOpenDfd = can.Deferred();
+    let infoPaneOpenDfd = $.Deferred();
     let isSubtreeItem = opts.attr('options.isSubTreeItem');
 
     opts.attr('options.isDirectlyRelated',
@@ -149,9 +147,6 @@ export default can.Control({
     let vm = this.element.find(selector).viewModel();
 
     vm.attr('instance', instance);
-    vm.attr('instance').dispatch({
-      type: 'update',
-    });
   },
   setLoadingIndicator: function (selector, isLoading) {
     this.element.toggleClass('loading');

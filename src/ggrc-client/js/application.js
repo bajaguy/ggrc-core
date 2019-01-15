@@ -12,29 +12,6 @@
 
   $.migrateMute = true; // turn off console warnings for jQuery-migrate
 
-  root.cms_singularize = function (type) {
-    let _type = type.trim().toLowerCase();
-    switch (_type) {
-      case 'facilities':
-        type = type[0] + 'acility';
-        break;
-      case 'people':
-        type = type[0] + 'erson';
-        break;
-      case 'processes':
-        type = type[0] + 'rocess';
-        break;
-      case 'policies':
-        type = type[0] + 'olicy';
-        break;
-      case 'systems_processes':
-        type = type[0] + 'ystem_' + type[8] + 'rocess';
-        break;
-      default:
-        type = type.replace(/s$/, '');
-    }
-    return type;
-  };
   root.calculate_spinner_z_index = function () {
     let zindex = 0;
     $(this).parents().each(function () {
@@ -83,29 +60,6 @@
       ev.stopPropagation();
       $(this).openclose();
     });
-
-    // top nav dropdown position
-    function dropdownPosition() {
-      let $this = $(this);
-      let $dropdown = $this.closest('.hidden-widgets-list')
-        .find('.dropdown-menu');
-      let $menuItem = $dropdown.find('.inner-nav-item').find('a');
-      let offset = $this.offset();
-      let win = $(window);
-      let winWidth = win.width();
-
-      if (winWidth - offset.left < 322) {
-        $dropdown.addClass('right-pos');
-      } else {
-        $dropdown.removeClass('right-pos');
-      }
-      if ($menuItem.length === 1) {
-        $dropdown.addClass('one-item');
-      } else {
-        $dropdown.removeClass('one-item');
-      }
-    }
-    $('.dropdown-toggle').on('click', dropdownPosition);
   });
 
   // Make sure GGRC.config is defined (needed to run Karma tests)

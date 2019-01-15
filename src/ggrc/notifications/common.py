@@ -21,9 +21,9 @@ from sqlalchemy import inspect
 from werkzeug.exceptions import Forbidden
 from google.appengine.api import mail
 
-from ggrc import db
-from ggrc import extensions
-from ggrc import settings
+from ggrc import db, extensions, settings, utils
+from ggrc.gcalendar import calendar_event_builder
+from ggrc.gcalendar import calendar_event_sync
 from ggrc.models import Person
 from ggrc.models import Notification, NotificationHistory
 from ggrc.rbac import permissions
@@ -365,7 +365,9 @@ def create_notification_history_obj(notif):
     notif: Notification object.
   """
   notif_history_context = {c.key: getattr(notif, c.key)
-                           for c in inspect(notif).mapper.column_attrs}
+                           for c in inspect(notif).mapper.column_attrs
+                           if c.key != "id"}
+  notif_history_context["notification_id"] = notif.id
   notif_history_context["sent_at"] = datetime.utcnow()
   return NotificationHistory(**notif_history_context)
 
@@ -406,6 +408,21 @@ def show_daily_digest_notifications():
   for data in notif_data.itervalues():
     data = modify_data(data)
   return settings.EMAIL_DAILY.render(data=notif_data)
+
+
+def send_calendar_events():
+  """Sends calendar events."""
+  error_msg = None
+  try:
+    with benchmark("Send calendar events"):
+      builder = calendar_event_builder.CalendarEventBuilder()
+      builder.build_cycle_tasks()
+      sync = calendar_event_sync.CalendarEventsSync()
+      sync.sync_cycle_tasks_events()
+  except Exception as exp:
+    logger.error(exp.message)
+    error_msg = exp.message
+  return utils.make_simple_response(error_msg)
 
 
 def get_app_engine_email():

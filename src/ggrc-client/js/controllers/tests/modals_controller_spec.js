@@ -9,9 +9,16 @@ import Person from '../../models/business-models/person';
 
 describe('ModalsController', function () {
   let Ctrl; // the controller under test
+  let cacheBackup;
 
   beforeAll(function () {
     Ctrl = ModalsController;
+    cacheBackup = Person.cache;
+    Person.cache = {};
+  });
+
+  afterAll(function () {
+    Person.cache = cacheBackup;
   });
 
   describe('init() method', function () {
@@ -39,7 +46,7 @@ describe('ModalsController', function () {
     it('waits until current user is pre-fetched if not yet in cache',
       function () {
         let userId = GGRC.current_user.id;
-        let dfdFetch = new can.Deferred();
+        let dfdFetch = new $.Deferred();
         let fetchedUser = new can.Map({id: userId, email: 'john@doe.com'});
 
         spyOn(Person, 'findOne').and.returnValue(dfdFetch.promise());
@@ -56,7 +63,7 @@ describe('ModalsController', function () {
     it('waits until current user is pre-fetched if only partially in cache',
       function () {
         let userId = GGRC.current_user.id;
-        let dfdRefresh = new can.Deferred();
+        let dfdRefresh = new $.Deferred();
         let fetchedUser = new can.Map({id: userId, email: 'john@doe.com'});
 
         let partialUser = new can.Map({
@@ -66,7 +73,7 @@ describe('ModalsController', function () {
         });
 
         spyOn(partialUser, 'reify').and.returnValue(partialUser);
-        Person.store[userId] = partialUser;
+        Person.cache[userId] = partialUser;
 
         init();
 
@@ -78,7 +85,7 @@ describe('ModalsController', function () {
 
     it('does not wait for fetching the current user if already in cache',
       function () {
-        let dfdRefresh = new can.Deferred();
+        let dfdRefresh = new $.Deferred();
         let userId = GGRC.current_user.id;
 
         let fullUser = new can.Map({
@@ -88,7 +95,7 @@ describe('ModalsController', function () {
         });
 
         spyOn(fullUser, 'reify').and.returnValue(fullUser);
-        Person.store[userId] = fullUser;
+        Person.cache[userId] = fullUser;
 
         init();
 
@@ -191,7 +198,7 @@ describe('ModalsController', function () {
         let formPreloadDfd;
 
         beforeEach(() => {
-          formPreloadDfd = can.Deferred();
+          formPreloadDfd = $.Deferred();
           instance.backup = jasmine.createSpy('backup');
           instance.form_preload = jasmine.createSpy('form_preload').and
             .returnValue(formPreloadDfd);
@@ -248,7 +255,7 @@ describe('ModalsController', function () {
 
     beforeEach(function () {
       newInstance = new can.Map();
-      resetFormDfd = can.Deferred();
+      resetFormDfd = $.Deferred();
       ctrlInst = {
         prepareInstance: jasmine.createSpy('prepareInstance').and
           .returnValue(newInstance),

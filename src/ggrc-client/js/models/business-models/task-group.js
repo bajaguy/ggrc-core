@@ -17,11 +17,6 @@ export default Cacheable('CMS.Models.TaskGroup', {
   update: 'PUT /api/task_groups/{id}',
   destroy: 'DELETE /api/task_groups/{id}',
   mixins: [contactable],
-  permalink_options: {
-    url: '<%= base.viewLink %>#task_group/' +
-    'task_group/<%= instance.id %>',
-    base: 'workflow',
-  },
   attributes: {
     workflow: Stub,
     task_group_tasks: Stub.List,
@@ -34,7 +29,6 @@ export default Cacheable('CMS.Models.TaskGroup', {
   },
 
   tree_view_options: {
-    attr_view: GGRC.mustache_path + '/task_groups/tree-item-attr.mustache',
     add_item_view: GGRC.mustache_path + '/task_groups/tree_add_item.mustache',
     mapper_attr_list: [
       {attr_title: 'Summary', attr_name: 'title'},

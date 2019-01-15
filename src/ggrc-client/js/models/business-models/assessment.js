@@ -47,7 +47,6 @@ export default Cacheable('CMS.Models.Assessment', {
   statuses: ['Not Started', 'In Progress', 'In Review',
     'Verified', 'Completed', 'Deprecated', 'Rework Needed'],
   tree_view_options: {
-    attr_view: GGRC.mustache_path + '/assessments/tree-item-attr.mustache',
     add_item_view: GGRC.mustache_path + '/assessments/tree_add_item.mustache',
     attr_list: [{
       attr_title: 'Title',
@@ -212,9 +211,6 @@ export default Cacheable('CMS.Models.Assessment', {
     return attributes;
   },
   model: function (attributes, oldModel) {
-    let model;
-    let id;
-    let backup;
     if (!attributes) {
       return;
     }
@@ -225,19 +221,19 @@ export default Cacheable('CMS.Models.Assessment', {
       attributes = this.parseModel(attributes);
     }
 
-    id = attributes[this.id];
-    if ((id || id === 0) && this.store[id]) {
-      oldModel = this.store[id];
+    if (!oldModel) {
+      let id = attributes[this.id];
+      oldModel = this.findInCacheById(id);
     }
 
-    model = oldModel && _.isFunction(oldModel.attr) ?
+    let model = oldModel && _.isFunction(oldModel.attr) ?
       oldModel.attr(attributes) :
       new this(attributes);
 
     // Sometimes we are updating model partially and asynchronous
     // for example when we load relationships.
     // In this case we have to update backup to solve isDirty issues.
-    backup = model._backupStore();
+    let backup = model._backupStore();
     if (backup) {
       _.assign(backup, attributes);
     }
@@ -248,14 +244,6 @@ export default Cacheable('CMS.Models.Assessment', {
     }
 
     return model;
-  },
-  /**
-   * Replace Cacheble#findInCacheById method with the latest feature of can.Model - store
-   * @param {String} id - Id of requested Model
-   * @return {Assessment} - already existing model
-   */
-  findInCacheById: function (id) {
-    return this.store[id];
   },
 }, {
   init: function () {
@@ -300,8 +288,7 @@ export default Cacheable('CMS.Models.Assessment', {
   },
   form_preload: function (newObjectForm) {
     let pageInstance = getPageInstance();
-    let currentUser = getInstance('Person',
-      GGRC.current_user.id, GGRC.current_user);
+    let currentUser = getInstance('Person', GGRC.current_user.id);
 
     if (pageInstance && (!this.audit || !this.audit.id || !this.audit.type)) {
       if (pageInstance.type === 'Audit') {
@@ -357,11 +344,11 @@ export default Cacheable('CMS.Models.Assessment', {
     let that = this;
 
     if (!href) {
-      return can.Deferred().reject();
+      return $.Deferred().reject();
     }
     if (!this._pending_refresh) {
       this._pending_refresh = {
-        dfd: can.Deferred(),
+        dfd: $.Deferred(),
         fn: _.throttle(function () {
           let dfd = that._pending_refresh.dfd;
           can.ajax({
@@ -374,6 +361,7 @@ export default Cacheable('CMS.Models.Assessment', {
               delete that._pending_refresh;
               if (model) {
                 model = that.constructor.model(model, that);
+                that.after_refresh && that.after_refresh();
                 model.backup();
                 return model;
               }
@@ -411,4 +399,3 @@ export default Cacheable('CMS.Models.Assessment', {
       }, stopFn.bind(null, true));
   },
 });
-
