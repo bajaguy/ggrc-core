@@ -1,0 +1,35 @@
+{{!
+    Copyright (C) 2019 Google Inc.
+    Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
+}}
+
+{{#if instance.created_at}}
+  <div class="ggrc-form-item__multiple-row">
+    <div class="info-pane__section-title">Created on</div>
+    <span name="created_at">{{localize_date instance.created_at}}</span>
+  </div>
+{{/if}}
+<div class="ggrc-form-item__multiple-row">
+  <div class="info-pane__section-title">Finished</div>
+  {{#if instance.finished_date}}
+    <span>{{localize_date instance.finished_date}}</span>
+  {{else}}
+    <span class="empty-message">None</span>
+  {{/if}}
+</div>
+<div class="ggrc-form-item__multiple-row">
+  <div class="info-pane__section-title">Last Deprecated Date</div>
+  {{#if instance.end_date}}
+    <span>{{localize_date instance.end_date}}</span>
+  {{else}}
+    <span class="empty-message">None</span>
+  {{/if}}
+</div>
+<div class="ggrc-form-item__multiple-row">
+  <div class="info-pane__section-title">Verified</div>
+  {{#if instance.verified_date}}
+    <span>{{localize_date instance.verified_date}}</span>
+  {{else}}
+    <span class="empty-message">None</span>
+  {{/if}}
+</div>

@@ -1,12 +1,12 @@
 /*
-    Copyright (C) 2018 Google Inc.
+    Copyright (C) 2019 Google Inc.
     Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 */
 
 import Directive from './directive';
 import accessControlList from '../mixins/access-control-list';
 
-export default Directive('CMS.Models.Regulation', {
+export default Directive.extend({
   root_object: 'regulation',
   root_collection: 'regulations',
   model_plural: 'Regulations',

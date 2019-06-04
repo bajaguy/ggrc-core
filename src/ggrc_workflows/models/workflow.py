@@ -1,4 +1,4 @@
-# Copyright (C) 2018 Google Inc.
+# Copyright (C) 2019 Google Inc.
 # Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 
 """Workflow object and WorkflowState mixins.
@@ -27,7 +27,6 @@ from ggrc.models import reflection
 from ggrc.models import relationship
 from ggrc.models.context import HasOwnContext
 from ggrc.models.deferred import deferred
-from ggrc_workflows.services import google_holidays
 
 
 class Workflow(roleable.Roleable,
@@ -58,6 +57,11 @@ class Workflow(roleable.Roleable,
   def default_status(cls):
     return cls.DRAFT
 
+  parent_id = db.Column(
+      db.Integer,
+      db.ForeignKey('workflows.id', ondelete="SET NULL"),
+      nullable=True,
+  )
   notify_on_change = deferred(
       db.Column(db.Boolean, default=False, nullable=False), 'Workflow')
   notify_custom_message = deferred(
@@ -84,11 +88,6 @@ class Workflow(roleable.Roleable,
   is_old_workflow = deferred(
       db.Column(db.Boolean, default=False, nullable=True), 'Workflow')
 
-  # This column needs to be deferred because one of the migrations
-  # uses Workflow as a model and breaks since at that point in time
-  # there is no 'kind' column yet
-  kind = deferred(
-      db.Column(db.String, default=None, nullable=True), 'Workflow')
   IS_VERIFICATION_NEEDED_DEFAULT = True
   is_verification_needed = db.Column(
       db.Boolean,
@@ -185,7 +184,8 @@ class Workflow(roleable.Roleable,
     Boolean property, returns True if all task groups have at least one
     task group task, False otherwise.
     """
-    return not any(tg for tg in self.task_groups if not tg.task_group_tasks)
+    return not any(tg for tg in self.task_groups if not tg.task_group_tasks) \
+        if self.task_groups else False
 
   @property
   def tasks(self):
@@ -213,8 +213,7 @@ class Workflow(roleable.Roleable,
   @classmethod
   def first_work_day(cls, day):
     """Get first work day."""
-    holidays = google_holidays.GoogleHolidays()
-    while day.isoweekday() > cls.WORK_WEEK_LEN or day in holidays:
+    while day.isoweekday() > cls.WORK_WEEK_LEN:
       day -= relativedelta.relativedelta(days=1)
     return day
 
@@ -339,8 +338,6 @@ class Workflow(roleable.Roleable,
                            create=False, update=False),
       reflection.Attribute('workflow_state',
                            create=False, update=False),
-      reflection.Attribute('kind',
-                           create=False, update=False),
       reflection.Attribute('repeat',
                            create=False, update=False)
   )
@@ -383,7 +380,9 @@ class Workflow(roleable.Roleable,
                'start_date',
                'repeat_every',
                'unit',
+               'parent_id',
                'is_verification_needed']
+    kwargs['parent_id'] = self.id
     if kwargs.get('clone_people', False):
       access_control_list = [
           {
@@ -426,8 +425,8 @@ class Workflow(roleable.Roleable,
     return target
 
   @classmethod
-  def eager_query(cls):
-    return super(Workflow, cls).eager_query().options(
+  def eager_query(cls, **kwargs):
+    return super(Workflow, cls).eager_query(**kwargs).options(
         orm.subqueryload('cycles').undefer_group('Cycle_complete')
            .subqueryload("cycle_task_group_object_tasks")
            .undefer_group("CycleTaskGroupObjectTask_complete"),

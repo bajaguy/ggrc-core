@@ -1,48 +1,53 @@
 /*
-    Copyright (C) 2018 Google Inc.
+    Copyright (C) 2019 Google Inc.
     Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 */
 
 import {notifier} from '../../../plugins/utils/notifiers-utils';
+import {sanitizer} from '../../../plugins/utils/url-utils';
 import Context from '../../../models/service-models/context';
 import Evidence from '../../../models/business-models/evidence';
+import pubSub from '../../../pub-sub';
 
 export default can.Component.extend({
   tag: 'create-url',
-  viewModel: {
+  leakScope: true,
+  viewModel: can.Map.extend({
     value: null,
     context: null,
     create: function () {
-      let value = this.attr('value');
-      let self = this;
-      let evidence;
-      let attrs;
+      const url = sanitizer(this.attr('value'));
 
-      if (!value || !value.length) {
-        notifier('error', 'Please enter a URL.');
+      if (!url.isValid) {
         return;
       }
 
-      attrs = {
-        link: value,
-        title: value,
+      let attrs = {
+        link: url.value,
+        title: url.value,
         context: this.attr('context') || new Context({id: null}),
         kind: 'URL',
       };
 
-      evidence = new Evidence(attrs);
-      this.dispatch({type: 'beforeCreate', items: [evidence]});
+      let evidence = new Evidence(attrs);
+      this.dispatch({type: 'setEditMode'});
+
+      pubSub.dispatch({
+        type: 'relatedItemBeforeSave',
+        items: [evidence],
+        itemType: 'urls',
+      });
       evidence.save()
-        .fail(function () {
+        .fail(() => {
           notifier('error', 'Unable to create URL.');
         })
-        .done(function (data) {
-          self.dispatch({type: 'created', item: data});
-          self.clear();
+        .done((data) => {
+          pubSub.dispatch({
+            type: 'relatedItemSaved',
+            item: data,
+            itemType: 'urls',
+          });
         });
     },
-    clear: function () {
-      this.attr('value', null);
-    },
-  },
+  }),
 });

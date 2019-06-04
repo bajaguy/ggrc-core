@@ -1,16 +1,19 @@
-# Copyright (C) 2018 Google Inc.
+# Copyright (C) 2019 Google Inc.
 # Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 """Handlers for Issue Tracker fields"""
 
 import re
 
+from ggrc.converters import errors
 from ggrc.converters.handlers import handlers
+from ggrc.models import all_models
 from ggrc.models.hooks.issue_tracker import \
     issue_tracker_params_container as params_container
-from ggrc.models import Assessment
-from ggrc.converters import errors
-from ggrc.integrations.constants import DEFAULT_ISSUETRACKER_VALUES as \
-    default_values
+
+
+_ATTR_NAME_TO_ISSUE_TRACKER_KEY = {
+    "issue_title": "title",
+}
 
 
 class IssueTrackerColumnHandler(handlers.ColumnHandler):
@@ -20,23 +23,26 @@ class IssueTrackerColumnHandler(handlers.ColumnHandler):
   default values.
   """
 
+  def _get_issue_tracker_value(self, default=None):
+    """Get value by corresponding key in issue_tracker dict"""
+    key = _ATTR_NAME_TO_ISSUE_TRACKER_KEY.get(self.key, self.key)
+
+    return self.row_converter.issue_tracker.get(key, default)
+
+  def _set_issue_tracker_value(self, value):
+    """Set value by corresponding key in issue_tracker dict"""
+    key = _ATTR_NAME_TO_ISSUE_TRACKER_KEY.get(self.key, self.key)
+
+    self.row_converter.issue_tracker[key] = value
+
   def get_value(self):
-    return self.row_converter.issue_tracker.get(self.key, "")
+    return self._get_issue_tracker_value("")
 
   def set_obj_attr(self):
-    if not self.value:
-      self.value = self._get_default_value()
-    if self.dry_run or not self.value:
+    if self.dry_run or self.value is None:
       return
-    self.row_converter.issue_tracker[self.key] = self.value
 
-  def _get_default_value(self):
-    """Get default value for missed value in Issue Tracker attribute column."""
-    value = None
-    if isinstance(self.row_converter.obj, Assessment):
-      value = self.row_converter.obj.audit.issue_tracker.get(self.key)
-    default_value = value or default_values.get(self.key)
-    return default_value
+    self._set_issue_tracker_value(self.value)
 
 
 class IssueTrackerWithValidStates(IssueTrackerColumnHandler):
@@ -82,9 +88,6 @@ class IssueTrackerAddsColumnHandler(IssueTrackerColumnHandler):
 class IssueTrackerTitleColumnHandler(IssueTrackerColumnHandler):
   """Column handler for Issue title for IssueTracked models"""
 
-  def get_value(self):
-    return self.row_converter.issue_tracker.get("title", "")
-
   def parse_item(self):
     """ Remove multiple spaces and new lines from text """
     value = self.raw_value or ""
@@ -98,42 +101,112 @@ class IssueTrackerTitleColumnHandler(IssueTrackerColumnHandler):
 
   @staticmethod
   def clean_whitespaces(value):
-    """Change multiply whitespaces with single one in the value string."""
+    """Change multiple whitespaces with single one in the value string."""
     return re.sub(r"\s+", " ", value)
 
   def set_obj_attr(self):
     if self.dry_run or not self.value:
       return
-    self.row_converter.issue_tracker["title"] = self.value
+    self._set_issue_tracker_value(self.value)
 
 
 class IssueTrackerEnabledHandler(IssueTrackerColumnHandler):
-  """Column handler for ticket tracker integration column.
-
-  Enabled flag stored as tinyint(1) in our DB.
-  """
+  """Column handler for ticket tracker integration column."""
   _true = "on"
   _false = "off"
 
   TRUE_VALUES = {_true, }
   FALSE_VALUES = {_false, }
 
-  def set_obj_attr(self):
-    if self.dry_run:
-      return
-    self.row_converter.issue_tracker[self.key] = self.value
+  RESTRICTED_MODELS = (all_models.Issue, all_models.Assessment)
+  NOT_ALLOWED_STATUSES = {
+      "Assessment": {"In Review", "Completed", "Deprecated", "Verified"},
+      "Issue": {"Fixed", "Fixed and Verified", "Deprecated"},
+  }
 
   def get_value(self):
-    if self.row_converter.issue_tracker.get(self.key, ""):
+    """Get value for current column."""
+    if super(IssueTrackerEnabledHandler, self).get_value():
+      return self._true
+    return self._false
+
+  def _needs_status_check(self):
+    """Check if we should check status before turn integration on.
+
+    According to our business rules we shouldn't generate tickets for Issues
+    and Assessments in some statuses.
+    We can turn integration On for all already linked Issues.
+    """
+    has_issue_id = self.row_converter.obj.issue_tracker.get("issue_id")
+    restricted_instance = isinstance(self.row_converter.obj,
+                                     self.RESTRICTED_MODELS)
+    if restricted_instance and not has_issue_id:
+      return True
+    return False
+
+  def _get_status(self):
+    """Get Issue Status.
+
+    First it would check if status was imported during current import.
+    Otherwise tries to get status from object.
+    """
+    imported_status = self.row_converter.attrs.get("status")
+    attrs_status_value = imported_status.value if imported_status else None
+    return attrs_status_value or self.row_converter.obj.status
+
+  def _wrong_status(self):
+    """Check if not status correct for setting integration On"""
+    status = self._get_status()
+    disallowed_statuses = self.NOT_ALLOWED_STATUSES.get(
+        self.row_converter.obj.__class__.__name__,
+        {}
+    )
+    return status in disallowed_statuses
+
+  def _get_err_message(self):
+    """Return error message template for wrong status"""
+    if isinstance(self.row_converter.obj, all_models.Issue):
+      return errors.WRONG_ISSUE_TICKET_STATUS
+    return errors.WRONG_ASSESSMENT_TICKET_STATUS
+
+  def parse_item(self):
+    value = self.raw_value.strip().lower()
+    if value in self.TRUE_VALUES:
+      if self._needs_status_check() and self._wrong_status():
+        self.add_warning(self._get_err_message(),
+                         column_name=self.display_name)
+        return False
+      return True
+    if value in self.FALSE_VALUES:
+      return False
+
+    self.add_warning(errors.WRONG_VALUE_DEFAULT,
+                     column_name=self.display_name)
+    return None
+
+
+class PeopleSyncEnabledHandler(IssueTrackerColumnHandler):
+  """Column handler for ticket tracker people sync column."""
+  _true = "on"
+  _false = "off"
+
+  TRUE_VALUES = {_true, }
+  FALSE_VALUES = {_false, }
+
+  def get_value(self):
+    """Get value for current column."""
+    if super(PeopleSyncEnabledHandler, self).get_value():
       return self._true
     return self._false
 
   def parse_item(self):
+    """Parse provided value."""
     value = self.raw_value.strip().lower()
-
     if value in self.TRUE_VALUES:
       return True
-    if value not in self.FALSE_VALUES:
-      self.add_warning(errors.WRONG_VALUE_DEFAULT,
-                       column_name=self.display_name)
-    return False
+    if value in self.FALSE_VALUES:
+      return False
+
+    self.add_warning(errors.WRONG_VALUE_DEFAULT,
+                     column_name=self.display_name)
+    return True

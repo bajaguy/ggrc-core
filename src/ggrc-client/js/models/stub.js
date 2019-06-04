@@ -1,12 +1,12 @@
 /*
-  Copyright (C) 2018 Google Inc.
+  Copyright (C) 2019 Google Inc.
   Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 */
 
 let Stub = can.Map.extend({
   setup(model) {
     let type = (model instanceof can.Model)
-      ? model.constructor.shortName
+      ? model.constructor.model_singular
       : model.type;
     let href = model.selfLink || model.href;
 

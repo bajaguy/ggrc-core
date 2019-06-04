@@ -1,4 +1,4 @@
-# Copyright (C) 2018 Google Inc.
+# Copyright (C) 2019 Google Inc.
 # Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 
 """ Module for WithEvidence mixin."""
@@ -86,10 +86,10 @@ class WithEvidence(object):
     return self.get_evidences_by_kind(Evidence.FILE)
 
   @classmethod
-  def eager_query(cls):
+  def eager_query(cls, **kwargs):
     """Eager query classmethod."""
     return cls.eager_inclusions(
-        super(WithEvidence, cls).eager_query(),
+        super(WithEvidence, cls).eager_query(**kwargs),
         WithEvidence._include_links,
     ).options(
         sa.orm.subqueryload(

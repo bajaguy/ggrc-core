@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2018 Google Inc.
+  Copyright (C) 2019 Google Inc.
   Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 */
 
@@ -11,11 +11,9 @@ import UserRole from '../models/service-models/user-role';
 const userRolesModalSelector = can.Control.extend({
   defaults: {
     base_modal_view:
-      GGRC.mustache_path + '/people_roles/base_modal.mustache',
-    option_column_view:
-      GGRC.mustache_path + '/people_roles/option_column.mustache',
-    object_detail_view:
-      GGRC.mustache_path + '/people_roles/object_detail.mustache',
+      GGRC.templates_path + '/people_roles/base_modal.stache',
+    option_column_view: 'people_roles/option_column',
+    object_detail_view: 'people_roles/object_detail',
 
     personId: null,
   },
@@ -45,14 +43,15 @@ const userRolesModalSelector = can.Control.extend({
   initView() {
     let deferred = $.Deferred();
 
-    can.view(
-      this.options.base_modal_view,
-      this.context,
-      (frag) => {
-        $(this.element).html(frag);
-        deferred.resolve();
-        this.element.trigger('loaded');
-      });
+    $.ajax({
+      url: this.options.base_modal_view,
+      dataType: 'text',
+    }).then((view) => {
+      let frag = can.stache(view)(this.context);
+      $(this.element).html(frag);
+      $(this.element).trigger('loaded');
+      deferred.resolve();
+    });
 
     this.on(); // Start listening for events
 

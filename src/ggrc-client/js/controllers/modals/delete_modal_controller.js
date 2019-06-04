@@ -1,15 +1,14 @@
 /*
-    Copyright (C) 2018 Google Inc.
+    Copyright (C) 2019 Google Inc.
     Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 */
 
 import ModalsController from './modals_controller';
-import pubsub from '../../pub-sub';
+import pubSub from '../../pub-sub';
 import {bindXHRToButton} from '../../plugins/utils/modals';
-import {notifier} from '../../plugins/utils/notifiers-utils';
+import {notifierXHR} from '../../plugins/utils/notifiers-utils';
 
-export default ModalsController({
-  pluginName: 'ggrc_controllers_delete',
+export default ModalsController.extend({
   defaults: {
     skip_refresh: true,
   },
@@ -42,21 +41,15 @@ export default ModalsController({
           that.element.trigger('modal:success', that.options.instance);
         }
 
-        pubsub.dispatch({
+        pubSub.dispatch({
           type: 'objectDeleted',
           instance,
         });
 
         return new $.Deferred(); // on success, just let the modal be destroyed or navigation happen.
         // Do not re-enable the form elements.
-      }).fail(function (xhr, status) {
-        let message = xhr.responseJSON;
-
-        if (xhr.responseJSON && xhr.responseJSON.message) {
-          message = xhr.responseJSON.message;
-        }
-
-        notifier('error', message);
+      }).fail(function (xhr) {
+        notifierXHR('error', xhr);
       }), el.add(cancelButton).add(modalBackdrop));
   },
 });

@@ -1,13 +1,13 @@
 /*
- Copyright (C) 2018 Google Inc., authors, and contributors
+ Copyright (C) 2019 Google Inc., authors, and contributors
  Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
  */
 
 import {getModelInstance} from '../../plugins/utils/models-utils';
 import {REFRESH_PROPOSAL_DIFF} from '../../events/eventTypes';
 import DiffBaseVM from './diff-base-vm';
-import template from './templates/instance-diff-items.mustache';
-const tag = 'instance-mapping-fields-diff';
+import {reify} from '../../plugins/utils/reify-utils';
+import template from './templates/instance-diff-items.stache';
 
 const viewModel = DiffBaseVM.extend({
   modifiedFields: {},
@@ -50,7 +50,7 @@ const viewModel = DiffBaseVM.extend({
   },
   getCurrentValue(currentValueStub) {
     // current value should be in cache
-    return currentValueStub ? currentValueStub.reify() : null;
+    return currentValueStub ? reify(currentValueStub) : null;
   },
   async getModifiedValue(modifiedValueStub) {
     let id;
@@ -66,8 +66,9 @@ const viewModel = DiffBaseVM.extend({
 });
 
 export default can.Component.extend({
-  tag,
-  template,
+  tag: 'instance-mapping-fields-diff',
+  view: can.stache(template),
+  leakScope: true,
   viewModel: viewModel,
   events: {
     buildDiff() {

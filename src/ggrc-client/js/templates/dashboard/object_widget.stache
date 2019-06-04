@@ -1,0 +1,60 @@
+{{!
+  Copyright (C) 2019 Google Inc.
+  Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
+}}
+{{#switch widget_id}}
+  {{#case "roles_list"}}
+    <header class="header tree-header no-left-space {{#if filter_is_hidden}}no-filter{{/if}}">
+      <div class="row-fluid">
+        <div class="span6">
+          <div class="title-heading oneline">
+            Role
+          </div>
+        </div>
+        <div class="span6">
+          <div class="title-heading oneline right">
+            Role Scope
+          </div>
+        </div>
+      </div>
+    </header>
+  {{/case}}
+
+  {{^is_dashboard}}
+    {{#case "custom_attribute"}}
+      <header class="header">
+        <h2>{{{widget_name}}}</h2>
+      </header>
+    {{/case}}
+
+    {{#case "events_list"}}
+      <header class="header">
+        <h2>{{{widget_name}}}</h2>
+      </header>
+    {{/case}}
+
+    {{#case "info"}}
+      <header class="header">
+        <h2>{{{widget_name}}}</h2>
+      </header>
+    {{/case}}
+
+    {{#case "summary"}}
+      <header class="header">
+        <h2>{{{widget_name}}}</h2>
+      </header>
+    {{/case}}
+  {{/is_dashboard}}
+
+  <section class="content">
+    {{#is(widgetType, "treeview")}}
+      <tree-widget-container model:from="model"
+                             limitDepthTree:from="treeViewDepth"
+                             options:from="content_controller_options">
+      </tree-widget-container>
+    {{else}}
+      {{{widget_initial_content}}}
+    {{/is}}
+  </section>
+  
+{{/switch}}

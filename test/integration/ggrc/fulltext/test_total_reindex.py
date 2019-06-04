@@ -1,4 +1,4 @@
-# Copyright (C) 2018 Google Inc.
+# Copyright (C) 2019 Google Inc.
 # Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 
 """Test for total reindex procedure"""
@@ -26,29 +26,29 @@ class TestTotalReindex(TestCase):
   # 2 remove old records
   # 3 create new records
   INDEX_QUERY_LIMIT = {
+      'AccountBalance': 8,
       'Assessment': 10,
       'AssessmentTemplate': 6,
       'Audit': 7,
       'Comment': 4,
       'Contract': 10,
       'Control': 12,
-      'Cycle': 4,
-      'CycleTaskEntry': 4,
-      'CycleTaskGroup': 4,
+      'Cycle': 6,
+      'CycleTaskGroup': 5,
       'CycleTaskGroupObjectTask': 6,
       'Evidence': 25,
       'Document': 5,
       'Issue': 8,
+      'KeyReport': 8,
       'Market': 8,
       'Objective': 10,
       'OrgGroup': 8,
       'Person': 5,
       'Policy': 10,
       'Process': 8,
-      'Program': 8,
+      'Program': 9,
       'Regulation': 10,
       'TaskGroup': 4,
-      'TaskGroupObject': 5,
       'TaskGroupTask': 4,
       'Workflow': 6,
       'TechnologyEnvironment': 8,
@@ -62,6 +62,7 @@ class TestTotalReindex(TestCase):
     mysql.MysqlRecordProperty.query.delete()
 
   INDEXED_MODEL_FACTORIES = [
+      ggrc_factories.AccountBalanceFactory,
       ggrc_factories.AuditFactory,
       ggrc_factories.AssessmentFactory,
       ggrc_factories.AssessmentTemplateFactory,
@@ -69,6 +70,7 @@ class TestTotalReindex(TestCase):
       ggrc_factories.ContractFactory,
       ggrc_factories.ControlFactory,
       ggrc_factories.IssueFactory,
+      ggrc_factories.KeyReportFactory,
       ggrc_factories.MarketFactory,
       ggrc_factories.ObjectiveFactory,
       ggrc_factories.OrgGroupFactory,
@@ -84,7 +86,6 @@ class TestTotalReindex(TestCase):
       ggrc_factories.ProductGroupFactory,
       wf_factories.CycleFactory,
       wf_factories.CycleTaskGroupFactory,
-      wf_factories.CycleTaskEntryFactory,
       wf_factories.CycleTaskFactory,
       wf_factories.TaskGroupFactory,
       wf_factories.TaskGroupTaskFactory,

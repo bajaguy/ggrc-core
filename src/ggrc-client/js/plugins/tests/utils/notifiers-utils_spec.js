@@ -1,5 +1,5 @@
 /*
- Copyright (C) 2018 Google Inc.
+ Copyright (C) 2019 Google Inc.
  Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
  */
 
@@ -51,10 +51,47 @@ describe('notifiers-utils module', function () {
   });
 
   describe('notifierXHR method', function () {
+    describe('receives proper XHR', function () {
+      it('and returns responseJSON message', function () {
+        const xhr = {
+          responseJSON: {
+            message: 'responseJSON message',
+          },
+          responseText: 'responseText',
+          status: 401,
+        };
+        notifierXHR('error', xhr);
+
+        expect(trigger).toHaveBeenCalledWith('ajax:flash',
+          {error: 'responseJSON message'});
+      });
+
+      it('and returns responseText', function () {
+        const xhr = {
+          responseText: 'responseText',
+          status: 401,
+        };
+        notifierXHR('error', xhr);
+
+        expect(trigger).toHaveBeenCalledWith('ajax:flash',
+          {error: 'responseText'});
+      });
+
+      it('and returns status text', function () {
+        const xhr = {
+          status: 401,
+        };
+        notifierXHR('error', xhr);
+
+        expect(trigger).toHaveBeenCalledWith('ajax:flash',
+          {error: 'Mock auth invalid message'});
+      });
+    });
+
     describe('returns default message', function () {
       describe('and warning type', function () {
         it('for unknown errors', function () {
-          notifierXHR()({status: 666});
+          notifierXHR('', {status: 666});
 
           expect(trigger).toHaveBeenCalledWith('ajax:flash',
             {warning: 'Some error!'});
@@ -63,7 +100,7 @@ describe('notifiers-utils module', function () {
 
       describe('and error type', function () {
         it('for unknown errors', function () {
-          notifierXHR('error')({status: 666});
+          notifierXHR('error', {status: 666});
 
           expect(trigger).toHaveBeenCalledWith('ajax:flash',
             {error: 'Some error!'});
@@ -73,19 +110,10 @@ describe('notifiers-utils module', function () {
 
     describe('returns standard message by error code', function () {
       it('for 401 status', function () {
-        notifierXHR('error')({status: 401});
+        notifierXHR('error', {status: 401});
 
         expect(trigger).toHaveBeenCalledWith('ajax:flash',
           {error: 'Mock auth invalid message'});
-      });
-    });
-
-    describe('returns passed message', function () {
-      it('for defined error statuses', function () {
-        notifierXHR('error', 'Fake message')({status: 403});
-
-        expect(trigger).toHaveBeenCalledWith('ajax:flash',
-          {error: 'Fake message'});
       });
     });
   });

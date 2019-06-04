@@ -1,0 +1,60 @@
+{{!
+    Copyright (C) 2019 Google Inc.
+    Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
+}}
+
+<div class="{{cssClasses}}">
+  {{#if isOpen}}
+    {{#directlyItems}}
+      <sub-tree-item class="tree-item-element"
+                     extraCss:from="'directly-related'"
+                     instance:from="{.}"
+                     limitDepthTree:from="limitDepthTree"
+      ></sub-tree-item>
+    {{/directlyItems}}
+
+    {{#if showPagination}}
+      <tree-pagination paging:from="paging"></tree-pagination>
+    {{/if}}
+
+    {{#if showMore}}
+      <div class="sub-tree-link">
+        <a href="{{showAllRelatedLink}}" target="_blank">
+          Open in new tab to see all
+        </a>
+      </div>
+    {{/if}}
+
+    {{#if needToSplit}}
+      <div class="sub-tree-link">
+        <sub-tree-expander on:expandNotDirectly="expandNotDirectlyRelated()"
+                           expanded:from="notDirectlyExpanded"
+                           disabled:from="disabled"
+                           display:from="display">
+          <a on:el:click="expandNotDirectly()" href="javascript://">
+            <i class="fa fa-caret-{{#if expanded}}down{{else}}right{{/if}}"></i>
+            Show objects not directly related to this {{contextName}}
+          </a>
+        </sub-tree-expander>
+      </div>
+
+      {{#if notDirectlyExpanded}}
+        {{#notDirectlyItems}}
+          <sub-tree-item class="tree-item-element"
+                         extraCss:from="'not-directly-related'"
+                         instance:from="{.}"
+                         limitDepthTree:from="limitDepthTree"
+          ></sub-tree-item>
+        {{/notDirectlyItems}}
+      {{/if}}
+    {{/if}}
+
+    {{#if notResult}}
+      <tree-no-results/>
+    {{/if}}
+  {{/if}}
+
+  <div class="tree-spinner">
+    <spinner-component toggle:from="loading" size:from="'large'"></spinner-component>
+  </div>
+</div>

@@ -1,4 +1,4 @@
-# Copyright (C) 2018 Google Inc.
+# Copyright (C) 2019 Google Inc.
 # Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 
 """Test for proposal relationship with parent instance."""
@@ -72,18 +72,17 @@ class TestProposalRelationship(TestCase):
     self.assertEqual(201, response.status_code)
     return response
 
-  @ddt.data("Risk", "Control")
-  def test_create(self, model_name):
-    """Test if relationship between {} and Proposal is created."""
-    obj = factories.get_model_factory(model_name)()
-    self.create_proposal_for(obj)
-    self.assertEqual(1, self.proposal_relationships(obj).count())
+  def test_create(self):
+    """Test if relationship between Risk and Proposal is created."""
+    program = factories.ProgramFactory()
+    self.create_proposal_for(program)
+    self.assertEqual(1, self.proposal_relationships(program).count())
 
   def test_create_on_post_only(self):
     """Test if proposal relationship is created on post only."""
-    control = factories.ControlFactory()
-    response = self.create_proposal_for(control)
-    post_rels = self.proposal_relationships(control).all()
+    program = factories.ProgramFactory()
+    response = self.create_proposal_for(program)
+    post_rels = self.proposal_relationships(program).all()
 
     proposal = all_models.Proposal.query.get(response.json["proposal"]["id"])
     # Invalidate ACR cache manually as after first post
@@ -99,26 +98,27 @@ class TestProposalRelationship(TestCase):
         }
     )
     self.assert200(response)
-    put_rels = self.proposal_relationships(control).all()
+    put_rels = self.proposal_relationships(program).all()
     self.assertEqual(post_rels, put_rels)
 
   def test_rel_remove_parent(self):
     """Test if relationship will be removed if parent instance is removed."""
-    control = factories.ControlFactory()
-    self.create_proposal_for(control)
-    self.assertEqual(1, self.proposal_relationships(control).count())
+    program = factories.ProgramFactory()
+    self.create_proposal_for(program)
+    self.assertEqual(1, self.proposal_relationships(program).count())
 
-    response = self.api.delete(control)
+    response = self.api.delete(program)
+
     self.assert200(response)
-    self.assertEqual(0, self.proposal_relationships(control).count())
+    self.assertEqual(0, self.proposal_relationships(program).count())
 
   def test_rel_remove_proposal(self):
     """Test if relationship will be removed if proposal is removed."""
-    control = factories.ControlFactory()
-    response = self.create_proposal_for(control)
-    self.assertEqual(1, self.proposal_relationships(control).count())
+    program = factories.ProgramFactory()
+    response = self.create_proposal_for(program)
+    self.assertEqual(1, self.proposal_relationships(program).count())
 
     proposal = all_models.Proposal.query.get(response.json["proposal"]["id"])
     response = self.api.delete(proposal)
     self.assert200(response)
-    self.assertEqual(0, self.proposal_relationships(control).count())
+    self.assertEqual(0, self.proposal_relationships(program).count())

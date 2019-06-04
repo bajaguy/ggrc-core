@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2018 Google Inc.
+  Copyright (C) 2019 Google Inc.
   Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 */
 
@@ -138,7 +138,7 @@ describe('assessment-templates-dropdown component', () => {
         .toHaveBeenCalledWith(reqParam);
     });
 
-    it('sets initial Assessment Template', () => {
+    it('sets initial Assessment Template', (done) => {
       spyOn(viewModel, 'dispatch');
 
       method();
@@ -147,13 +147,14 @@ describe('assessment-templates-dropdown component', () => {
         AssessmentTemplate: {
           values: [],
         },
+      }).then(() => {
+        expect(viewModel._selectInitialTemplate)
+          .toHaveBeenCalled();
+        done();
       });
-
-      expect(viewModel._selectInitialTemplate)
-        .toHaveBeenCalled();
     });
 
-    it('dispatches "assessmentTemplateLoaded" event', () => {
+    it('dispatches "assessmentTemplateLoaded" event', (done) => {
       spyOn(viewModel, 'dispatch');
 
       method();
@@ -162,10 +163,12 @@ describe('assessment-templates-dropdown component', () => {
         AssessmentTemplate: {
           values: [],
         },
-      });
+      }).then(() => {
+        expect(viewModel.dispatch)
+          .toHaveBeenCalledWith('assessmentTemplateLoaded');
 
-      expect(viewModel.dispatch)
-        .toHaveBeenCalledWith('assessmentTemplateLoaded');
+        done();
+      });
     });
   });
 });

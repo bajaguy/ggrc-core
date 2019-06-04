@@ -1,0 +1,77 @@
+{{!
+  Copyright (C) 2019 Google Inc.
+  Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
+}}
+
+<section class="info{{#if is_info_pin}} sticky-info-panel{{/if}}">
+  <div class="tier-content">
+    {{#instance}}
+      <div class="pane-header" >
+        <div class="pane-header__container">
+          <div class="pane-header__title" data-test-id="title_0ad9fbaf">
+            {{#if is_info_pin}}
+              <h6>{{modifyFieldTitle instance.type 'Title'}}</h6>
+            {{/if}}
+            <div class="pane-header__title-details">
+              <h3 class="pane-header__title-name">{{title}}</h3>
+              {{#if status}}
+                <span class="pane-header__title-item">
+                  <span class="state-value {{addclass 'state' status}}">{{un_camel_case status}}</span>
+                </span>
+              {{/if}}
+            </div>
+          </div>
+
+          <div class="pane-header__toolbar">
+            {{#if is_info_pin}}
+              <info-pin-buttons maximized:from="maximized"
+                                onChangeMaximizedState:from="@onChangeMaximizedState"
+                                onClose:from="@onClose">
+              </info-pin-buttons>
+            {{/if}}
+
+          </div>
+        </div>
+      </div>
+    {{/instance}}
+
+    <div class="pane-content">
+
+      <div class="row-fluid wrap-row">
+        <div class="span12">
+          <h6>Description</h6>
+          <div class="rtf-block">
+            <read-more text:from="instance.description"
+                       handleMarkdown:from="instance.class.isChangeableExternally">
+            </read-more>
+          </div>
+        </div>
+      </div>
+
+      <object-loader path:from="instance.workflow">
+        {{#if loadedObject}}
+          <custom-roles instance:from="loadedObject"
+                        readOnly:from="true">
+          </custom-roles>
+          <div class="row-fluid wrap-row">
+            <div class="span6">
+              <ggrc-gdrive-folder-picker
+                instance:from="loadedObject"
+                placeholder:from="'If selected, all workflow attachments go here.''"
+                {{^is_allowed 'update' loadedObject}}readonly:from="true"{{/is_allowed}}>
+              </ggrc-gdrive-folder-picker>
+            </div>
+            <div class="span6">
+              <h6>Repeat Cycle</h6>
+              <repeat-on-summary unit:from="loadedObject.unit"
+                                 repeatEvery:from="loadedObject.repeat_every"
+                                 hideRepeatOff:from="false">
+              </repeat-on-summary>
+            </div>
+          </div>
+        {{/if}}
+      </object-loader>
+    </div>
+
+  </div>
+</section>

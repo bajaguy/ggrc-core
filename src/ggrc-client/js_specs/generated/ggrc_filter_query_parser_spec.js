@@ -1,5 +1,5 @@
 /*
- Copyright (C) 2018 Google Inc.
+ Copyright (C) 2019 Google Inc.
  Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
  */
 
@@ -309,6 +309,20 @@ describe('QueryParser', function () {
             right: ['title1', 'title2'],
           },
         });
+      });
+    });
+
+    it('parses not_empty_revisions_for queries', () => {
+      let query = 'Control not_empty_revisions_for 1';
+
+      let result = QueryParser.parse(query);
+
+      expect(result).toEqual({
+        expression: {
+          op: {name: 'not_empty_revisions'},
+          resource_type: 'Control',
+          resource_id: '1',
+        },
       });
     });
 

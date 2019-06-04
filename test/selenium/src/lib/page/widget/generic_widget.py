@@ -1,4 +1,5 @@
-# Copyright (C) 2018 Google Inc.
+# coding=utf-8
+# Copyright (C) 2019 Google Inc.
 # Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 """Widgets other than Info widget."""
 
@@ -7,6 +8,7 @@ from selenium.common import exceptions
 
 from lib import base, factory
 from lib.constants import locator, regex, element, counters, messages, objects
+from lib.element import three_bbs
 from lib.page.modal import unified_mapper
 from lib.utils import selenium_utils
 
@@ -14,10 +16,16 @@ from lib.utils import selenium_utils
 class Widget(base.Widget):
   """All widgets with Tree View and Filters."""
   # pylint: disable=too-many-instance-attributes
-  def __init__(self, driver, obj_name):
+  def __init__(self, driver, obj_name, is_versions_widget=False):
     self.obj_name = obj_name
     self._locators_filter = locator.BaseWidgetGeneric
-    self._locators_widget = factory.get_locator_widget(self.obj_name.upper())
+    self._locators_widget = factory.get_locator_widget(
+        self.obj_name.upper())
+    if is_versions_widget:
+      locator_parts = self._locators_widget[1].split("\"")
+      locator_parts[1] += "_version"
+      self._locators_widget = (self._locators_widget[0], "\"".join(
+          locator_parts))
     self.info_widget_cls = factory.get_cls_widget(
         object_name=obj_name, is_info=True)
     # Filter
@@ -29,6 +37,9 @@ class Widget(base.Widget):
       self.dropdown_states = base.DropdownStatic(
           driver, self._locators_filter.DD_CSS)
     super(Widget, self).__init__(driver)
+    self._root = self._browser.element(
+        class_name="widget governance treeview",
+        id=objects.get_singular(self.obj_name))
     # Tree View
     self.tree_view = TreeView(driver, self.info_widget_cls, self.obj_name)
     # Tab count
@@ -133,6 +144,11 @@ class Widget(base.Widget):
       return self.select_member_by_num(num)
     return self.info_widget_cls(self._driver)
 
+  @property
+  def three_bbs(self):
+    """ThreeBbs objcect on widget."""
+    return three_bbs.ThreeBbs(self._root)
+
 
 class TreeView(base.TreeView):
   """Genetic Tree Views."""
@@ -155,7 +171,7 @@ class TreeView(base.TreeView):
   def open_create(self):
     """Clicks on Create button on Tree View to open new object creation modal.
     """
-    base.Button(self._driver, self._locators.CREATE_BTN_CSS).click()
+    self._browser.element(class_name="tree-action").link(text="Create").click()
     if self.obj_name == objects.ASSESSMENT_TEMPLATES:
       unified_mapper.CloneOrCreateAssessmentTemplatesModal(
           self._driver, self.obj_name).create_asmt_tmpl_btn.click()
@@ -163,9 +179,9 @@ class TreeView(base.TreeView):
   def open_map(self):
     """Click to Map button on Tree View to open unified mapper modal.
 
-    Return: lib.page.modal.unified_mapper.MapObjectsModal
+    Return: MapObjectsModal
     """
-    base.Button(self._driver, self._locators.MAP_BTN_CSS).click()
+    self._browser.link(text="Map").click()
     return unified_mapper.MapObjectsModal(self._driver, self.obj_name)
 
   def open_3bbs(self):

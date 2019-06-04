@@ -1,13 +1,11 @@
 /*
-  Copyright (C) 2018 Google Inc.
+  Copyright (C) 2019 Google Inc.
   Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 */
 
 export {default as BackgroundTask} from './background-task';
 export {default as Comment} from './comment';
 export {default as Context} from './context';
-export {default as ControlAssertion} from './control-assertion';
-export {default as ControlCategory} from './control-category';
 export {default as Event} from './event';
 export {default as Label} from './label';
 export {default as MultitypeSearch} from './multitype-search';
@@ -21,3 +19,4 @@ export {default as Role} from './role';
 export {default as Search} from './search';
 export {default as Snapshot} from './snapshot';
 export {default as PersonProfile} from './person-profile';
+export {default as ExternalComment} from './external-comment';

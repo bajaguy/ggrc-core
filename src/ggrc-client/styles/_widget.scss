@@ -1,15 +1,9 @@
 /*
- * Copyright (C) 2018 Google Inc.
+ * Copyright (C) 2019 Google Inc.
  * Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
  */
 
 .widget {
-  &.dashboard_widgets {
-    margin: 0 40px;
-    &.treeview {
-      margin: 0;
-    }
-  }
   .header {
     @extend %row-fluid-fix;
     height: 30px;
@@ -224,10 +218,6 @@
   background: $lightGray;
   border-bottom: 1px solid $infoMessageBorder;
   padding-bottom: 40px;
-  .white-widget & {
-    background: $white;
-    border-top: 1px solid $infoMessageBorder;
-  }
   h2 {
     line-height: 36px;
     font-size: 24px;
@@ -241,6 +231,11 @@
 // Table
 .table-wrap {
   padding-top: 20px;
+
+  &_type_readonly {
+    padding-bottom: 2px;
+  }
+
   .tree-action-list {
     float: none;
     clear: both;

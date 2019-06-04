@@ -1,5 +1,5 @@
 /*
-    Copyright (C) 2018 Google Inc.
+    Copyright (C) 2019 Google Inc.
     Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 */
 
@@ -13,7 +13,7 @@ import Assessment from '../../models/business-models/assessment';
 describe('SummaryWidgetController', function () {
   'use strict';
 
-  describe('"{CMS.Models.Assessment} updated" handler', function () {
+  describe('"{Assessment} updated" handler', function () {
     let method;
     let ctrlInst;
 
@@ -23,7 +23,7 @@ describe('SummaryWidgetController', function () {
           forceRefresh: false,
         },
       };
-      method = Ctrl.prototype['{CMS.Models.Assessment} updated'].bind(ctrlInst);
+      method = Ctrl.prototype['{Assessment} updated'].bind(ctrlInst);
     });
 
     it('sets true to options.forceRefresh', function () {
@@ -140,9 +140,11 @@ describe('SummaryWidgetController', function () {
         method('Assessment');
         expect(ctrlInst.options.forceRefresh).toBe(false);
       });
-      it('calls drawChart() method', function () {
-        method('Assessment');
-        expect(ctrlInst.drawChart).toHaveBeenCalled();
+      it('calls drawChart() method', function (done) {
+        method('Assessment').then(() => {
+          expect(ctrlInst.drawChart).toHaveBeenCalled();
+          done();
+        });
       });
     });
   });

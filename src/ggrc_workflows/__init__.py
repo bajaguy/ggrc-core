@@ -1,4 +1,4 @@
-# Copyright (C) 2018 Google Inc.
+# Copyright (C) 2019 Google Inc.
 # Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 
 # pylint: disable=redefined-outer-name
@@ -34,6 +34,7 @@ from ggrc_basic_permissions.contributed_roles import RoleContributions
 # pylint: disable=invalid-name
 logger = logging.getLogger(__name__)
 
+COPY_TITLE_TEMPLATE = '%(parent_title)s (copy %(copy_count)s)'
 
 # Initialize Flask Blueprint for extension
 blueprint = Blueprint(
@@ -45,14 +46,37 @@ blueprint = Blueprint(
 )
 
 
-for type_ in WORKFLOW_OBJECT_TYPES:
-  model = getattr(all_models, type_)
-  model.__bases__ = (
-      models.task_group_object.TaskGroupable,
-      models.cycle_task_group_object_task.CycleTaskable,
-      models.workflow.WorkflowState,
-  ) + model.__bases__
-  model.late_init_task_groupable()
+_INJECTABLE_MIXINS = (
+    models.cycle_task_group_object_task.CycleTaskable,
+    models.workflow.WorkflowState,
+)
+
+
+def _inject_workflow_mixins():
+  """Inject Workflow mixins to configured model classes"""
+
+  # This function contains slightly refactored code which injects mixins
+  # Mixin injection produces bad side effects, for now only one of them
+  # is found and workarounded.
+  # This code needs to be completely refactored!
+
+  for type_ in WORKFLOW_OBJECT_TYPES:
+    model = getattr(all_models, type_)
+    model.__bases__ = _INJECTABLE_MIXINS + model.__bases__
+    _workaround_mixin_injection(model)
+
+
+def _workaround_mixin_injection(model):
+  """Workaround mixin injection
+
+  We inject mixin to existing Model, and mapper for this Model is
+  already configured. So, all sqlalchemy attrs will not be added to mapper
+  To resolve it, we need to add all attrs to mapper manually.
+  """
+
+  for mixin in _INJECTABLE_MIXINS:
+    for attr_name in getattr(mixin, '_mapper_inject_properties', list()):
+      model.__mapper__.add_property(attr_name, getattr(model, attr_name))
 
 
 def get_public_config(current_user):  # noqa
@@ -73,6 +97,28 @@ def contributed_object_views():
   return [
       object_view(models.Workflow),
   ]
+
+
+def get_copy_title(current_title, used_titles):
+  """Get's first available copy title from the list of titles.
+  In general, the convention is:
+    title = old_title + (copy N)
+
+  Args:
+      current_title (str): Title of the parent object
+      used_titles (List[str]): List of object titles copied from the same
+          parent
+  """
+  copy_title = ''
+  for copy_count in range(1, len(used_titles) + 2):
+    title = COPY_TITLE_TEMPLATE % {
+        'parent_title': current_title,
+        'copy_count': copy_count
+    }
+    if title not in used_titles:
+      copy_title = title
+      break
+  return copy_title
 
 
 def _get_min_next_due_date(due_dated_objects):
@@ -173,6 +219,9 @@ def handle_cycle_post(sender, obj=None, src=None, service=None):  # noqa pylint:
   # When called via a REST POST, use current user.
   workflow = obj.workflow
   workflow.status = workflow.ACTIVE
+  if not workflow.can_start_cycle:
+    raise ValueError("Workflow with misconfigured "
+                     "Task Groups can not be activated.")
   build_cycles(workflow, obj)
 
 
@@ -198,7 +247,6 @@ def _create_cycle_task(task_group_task, cycle, cycle_task_group, current_user):
       task_group_task=task_group_task,
       title=task_group_task.title,
       description=description,
-      sort_index=task_group_task.sort_index,
       start_date=start_date,
       end_date=end_date,
       access_control_list=access_control_list,
@@ -214,19 +262,22 @@ def create_old_style_cycle(cycle, task_group, cycle_task_group, current_user):
   """ This function preserves the old style of creating cycles, so each object
   gets its own task assigned to it.
   """
-  if len(task_group.task_group_objects) == 0:
+  related_objs = [
+      obj for obj in task_group.related_objects()
+      if not isinstance(obj, (all_models.TaskGroupTask, all_models.Workflow))
+  ]
+  if len(related_objs) == 0:
     for task_group_task in task_group.task_group_tasks:
-      cycle_task_group_object_task = _create_cycle_task(
-          task_group_task, cycle, cycle_task_group,
-          current_user)
+      _create_cycle_task(
+          task_group_task, cycle, cycle_task_group, current_user
+      )
 
-  for task_group_object in task_group.task_group_objects:
-    object_ = task_group_object.object
+  for obj in related_objs:
     for task_group_task in task_group.task_group_tasks:
       cycle_task_group_object_task = _create_cycle_task(
-          task_group_task, cycle, cycle_task_group,
-          current_user)
-      Relationship(source=cycle_task_group_object_task, destination=object_)
+          task_group_task, cycle, cycle_task_group, current_user
+      )
+      Relationship(source=cycle_task_group_object_task, destination=obj)
 
 
 def build_cycle(workflow, cycle=None, current_user=None):
@@ -279,7 +330,6 @@ def build_cycle(workflow, cycle=None, current_user=None):
         modified_by=current_user,
         contact=task_group.contact,
         status=models.CycleTaskGroup.ASSIGNED,
-        sort_index=task_group.sort_index,
     )
 
     # preserve the old cycle creation for old workflows, so each object
@@ -290,11 +340,13 @@ def build_cycle(workflow, cycle=None, current_user=None):
       for task_group_task in task_group.task_group_tasks:
         cycle_task_group_object_task = _create_cycle_task(
             task_group_task, cycle, cycle_task_group, current_user)
-
-        for task_group_object in task_group.task_group_objects:
-          object_ = task_group_object.object
+        related_objs = [obj for obj in task_group.related_objects()
+                        if not isinstance(obj, (
+                            all_models.TaskGroupTask, all_models.Workflow
+                        ))]
+        for obj in related_objs:
           Relationship(source=cycle_task_group_object_task,
-                       destination=object_)
+                       destination=obj)
 
   update_cycle_dates(cycle)
   workflow.repeat_multiplier += 1
@@ -348,22 +400,29 @@ def _update_parent_status(parent, child_statuses):
 
   New status based on sent object status and sent child_statuses"""
   old_status = parent.status
+  if isinstance(parent, models.CycleTaskGroup):
+    tasks = parent.cycle_task_group_tasks
+  elif isinstance(parent, models.Cycle):
+    tasks = parent.cycle_task_group_object_tasks
+  else:
+    logger.warning("Invalid parent object '%s'.", parent.__class__.__name__)
+    return
   # Deprecated status is not counted
-  if child_statuses:
-    child_statuses.discard("Deprecated")
+  child_statuses.discard("Deprecated")
   if not child_statuses:
     new_status = "Deprecated"
   elif len(child_statuses) == 1:
     new_status = child_statuses.pop()
-    if new_status == "Declined":
+    if (new_status == "Declined" or
+            new_status == "Assigned" and
+            any(t.status != "Assigned" for t in tasks)):
       new_status = parent.IN_PROGRESS
   elif {parent.IN_PROGRESS, "Declined", "Assigned"} & child_statuses:
     new_status = parent.IN_PROGRESS
   else:
     new_status = "Finished"
-  if old_status == new_status:
-    return
-  parent.status = new_status
+  if old_status != new_status:
+    parent.status = new_status
 
 
 def update_cycle_task_tree(objs):
@@ -488,6 +547,18 @@ def handle_task_group_task_delete(sender, obj=None, src=None, service=None):  # 
 
 @signals.Restful.model_posted.connect_via(models.TaskGroup)
 def handle_task_group_post(sender, obj=None, src=None, service=None):  # noqa pylint: disable=unused-argument
+
+  # NOTE. To clone task group the following operations are performed:
+  # 1) create new object, call json_create(), where attributes will be set
+  #    with value validation
+  # 2) This function is called which overrides some attributes,
+  #    attribute validator for these attributes are called
+  # So, validation for those attrs are called twice!
+  # One corner case of this behavior is validation of field "title".
+  # title cannot be None, and because title validation is performed before
+  # this function, API request MUST contain non-empty title in dict,
+  # however the value will be overridden and re-validated in this function!
+
   if src.get('clone'):
     source_task_group_id = src.get('clone')
     source_task_group = models.TaskGroup.query.filter_by(
@@ -499,7 +570,12 @@ def handle_task_group_post(sender, obj=None, src=None, service=None):  # noqa py
         clone_tasks=src.get('clone_tasks', False),
         clone_objects=src.get('clone_objects', False)
     )
-    obj.title = source_task_group.title + ' (copy ' + str(obj.id) + ')'
+
+    copied_task_groups = models.TaskGroup.query.filter_by(
+        workflow_id=source_task_group.workflow_id,
+        parent_id=source_task_group.id).values('title')
+    used_titles = [t.title for t in copied_task_groups]
+    obj.title = get_copy_title(source_task_group.title, used_titles)
 
   obj.ensure_assignee_is_workflow_member()
   calculate_new_next_cycle_start_date(obj.workflow)
@@ -537,17 +613,6 @@ def handle_cycle_task_group_object_task_put(
             )
         ]
     )
-
-  # Doing this regardless of status.history.has_changes() is important in order
-  # to update objects that have been declined. It updates the os_last_updated
-  # date and last_updated_by.
-  with benchmark("handle CycleTask put"):
-    if getattr(obj.task_group_task, 'object_approval', None):
-      for tgobj in obj.task_group_task.task_group.objects:
-        if obj.status == 'Verified':
-          tgobj.modified_by = get_current_user()
-          tgobj.set_reviewed_state()
-      db.session.flush()
 
 
 @signals.Restful.model_posted.connect_via(
@@ -622,20 +687,11 @@ def handle_workflow_put(sender, obj=None, src=None, service=None):
   old = inspect(obj).attrs.status.history.deleted[-1]
   # first activate wf
   if (old, new) == (obj.DRAFT, obj.ACTIVE):
-    # allow only of it has at leask one task_group
-    if not obj.task_groups:
-      raise ValueError("Workflow with no Task Groups can not be activated.")
+    # allow only if it has at least one task_group with task configured
+    if not obj.can_start_cycle:
+      raise ValueError("Workflow with misconfigured "
+                       "Task Groups can not be activated.")
     build_cycles(obj)
-
-
-# noqa pylint: disable=unused-argument
-@signals.Restful.model_posted.connect_via(models.CycleTaskEntry)
-def handle_cycle_task_entry_post(sender, obj=None, src=None, service=None):
-  if src['is_declining_review'] == '1':
-    task = obj.cycle_task_group_object_task
-    task.status = task.DECLINED
-  else:
-    src['is_declining_review'] = 0
 
 
 # noqa pylint: disable=unused-argument
@@ -678,12 +734,12 @@ def handle_cycle_task_status_change(sender, objs=None):
       if obj.old_status == obj.new_status:
         continue
       if obj.new_status == obj.instance.VERIFIED:
-        obj.instance.verified_date = datetime.utcnow()
+        obj.instance.verified_date = datetime.utcnow().date()
         if obj.instance.finished_date is None:
           obj.instance.finished_date = obj.instance.verified_date
       elif obj.new_status == obj.instance.FINISHED:
         obj.instance.finished_date = (obj.instance.finished_date or
-                                      datetime.utcnow())
+                                      datetime.utcnow().date())
         obj.instance.verified_date = None
       else:
         obj.instance.finished_date = None
@@ -720,7 +776,11 @@ def handle_workflow_post(sender, obj=None, src=None, service=None):
         id=source_workflow_id
     ).first()
     source_workflow.copy(obj, clone_people=src.get('clone_people', False))
-    obj.title = source_workflow.title + ' (copy ' + str(obj.id) + ')'
+
+    copied_workflows = models.Workflow.query.filter_by(
+        parent_id=source_workflow.id).values('title')
+    used_titles = [w.title for w in copied_workflows]
+    obj.title = get_copy_title(source_workflow.title, used_titles)
 
   # get the personal context for this logged in user
   user = get_current_user(use_external_user=False)
@@ -807,3 +867,6 @@ contributed_column_handlers = COLUMN_HANDLERS
 contributed_get_ids_related_to = relationship_helper.get_ids_related_to
 NIGHTLY_CRON_JOBS = [start_recurring_cycles]
 NOTIFICATION_LISTENERS = [notification.register_listeners]
+
+
+_inject_workflow_mixins()

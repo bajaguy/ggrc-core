@@ -1,5 +1,5 @@
 /*
- Copyright (C) 2018 Google Inc.
+ Copyright (C) 2019 Google Inc.
  Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
  */
 
@@ -13,19 +13,7 @@ let viewModel = can.Map.extend({
         }
       },
     },
-    activatedOrForceRender: {
-      get: function () {
-        return this.attr('forceClearContent') ? false :
-          this.attr('activated');
-      },
-    },
   },
-  /**
-   * This flag shuld be switch on and back off to trigger re-render of content
-   * see tab-panel.js for example.
-   * @type {Boolean}
-   */
-  forceClearContent: false,
   activated: false,
 });
 
@@ -34,6 +22,7 @@ let viewModel = can.Map.extend({
  */
 export default can.Component.extend({
   tag: 'lazy-render',
-  template: '{{#if activatedOrForceRender}}<content/>{{/if}}',
+  view: can.stache('{{#if activated}}<content/>{{/if}}'),
+  leakScope: true,
   viewModel,
 });

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2018 Google Inc.
+ * Copyright (C) 2019 Google Inc.
  * Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
  */
 
@@ -159,4 +159,44 @@
 %item-util-wide {
   margin: 0;
   width: 100%;
+}
+
+%field-controllable {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 28px;
+  width: 28px;
+}
+
+%editable-control-item {
+  @extend %field-controllable;
+
+  border-radius: 50%;
+  background: #444;
+  cursor: pointer;
+
+  &:hover {
+    background: darken(#444, 10%);
+  }
+
+  .fa {
+    color: $white;
+    font-size: 18px;
+    height: 28px;
+    line-height: 28px;
+    width: 28px;
+    display: inline-flex;
+    justify-content: center;
+    align-self: center;
+    align-items: center;
+    text-align: center;
+  }
+}
+
+%field-spinnerable {
+  @extend %field-controllable;
+
+  position: absolute;
+  left: -28px;
 }

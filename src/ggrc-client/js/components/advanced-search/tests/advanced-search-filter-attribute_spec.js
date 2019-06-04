@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2018 Google Inc.
+  Copyright (C) 2019 Google Inc.
   Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 */
 
@@ -105,7 +105,7 @@ describe('advanced-search-filter-attribute component', function () {
     function () {
       viewModel.attr('attribute.value', 'value');
 
-      handler.call(that, viewModel.attribute, {}, 'is');
+      handler.call(that, [viewModel.attribute], {}, 'is');
 
       let result = viewModel.attr('attribute.value');
       expect(result).toEqual('empty');
@@ -116,7 +116,7 @@ describe('advanced-search-filter-attribute component', function () {
     function () {
       viewModel.attr('attribute.value', 'value');
 
-      handler.call(that, viewModel.attribute, {}, 'val', 'is');
+      handler.call(that, [viewModel.attribute], {}, 'val', 'is');
 
       let result = viewModel.attr('attribute.value');
       expect(result).toEqual('');

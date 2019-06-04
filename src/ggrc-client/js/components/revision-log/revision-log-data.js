@@ -1,9 +1,9 @@
 /*
- Copyright (C) 2018 Google Inc.
+ Copyright (C) 2019 Google Inc.
  Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
  */
 
-import template from './revision-log-data.mustache';
+import template from './revision-log-data.stache';
 
 let viewModel = can.Map.extend({
   data: null,
@@ -20,6 +20,7 @@ let viewModel = can.Map.extend({
 
 export default can.Component.extend({
   tag: 'revision-log-data',
-  template: template,
+  view: can.stache(template),
+  leakScope: true,
   viewModel: viewModel,
 });

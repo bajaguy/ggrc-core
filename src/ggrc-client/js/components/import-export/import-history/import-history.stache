@@ -1,0 +1,18 @@
+{{!
+  Copyright (C) 2019 Google Inc.
+  Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
+}}
+
+<h4>Import History</h4>
+
+{{#history}}
+  <div class="flex-box flex-col import-history__item">
+    <span class="import-history__date">{{dateTime created_at}}</span>
+    <div class="flex-box import-history__title">
+      <span>{{title}}</span>
+
+      <i class="fa fa-download" on:el:click="download(id, title)"></i>
+      <i class="fa fa-trash-o" on:el:click="remove(id)"></i>
+    </div>
+  </div>
+{{/history}}

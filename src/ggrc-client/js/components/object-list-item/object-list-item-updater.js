@@ -1,5 +1,5 @@
 /*
- Copyright (C) 2018 Google Inc.
+ Copyright (C) 2019 Google Inc.
  Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
  */
 
@@ -7,11 +7,10 @@ import '../object-list-item/business-object-list-item';
 import '../read-more/read-more';
 import RefreshQueue from '../../models/refresh_queue';
 
-const tag = 'object-list-item-updater';
-
 export default can.Component.extend({
-  tag,
-  viewModel: {
+  tag: 'object-list-item-updater',
+  leakScope: true,
+  viewModel: can.Map.extend({
     define: {
       targetInstance: {
         set: function (value) {
@@ -36,5 +35,5 @@ export default can.Component.extend({
           this.attr('instanceUpdated', true);
         }.bind(this));
     },
-  },
+  }),
 });

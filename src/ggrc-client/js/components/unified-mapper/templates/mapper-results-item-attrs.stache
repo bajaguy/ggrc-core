@@ -1,0 +1,41 @@
+{{!
+  Copyright (C) 2019 Google Inc.
+  Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
+}}
+
+<div class="flex-box flex-box-single">
+  {{#each aggregatedColumns}}
+    <div class="attr">
+      {{#switch attr_type}}
+        {{#case "custom"}}
+          <tree-item-custom-attribute instance:from="instance"
+                                      customAttributeId:from="attr_custom_attribute_id"
+          ></tree-item-custom-attribute>
+        {{/case}}
+
+        {{#case "role"}}
+          <div class="roles attr-content">
+            <tree-people-with-role-list-field instance:from="instance" role:from="attr_name">
+            </tree-people-with-role-list-field>
+          </div>
+        {{/case}}
+
+        {{#case 'map_as'}}
+          <mega-relation-selection-item
+            class="tree-radio-select-area"
+            isDisabled:from="isDisabled"
+            id:from="instance.id"
+            mapAsChild:from="mapAsChild">
+          </mega-relation-selection-item>
+        {{/case}}
+
+        {{#default}}
+          <tree-item-attr
+            instance:from="instance"
+            name:from="attr_name"
+          ></tree-item-attr>
+        {{/default}}
+      {{/switch}}
+    </div>
+  {{/each}}
+</div>

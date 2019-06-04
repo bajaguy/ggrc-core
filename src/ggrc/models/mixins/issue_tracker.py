@@ -1,4 +1,4 @@
-# Copyright (C) 2018 Google Inc.
+# Copyright (C) 2019 Google Inc.
 # Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 
 """Mixins for issue tracker integration functionality."""
@@ -28,35 +28,56 @@ class IssueTracked(object):
 
   def __init__(self, *args, **kwargs):
     super(IssueTracked, self).__init__(*args, **kwargs)
-    self._warnings = []
+    self.init_on_load()
 
   @orm.reconstructor
   def init_on_load(self):
+    """Init object when it is fetched from DB
+
+    SQLAlchemy doesn't call __init__() for objects from DB
+    """
+
     self._warnings = []
+    self.is_import = False
+    self.issue_tracker_to_import = dict()
 
   @declared_attr
   def issuetracker_issue(cls):  # pylint: disable=no-self-argument
     """Relationship with the corresponding issue for cls."""
+    current_type = cls.__name__
 
-    def join_function():
-      """Object and Notification join function."""
-      object_id = sa.orm.foreign(IssuetrackerIssue.object_id)
-      object_type = sa.orm.foreign(IssuetrackerIssue.object_type)
-      return sa.and_(object_type == cls.__name__,
-                     object_id == cls.id)
+    joinstr = (
+        "and_("
+        "foreign(remote(IssuetrackerIssue.object_id)) == {type}.id,"
+        "IssuetrackerIssue.object_type == '{type}'"
+        ")"
+        .format(type=current_type)
+    )
+
+    # Since we have some kind of generic relationship here, it is needed
+    # to provide custom joinstr for backref. If default, all models having
+    # this mixin will be queried, which in turn produce large number of
+    # queries returning nothing and one query returning object.
+    backref_joinstr = (
+        "remote({type}.id) == foreign(IssuetrackerIssue.object_id)"
+        .format(type=current_type)
+    )
 
     return sa.orm.relationship(
         IssuetrackerIssue,
-        primaryjoin=join_function,
-        backref="{}_issue_tracked".format(cls.__name__),
+        primaryjoin=joinstr,
+        backref=sa.orm.backref(
+            "{}_issue_tracked".format(current_type),
+            primaryjoin=backref_joinstr,
+        ),
         cascade="all, delete-orphan",
         uselist=False,
     )
 
   @classmethod
-  def eager_query(cls):
+  def eager_query(cls, **kwargs):
     """Define fields to be loaded eagerly to lower the count of DB queries."""
-    query = super(IssueTracked, cls).eager_query()
+    query = super(IssueTracked, cls).eager_query(**kwargs)
     return query.options(
         orm.joinedload('issuetracker_issue')
     )
@@ -89,16 +110,40 @@ class IssueTrackedWithUrl(IssueTracked):
       "hotlist_id": "Hotlist ID",
       "issue_priority": "Priority",
       "issue_severity": "Severity",
-      "issue_title": "Issue Title",
+      "issue_title": "Ticket Title",
       "issue_type": "Issue Type",
       "enabled": {
           "display_name": "Ticket Tracker Integration",
           "description": "Turn on integration with Ticket tracker, "
                          "On / Off options are possible",
-      }
+      },
   }
 
 
 class IssueTrackedWithConfig(IssueTracked):
   """Class that identifies IssueTracked models that have no url."""
-  pass
+  _aliases = {
+      "component_id": "Component ID",
+      "hotlist_id": "Hotlist ID",
+      "issue_priority": "Priority",
+      "issue_severity": "Severity",
+      "issue_type": "Issue Type",
+      "enabled": {
+          "display_name": "Ticket Tracker Integration",
+          "description": "Turn on integration with Ticket tracker, "
+                         "On / Off options are possible",
+      },
+  }
+
+
+class IssueTrackedWithPeopleSync(object):
+  """Mixin that indentifies IssueTracked models with people sync option."""
+  # pylint: disable=too-few-public-methods
+  _aliases = {
+      "people_sync_enabled": {
+          "display_name": "Sync people with Ticket Tracker",
+          "description": "Check the box to enable sync between "
+                         "Audit roles and Ticket Tracker. "
+                         "Uncheck the box to disable the sync.",
+      },
+  }

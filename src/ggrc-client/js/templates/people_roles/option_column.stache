@@ -1,0 +1,45 @@
+{{!
+    Copyright (C) 2019 Google Inc.
+    Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
+}}
+
+<div class="search-title">
+  <div class="row-fluid">
+    <div class="span6">
+      <h4>
+        Role
+      </h4>
+    </div>
+    <div class="span6">
+      <div class="guide">
+        &nbsp;
+      </div>
+    </div>
+  </div>
+</div>
+<div class="selector-list people-selector">
+  <ul>
+    {{#rolesList}}
+    <li {{canData 'option' }} data-id="{{ id }}">
+      <label>
+        {{#is(selectedOption, id)}}
+          <input type="radio" checked="checked" name="map" rel="tooltip" title="map">
+        {{else}}
+          <input type="radio" name="map" rel="tooltip" title="map">
+        {{/is}}
+        {{name}}
+      </label>
+      <div class="role-description">
+        <p>{{{description}}}</p>
+        {{#is(name, "Administrator")}}
+          <p>
+          <strong>Note</strong>: This role does not automatically confer Admin access to gDrive resources.
+            Please ensure that all Administrator users are also members of <span style="white-space: nowrap">{{ggrc_config_value "GAPI_ADMIN_GROUP"}}</span>
+          </p>
+        {{/is}}
+        <p><strong>Role Scope:</strong> {{this.scope}}</p>
+      </div>
+    </li>
+    {{/rolesList}}
+  </ul>
+</div>

@@ -1,21 +1,23 @@
 /*
-  Copyright (C) 2018 Google Inc.
+  Copyright (C) 2019 Google Inc.
   Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 */
 
 import Mappings from '../mappings';
 
 describe('Mappings', () => {
-  const types = Mappings.get_canonical_mappings_for('MultitypeSearch');
+  const types = Mappings.getAllowedToMapModels('MultitypeSearch');
 
   let modules = {
     core: [
       'AccessGroup',
+      'AccountBalance',
       'Contract',
       'Control',
       'DataAsset',
       'Facility',
       'Issue',
+      'KeyReport',
       'Market',
       'Metric',
       'Objective',
@@ -41,6 +43,7 @@ describe('Mappings', () => {
       'Audit',
     ],
     workflow: [
+      'CycleTaskGroupObjectTask',
       'TaskGroup',
       'Workflow',
     ],
@@ -48,21 +51,25 @@ describe('Mappings', () => {
 
   const coreObjectsRules = _.concat(modules.core, modules.workflow,
     ['Assessment', 'Audit', 'Document', 'Person', 'Program']);
+  const snapshotableObjects = _.difference(modules.core, ['Project']);
 
   const mappingRules = {
     AccessGroup: _.difference(coreObjectsRules, ['AccessGroup']),
-    Assessment: [...modules.core, 'Evidence', 'Audit', 'Person'],
+    AccountBalance: coreObjectsRules,
+    Assessment: [...snapshotableObjects, 'Evidence', 'Audit', 'Person'],
     AssessmentTemplate: ['Audit'],
-    Audit: [...modules.core, 'Evidence', 'Assessment',
-      'AssessmentTemplate', 'Person', 'Program'],
+    Audit: [...snapshotableObjects, 'Evidence', 'Assessment',
+      'AssessmentTemplate', 'CycleTaskGroupObjectTask', 'Person', 'Program'],
     Contract: _.difference(coreObjectsRules, ['Contract']),
     Control: coreObjectsRules,
-    CycleTaskGroupObjectTask: [...modules.core, 'Audit', 'Person', 'Program'],
+    CycleTaskGroupObjectTask: [...modules.core, 'Audit', 'Person', 'Program',
+      'Workflow'],
     DataAsset: coreObjectsRules,
     Document: [...modules.core, 'Person', 'Program'],
     Evidence: ['Assessment', 'Audit', 'Person'],
     Facility: coreObjectsRules,
     Issue: coreObjectsRules,
+    KeyReport: coreObjectsRules,
     Market: coreObjectsRules,
     Metric: coreObjectsRules,
     Objective: coreObjectsRules,
@@ -73,15 +80,15 @@ describe('Mappings', () => {
     Process: coreObjectsRules,
     Product: coreObjectsRules,
     ProductGroup: coreObjectsRules,
-    Program:
-      [...modules.core, ...modules.workflow, 'Audit', 'Document', 'Person'],
+    Program: [...modules.core, ...modules.workflow, 'Audit', 'Document',
+      'Person', 'Program'],
     Project: coreObjectsRules,
     Regulation: _.difference(coreObjectsRules, ['Regulation']),
     Requirement: coreObjectsRules,
     Risk: coreObjectsRules,
     Standard: _.difference(coreObjectsRules, ['Standard']),
     System: coreObjectsRules,
-    TaskGroup: [...modules.core, 'Program'],
+    TaskGroup: [...modules.core, 'Program', 'Workflow'],
     TaskGroupTask: ['Person', 'Workflow'],
     TechnologyEnvironment: coreObjectsRules,
     Threat: coreObjectsRules,

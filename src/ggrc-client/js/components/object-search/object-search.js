@@ -1,5 +1,5 @@
 /*
- Copyright (C) 2018 Google Inc.
+ Copyright (C) 2019 Google Inc.
  Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
  */
 
@@ -11,11 +11,12 @@ import '../../components/unified-mapper/mapper-results';
 import '../../components/mapping-controls/mapping-type-selector';
 import '../../components/collapsible-panel/collapsible-panel';
 import ObjectOperationsBaseVM from '../view-models/object-operations-base-vm';
-import template from './object-search.mustache';
+import template from './object-search.stache';
 
 export default can.Component.extend({
   tag: 'object-search',
-  template,
+  view: can.stache(template),
+  leakScope: true,
   viewModel: function () {
     return ObjectOperationsBaseVM.extend({
       object: 'MultitypeSearch',

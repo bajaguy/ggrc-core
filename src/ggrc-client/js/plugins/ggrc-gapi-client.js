@@ -1,5 +1,5 @@
 /*
- Copyright (C) 2018 Google Inc.
+ Copyright (C) 2019 Google Inc.
  Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
  */
 
@@ -9,18 +9,23 @@ import {notifier} from '../plugins/utils/notifiers-utils';
  * Shows modal window that inform user about requested scopes.
  */
 let showGapiModal = function ({scopes, onAccept, onDecline}) {
-  let $modal = $('.ggrc_controllers_gapi_modal');
+  let $modal = $('.gapi-modal-control');
   if (!$modal.length) {
-    import(/* webpackChunkName: "modalsCtrls" */'../controllers/modals/')
-      .then(() => {
-        $('<div class="modal hide">').modal_form()
-          .appendTo(document.body).ggrc_controllers_gapi_modal({
-            modal_title: 'Please log in to Google API',
-            new_object_form: true,
-            scopes,
-            onAccept,
-            onDecline,
-          });
+    import(
+      /* webpackChunkName: "modalsCtrls" */
+      '../controllers/modals/gapi-modal'
+    )
+      .then((module) => {
+        const modal = $('<div class="modal hide"></div>').modal_form();
+        modal.appendTo(document.body);
+
+        new module.default(modal, {
+          modal_title: 'Please log in to Google API',
+          new_object_form: true,
+          scopes,
+          onAccept,
+          onDecline,
+        });
       });
   } else {
     $modal.modal_form('show');
@@ -112,7 +117,7 @@ class BackendGdriveClient {
    * @return {Deferred} - The deferred object containing result of action or predefined data in case of auth failure.
    */
   withAuth(action, rejectResponse) {
-    return action().then(null, (e) => {
+    return action().pipe(null, (e) => {
       // if BE auth token was corrupted or missed.
       if (e.status === 401) {
         // We need to reuse the same dfd to handle case of multiple requests.
@@ -188,7 +193,7 @@ class GGRCGapiClient {
    */
   authorizeGapi(requiredScopes = []) {
     let needToRequestForNewScopes = this.addNewScopes(requiredScopes);
-    return this.client.then((gapi) => {
+    return this.client.pipe((gapi) => {
       let token = gapi.auth.getToken();
 
       if (needToRequestForNewScopes || !token) {
@@ -205,10 +210,11 @@ class GGRCGapiClient {
   /**
    * Runs authorization process.
    * @param {Boolean} immediate - Try to suppress auth modal window.
+   * @return {Deferred} - Gapi Auth result.
    */
   runAuthorization(immediate) {
     // make auth request
-    this.makeGapiAuthRequest(immediate)
+    return this.makeGapiAuthRequest(immediate)
       .then(this.oauthResult.resolve, () => {
         if (immediate) {
           this.showGapiModal({
@@ -284,7 +290,7 @@ class GGRCGapiClient {
    * Check whether user looged in google with ggrc email.
    */
   checkLoggedUser() {
-    this.loadClientLibrary('oauth2').then((oauth2) => {
+    this.loadClientLibrary('oauth2').pipe((oauth2) => {
       oauth2.userinfo.get().execute((user) => {
         if (user.error) {
           notifier('error', user.error);
@@ -294,8 +300,8 @@ class GGRCGapiClient {
         if (user.email.toLowerCase().trim() !==
         GGRC.current_user.email.toLowerCase().trim()) {
           notifier('warning', `
-            You are signed into GGRC as ${GGRC.current_user.email} 
-            and into Google Apps as ${user.email}. 
+            You are signed into GGRC as ${GGRC.current_user.email}
+            and into Google Apps as ${user.email}.
             You may experience problems uploading evidence.`);
         }
       });

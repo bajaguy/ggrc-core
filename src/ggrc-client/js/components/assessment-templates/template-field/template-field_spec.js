@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2018 Google Inc.
+  Copyright (C) 2019 Google Inc.
   Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 */
 
@@ -8,10 +8,6 @@ import {getComponentVM} from '../../../../js_specs/spec_helpers';
 
 describe('template-field component', function () {
   let viewModel;
-  let pads = new can.Map({
-    COMMENT: 0,
-    ATTACHMENT: 1,
-  });
 
   beforeEach(function () {
     viewModel = getComponentVM(Component);
@@ -23,7 +19,7 @@ describe('template-field component', function () {
         multi_choice_options: 'foo,bar,baz,bam',
         multi_choice_mandatory: '0,1,2,3',
       });
-      let result = viewModel.denormalizeMandatory(field, pads);
+      let result = viewModel.denormalizeMandatory(field);
 
       expect(result.length).toEqual(4);
       expect(result[0].attachment).toEqual(false);
@@ -42,7 +38,7 @@ describe('template-field component', function () {
           multi_choice_options: 'one,two,three,four,five',
           multi_choice_mandatory: '0,1,2',
         });
-        let result = viewModel.denormalizeMandatory(field, pads);
+        let result = viewModel.denormalizeMandatory(field);
 
         expect(result.length).toEqual(5);
         expect(result[0].attachment).toEqual(false);
@@ -63,7 +59,7 @@ describe('template-field component', function () {
         multi_choice_options: 'one,two,three',
         multi_choice_mandatory: '0,1,2,2,0',
       });
-      let result = viewModel.denormalizeMandatory(field, pads);
+      let result = viewModel.denormalizeMandatory(field);
 
       expect(result.length).toEqual(3);
       expect(result[0].attachment).toEqual(false);
@@ -83,7 +79,7 @@ describe('template-field component', function () {
         {attachment: false, comment: true},
         {attachment: true, comment: true},
       ]);
-      let result = viewModel.normalizeMandatory(attrs, pads);
+      let result = viewModel.normalizeMandatory(attrs);
 
       expect(result).toEqual('0,2,1,3');
     });
@@ -105,9 +101,9 @@ describe('template-field component', function () {
 
         htmlSnippet = [
           '<template-field',
-          '  {field}="fieldDefinition"',
-          '  {types}="types"',
-          '  (remove)="fieldRemoved">',
+          '  field:from="fieldDefinition"',
+          '  types:from="types"',
+          '  on:remove="fieldRemoved()">',
           '</template-field>',
         ].join('');
 
@@ -125,7 +121,7 @@ describe('template-field component', function () {
           fieldRemoved: onRemoveCallback,
         });
 
-        renderer = can.mustache(htmlSnippet);
+        renderer = can.stache(htmlSnippet);
         docFragment = renderer(templateContext);
         $body.append(docFragment);
 

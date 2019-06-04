@@ -1,4 +1,4 @@
-# Copyright (C) 2018 Google Inc.
+# Copyright (C) 2019 Google Inc.
 # Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 
 """Test Access Control roles Reviewer propagation"""
@@ -47,16 +47,6 @@ class TestReviewersPropagation(base.TestACLPropagation):
               "read_document_comment": True,
               "create_and_map_document_comment": False,
           },
-          "MappedReview Control": {
-              "read_parent": True,
-              "read_document": True,
-              "update_document": False,
-              "delete_document": False,
-              "read_comment": True,
-              "create_and_map_comment": False,
-              "read_document_comment": True,
-              "create_and_map_document_comment": False,
-          },
           "MappedReview Contract": {
               "read_parent": True,
               "read_document": True,
@@ -68,16 +58,6 @@ class TestReviewersPropagation(base.TestACLPropagation):
               "create_and_map_document_comment": False,
           },
           "MappedReview Policy": {
-              "read_parent": True,
-              "read_document": True,
-              "update_document": False,
-              "delete_document": False,
-              "read_comment": True,
-              "create_and_map_comment": False,
-              "read_document_comment": True,
-              "create_and_map_document_comment": False,
-          },
-          "MappedReview Risk": {
               "read_parent": True,
               "read_document": True,
               "update_document": False,
@@ -157,7 +137,7 @@ class TestReviewersPropagation(base.TestACLPropagation):
     """
     self.setup_people()
     reviewer_acr = all_models.AccessControlRole.query.filter_by(
-        name="Reviewer",
+        name="Reviewers",
         object_type="Review",
     ).one()
 

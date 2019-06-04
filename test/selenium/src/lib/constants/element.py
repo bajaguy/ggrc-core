@@ -1,4 +1,4 @@
-# Copyright (C) 2018 Google Inc.
+# Copyright (C) 2019 Google Inc.
 # Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 """Elements' labels and properties for objects."""
 # pylint: disable=too-few-public-methods
@@ -28,6 +28,7 @@ class Lhn(object):
           cls.PEOPLE,)
       cls.SCOPE_MEMBERS = (
           cls.ACCESS_GROUPS,
+          cls.ACCOUNT_BALANCES,
           cls.ORG_GROUPS,
           cls.SYSTEMS,
           cls.PROCESSES,
@@ -36,6 +37,7 @@ class Lhn(object):
           cls.PRODUCT_GROUPS,
           cls.PROJECTS,
           cls.FACILITIES,
+          cls.KEY_REPORTS,
           cls.MARKETS,
           cls.METRICS,
           cls.TECHNOLOGY_ENVIRONMENTS,
@@ -121,9 +123,11 @@ class AdminWidgetCustomAttributes(object):
   RICH_TEXT = "Rich Text"
   DATE = "Date"
   CHECKBOX = "Checkbox"
+  MULTISELECT = "Multiselect"
   DROPDOWN = "Dropdown"
   PERSON = "Map:Person"
-  ALL_CA_TYPES = (TEXT, RICH_TEXT, DATE, CHECKBOX, DROPDOWN, PERSON)
+  ALL_GCA_TYPES = (TEXT, RICH_TEXT, DATE, CHECKBOX, MULTISELECT, DROPDOWN)
+  ALL_CA_TYPES = ALL_GCA_TYPES + (PERSON, )
 
 
 class Base(object):
@@ -151,9 +155,10 @@ class Common(object):
   SECONDARY_CONTACTS = roles.SECONDARY_CONTACTS
   OTHERS = "Others"
   OBJECT_REVIEW = "Object review"
-  OBJECT_REVIEW_FULL = "object_review_txt"
-  APPROVED_DATE_REGEX = r"\d{2}\/\d{2}\/\d{4} \d{2}:\d{2}:\d{2} (A|P)M " \
-                        r"(\+|\-)\d{2}:\d{2}"
+  REVIEW_COMMENT_PATTERN = (
+      "Review requested from\n{email}\nwith a comment: {comment}")
+  APPROVED_DATE_REGEX = (
+      r"\d{2}\/\d{2}\/\d{4} \d{2}:\d{2}:\d{2} (A|P)M (\+|\-)\d{2}:\d{2}")
 
 
 class CommonModalCreate(object):

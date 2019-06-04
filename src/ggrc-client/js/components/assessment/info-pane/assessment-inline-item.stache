@@ -1,0 +1,37 @@
+{{!
+    Copyright (C) 2019 Google Inc.
+    Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
+}}
+
+<inline-edit-control
+  on:inlineSave="saveInlineForm(scope.event)"
+  isGroupedDropdown:from="isGroupedDropdown"
+  dropdownOptionsGroups:from="dropdownOptionsGroups"
+  isEditIconDenied:from="isEditIconDenied"
+  propName:from="propName"
+  dropdownOptions:from="dropdownOptions"
+  dropdownClass:from="dropdownClass"
+  dropdownNoValue:from="dropdownNoValue"
+  isLoading:from="isLoading"
+  instance:from="instance"
+  value:from="value"
+  type:from="type"
+  mandatory:from="mandatory"
+  withReadMore:from="withReadMore">
+    <confirm-edit-action
+      on:setEditMode="setEditModeInline(scope.event)"
+      on:setInProgress="setInProgressState()"
+      isEditIconDenied:from="isEditIconDenied"
+      instance:from="instance"
+      isConfirmationNeeded:from="isConfirmationNeeded"
+      onStateChangeDfd:from="onStateChangeDfd"
+      editMode:from="editMode">
+        <base-inline-control-title
+          class="inline__header"
+          editMode:from="editMode"
+          isEditIconDenied:from="isEditIconDenied"
+          on:setEditModeInline="confirmEdit()">
+            <content></content>
+        </base-inline-control-title>
+    </confirm-edit-action>
+</inline-edit-control>

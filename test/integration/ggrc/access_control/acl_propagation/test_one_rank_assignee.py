@@ -1,4 +1,4 @@
-# Copyright (C) 2018 Google Inc.
+# Copyright (C) 2019 Google Inc.
 # Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 
 """Test Access Control roles Assignee propagation"""
@@ -27,6 +27,26 @@ class TestAssigneePropagation(base.TestACLPropagation):
               "create_and_map_document_comment": True,
               "read_document_comment": True,
           },
+          "Universal KeyReport": {
+              "create_and_map_document": True,
+              "read_document": True,
+              "update_document": True,
+              "delete_document": False,
+              "create_and_map_comment": True,
+              "read_comment": True,
+              "create_and_map_document_comment": True,
+              "read_document_comment": True,
+          },
+          "Universal AccountBalance": {
+              "create_and_map_document": True,
+              "read_document": True,
+              "update_document": True,
+              "delete_document": False,
+              "create_and_map_comment": True,
+              "read_comment": True,
+              "create_and_map_document_comment": True,
+              "read_document_comment": True,
+          },
       },
       "Reader": {
           "Universal DataAsset": {
@@ -39,9 +59,49 @@ class TestAssigneePropagation(base.TestACLPropagation):
               "create_and_map_document_comment": True,
               "read_document_comment": True,
           },
+          "Universal KeyReport": {
+              "create_and_map_document": True,
+              "read_document": True,
+              "update_document": True,
+              "delete_document": False,
+              "create_and_map_comment": True,
+              "read_comment": True,
+              "create_and_map_document_comment": True,
+              "read_document_comment": True,
+          },
+          "Universal AccountBalance": {
+              "create_and_map_document": True,
+              "read_document": True,
+              "update_document": True,
+              "delete_document": False,
+              "create_and_map_comment": True,
+              "read_comment": True,
+              "create_and_map_document_comment": True,
+              "read_document_comment": True,
+          },
       },
       "Editor": {
           "Universal Facility": {
+              "create_and_map_document": True,
+              "read_document": True,
+              "update_document": True,
+              "delete_document": False,
+              "create_and_map_comment": True,
+              "read_comment": True,
+              "create_and_map_document_comment": True,
+              "read_document_comment": True,
+          },
+          "Universal KeyReport": {
+              "create_and_map_document": True,
+              "read_document": True,
+              "update_document": True,
+              "delete_document": False,
+              "create_and_map_comment": True,
+              "read_comment": True,
+              "create_and_map_document_comment": True,
+              "read_document_comment": True,
+          },
+          "Universal AccountBalance": {
               "create_and_map_document": True,
               "read_document": True,
               "update_document": True,

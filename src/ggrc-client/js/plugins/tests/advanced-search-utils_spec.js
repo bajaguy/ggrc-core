@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2018 Google Inc.
+  Copyright (C) 2019 Google Inc.
   Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 */
 
@@ -400,6 +400,34 @@ describe('AdvancedSearch', () => {
         expect(QueryParser.joinQueries).toHaveBeenCalled();
         expect(result).toBe('joined');
       });
+    });
+  });
+
+  describe('setDefaultStatusConfig() function', () => {
+    let statesSpy;
+    const emptyStatusConfig = new can.Map(AdvancedSearch.create.state());
+    const createDummyStatusConfig = () => (
+      AdvancedSearch.setDefaultStatusConfig(emptyStatusConfig, 'someModel')
+    );
+
+    beforeEach(() => {
+      statesSpy = spyOn(StateUtils, 'getStatesForModel');
+    });
+
+    it("assigns states to items of statusConfig if items aren't defined",
+      () => {
+        let states = ['state1', 'state2', 'state3'];
+        statesSpy.and.returnValue(states);
+        const statusConfig = createDummyStatusConfig();
+
+        expect(statusConfig.attr('items').serialize()).toEqual(states);
+      }
+    );
+
+    it('assigns "ANY" to operator if it is not defined', () => {
+      const statusConfig = createDummyStatusConfig();
+
+      expect(statusConfig.attr('operator')).toBe('ANY');
     });
   });
 });

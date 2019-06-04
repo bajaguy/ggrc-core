@@ -1,5 +1,5 @@
 /*
-    Copyright (C) 2018 Google Inc.
+    Copyright (C) 2019 Google Inc.
     Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 */
 
@@ -12,6 +12,7 @@ import Search from '../models/service-models/search';
 import {bindXHRToButton} from '../plugins/utils/modals';
 import {getInstance} from '../plugins/utils/models-utils';
 import * as businessModels from '../models/business-models';
+import {InfiniteScrollControl, LhnTooltipsControl} from '../controllers/infinite-scroll-controller';
 
 (function ($) {
   'use strict';
@@ -59,7 +60,7 @@ import * as businessModels from '../models/business-models';
             if (objs.length || isNextPage) {
               // Envelope the object to not break model instance due to
               // shallow copy done by jQuery in `response()`
-              objs = can.map(objs, function (obj) {
+              objs = _.filteredMap(objs, (obj) => {
                 return {
                   item: obj,
                 };
@@ -202,9 +203,8 @@ import * as businessModels from '../models/business-models';
       if (baseSearch) {
         searchtypes = baseSearch.trim().split(',');
 
-        this.options.searchtypes = can.map(searchtypes, function (typeName) {
-          return businessModels[typeName].model_singular;
-        });
+        this.options.searchtypes = _.filteredMap(searchtypes,
+          (typeName) => businessModels[typeName].model_singular);
       }
     },
 
@@ -217,9 +217,7 @@ import * as businessModels from '../models/business-models';
         model_class: modelClass,
         model: model,
         // Reverse the enveloping we did 25 lines up
-        items: can.map(items, function (item) {
-          return item.item;
-        }),
+        items: _.filteredMap(items, (item) => item.item),
       };
     },
 
@@ -234,9 +232,9 @@ import * as businessModels from '../models/business-models';
           model &&
           GGRC.Templates[model.table_plural + '/autocomplete_result']
         ) {
-          template = '/' + model.table_plural + '/autocomplete_result.mustache';
+          template = '/' + model.table_plural + '/autocomplete_result.stache';
         } else {
-          template = '/base_objects/autocomplete_result.mustache';
+          template = '/base_objects/autocomplete_result.stache';
         }
       }
 
@@ -259,9 +257,7 @@ import * as businessModels from '../models/business-models';
             try {
               listItems = context.attr('items');
               context.attr('oldLen', listItems.length);
-              listItems.push(...can.map(items, function (item) {
-                return item.item;
-              }));
+              listItems.push(..._.filteredMap(items, (item) => item.item));
             } catch (error) {
               // Really ugly way to hide canjs exception during scrolling.
               // Please note that it occurs in really rear cases.
@@ -269,7 +265,7 @@ import * as businessModels from '../models/business-models';
               console.warn(error);
             }
 
-            context.removeAttr('items_loading');
+            context.attr('items_loading', false);
             _.defer(function () {
               context.attr('scroll_op_in_progress', false);
             });
@@ -280,13 +276,15 @@ import * as businessModels from '../models/business-models';
         /* webpackChunkName: "infiniteScroll" */
         '../controllers/infinite-scroll-controller'
       ).then(() => {
-        can.view.render(GGRC.mustache_path + template,
-          context, function (frag) {
-            $ul.html(frag);
-            $ul.cms_controllers_lhn_tooltips()
-              .cms_controllers_infinite_scroll();
-            can.view.hookup(ul);
-          });
+        $.ajax({
+          url: GGRC.templates_path + template,
+          dataType: 'text',
+        }).then((view) => {
+          let frag = can.stache(view)(context);
+          $ul.html(frag);
+          new LhnTooltipsControl($ul);
+          new InfiniteScrollControl($ul);
+        });
       });
     },
   });
@@ -323,9 +321,8 @@ import * as businessModels from '../models/business-models';
             let ids = responseArr[objName].ids;
             let model = businessModels[objName];
 
-            let res = can.map(ids, (id) => {
-              return getInstance(model.shortName, id);
-            });
+            let res = _.filteredMap(ids, (id) =>
+              getInstance(model.model_singular, id));
             dfd.resolve(res);
           });
 

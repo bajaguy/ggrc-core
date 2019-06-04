@@ -1,4 +1,4 @@
-# Copyright (C) 2018 Google Inc.
+# Copyright (C) 2019 Google Inc.
 # Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 
 """Test default slug prefix values."""
@@ -18,6 +18,7 @@ class TestSlugPrefix(unittest.TestCase):
 
   EXPECTED_PREFIXES = {
       'AccessGroup': 'ACCESSGROUP',
+      'AccountBalance': 'ACCOUNTBALANCE',
       'Assessment': 'ASSESSMENT',
       'AssessmentTemplate': 'TEMPLATE',
       'Audit': 'AUDIT',
@@ -55,6 +56,7 @@ class TestSlugPrefix(unittest.TestCase):
       'Metric': 'METRIC',
       'ProductGroup': 'PRODUCTGROUP',
       'TechnologyEnvironment': 'TECHNOLOGYENVIRONMENT',
+      'KeyReport': 'KEYREPORT',
   }
 
   @ddt.data(*all_models.all_models)

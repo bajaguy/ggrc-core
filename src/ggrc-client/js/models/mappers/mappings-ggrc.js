@@ -1,247 +1,267 @@
 /*
-    Copyright (C) 2018 Google Inc.
+    Copyright (C) 2019 Google Inc.
     Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 */
 
-import {
-  Proxy,
-  Direct,
-  Search,
-} from '../mappers/mapper-helpers';
+import {Direct} from '../mappers/mapper-helpers';
 import Mappings from './mappings';
-import CustomAttributeDefinition from '../custom-attributes/custom-attribute-definition';
-import AccessControlRole from '../custom-roles/access-control-role';
+
+import {
+  businessObjects,
+  coreObjects,
+  scopingObjects,
+  snapshotableObjects,
+  externalDirectiveObjects,
+  externalBusinessObjects,
+} from '../../plugins/models-types-collections';
 import {getRoleableModels} from '../../plugins/utils/models-utils';
 
-const businessObjects = [
-  'Assessment', 'AccessGroup', 'Audit', 'Contract', 'Control', 'DataAsset',
-  'Document', 'Facility', 'Issue', 'Market', 'Metric', 'Objective', 'OrgGroup',
-  'Policy', 'Process', 'Product', 'ProductGroup', 'Program', 'Project',
-  'Regulation', 'Requirement', 'Risk', 'Standard', 'System',
-  'TechnologyEnvironment', 'Threat', 'Vendor',
-];
+/*
+  To configure a new mapping, use the following format :
+  { <source object type> : {
+      map : [ <object name>, ...]
+      unmap : [ <object name>, ...]
+      indirectMappings: [ <object name>, ...]
+      mappers : {
+        <mapping name>: Direct(...)
+      }
+    }
+  }
 
-const coreObjects = _.difference(businessObjects,
-  ['Assessment', 'Audit', 'Document', 'Program']);
+  <create> - models that cannot be mapped but can be created in scope of source
+    object
+  <map> - models that can be mapped to source object directly
+    using object mapper
+  <externalMap> - models that can be mapped only through external system
+    not locally
+  <unmap> - models that can be unmapped from source
+  <indirectMappings> - models which cannot be directly mapped to object
+    through Relationship but linked by another way. Currently used for Mapping
+    Filter in Object mapper and Global Search
+  <mappers> - custom mappings
+*/
 
-const scopingObjects = [
-  'AccessGroup', 'DataAsset', 'Facility', 'Market', 'Metric', 'OrgGroup',
-  'Process', 'Product', 'ProductGroup', 'Project', 'System',
-  'TechnologyEnvironment', 'Vendor',
-];
+const roleableObjects = getRoleableModels()
+  .map((model) => model.model_singular);
 
-new Mappings('ggrc_core', {
-  base: {},
-  relatedMappings: {
-    _related: ['Assessment', 'Person', 'TaskGroup', 'Workflow'],
-  },
-  relatedObject: {
-    related_objects_as_source: Proxy(
-      null, 'destination', 'Relationship', 'source', 'related_destinations'),
-  },
+const createRule = {
+  create: ['CycleTaskGroupObjectTask'],
+};
 
+const coreObjectConfig = {
+  ...createRule,
+  map: _.difference(businessObjects, ['Assessment']),
+  unmap: _.difference(businessObjects, ['Assessment', 'Audit']),
+  indirectMappings: ['Assessment', 'Person', 'TaskGroup', 'Workflow'],
+};
+
+const scopingObjectConfig = {
+  ...createRule,
+  map: _.difference(businessObjects,
+    ['Assessment', ...externalBusinessObjects, ...externalDirectiveObjects]),
+  externalMap: [...externalBusinessObjects, ...externalDirectiveObjects],
+  unmap: _.difference(businessObjects, ['Assessment', 'Audit']),
+  indirectMappings: ['Assessment', 'Person', 'TaskGroup', 'Workflow'],
+};
+
+new Mappings({
   Person: {
-    _related: ['CycleTaskGroupObjectTask', 'TaskGroupTask', 'Workflow',
-      ...getRoleableModels().map((model) => model.model_singular)],
+    indirectMappings: ['CycleTaskGroupObjectTask', 'TaskGroupTask', 'Workflow',
+      ...roleableObjects],
   },
 
   Program: {
-    _mixins: ['relatedObject'],
-    _canonical: {
-      related_objects_as_source:
-        [...coreObjects, 'Document'],
-    },
-    _related: ['Audit', 'Person', 'TaskGroup', 'Workflow'],
+    create: ['Audit', 'CycleTaskGroupObjectTask'],
+    map: [...coreObjects, 'Program', 'Document'],
+    unmap: [...coreObjects, 'Program', 'Document'],
+    indirectMappings: ['Person', 'TaskGroup', 'Workflow'],
   },
 
   Document: {
-    _mixins: ['relatedObject'],
-    _canonical: {
-      related_objects_as_source: [...coreObjects, 'Program'],
-    },
-    _related: ['Person'],
+    map: [...coreObjects, 'Program'],
+    unmap: [...coreObjects, 'Program'],
+    indirectMappings: ['Person'],
   },
 
   // Core objects
-  coreObjectsMappings: {
-    _mixins: ['relatedObject', 'relatedMappings'],
-    _canonical: {
-      related_objects_as_source:
-        _.difference(businessObjects, ['Assessment']),
-    },
-  },
-
   Issue: {
-    _mixins: ['relatedObject'],
-    _canonical: {
-      related_objects_as_source: [...coreObjects, 'Document', 'Program'],
-    },
-    _related: ['Assessment', 'Audit', 'Person', 'TaskGroup', 'Workflow'],
+    ...createRule,
+    map: [...coreObjects, 'Document', 'Program'],
+    // mapping audit and assessment to issue is not allowed,
+    // but unmapping possible
+    unmap: [...coreObjects, 'Assessment', 'Audit', 'Document', 'Program'],
+    indirectMappings: ['Assessment', 'Audit', 'Person', 'TaskGroup',
+      'Workflow'],
   },
   Contract: {
-    _mixins: ['coreObjectsMappings'],
-    _canonical: {
-      related_objects_as_source:
-        _.difference(businessObjects, ['Assessment', 'Contract']),
-    },
+    ...createRule,
+    map: _.difference(businessObjects, ['Assessment', 'Contract']),
+    unmap: _.difference(businessObjects, ['Assessment', 'Audit', 'Contract']),
+    indirectMappings: ['Assessment', 'Person', 'TaskGroup', 'Workflow'],
   },
   Control: {
-    _mixins: ['coreObjectsMappings'],
+    ...createRule,
+    map: _.difference(businessObjects,
+      ['Assessment', ...scopingObjects, ...externalDirectiveObjects, 'Risk']),
+    externalMap: [...scopingObjects, ...externalDirectiveObjects, 'Risk'],
+    unmap: _.difference(businessObjects, ['Assessment', 'Audit']),
+    indirectMappings: ['Assessment', 'Person', 'TaskGroup', 'Workflow'],
   },
   Objective: {
-    _mixins: ['coreObjectsMappings'],
+    ...coreObjectConfig,
   },
   Policy: {
-    _mixins: ['coreObjectsMappings'],
-    _canonical: {
-      related_objects_as_source:
-        _.difference(businessObjects, ['Assessment', 'Policy']),
-    },
+    ...createRule,
+    map: _.difference(businessObjects, ['Assessment', 'Policy']),
+    unmap: _.difference(businessObjects, ['Assessment', 'Audit', 'Policy']),
+    indirectMappings: ['Assessment', 'Person', 'TaskGroup', 'Workflow'],
   },
   Requirement: {
-    _mixins: ['coreObjectsMappings'],
+    ...coreObjectConfig,
   },
   Regulation: {
-    _mixins: ['relatedObject'],
-    _canonical: {
-      related_objects_as_source:
-        _.difference(businessObjects,
-          [...scopingObjects, 'Assessment', 'Regulation']),
-    },
-    _related:
-      [...scopingObjects, 'Assessment', 'Person', 'TaskGroup', 'Workflow'],
+    ...createRule,
+    map: _.difference(businessObjects,
+      [...scopingObjects, 'Assessment', 'Regulation',
+        ...externalBusinessObjects]),
+    externalMap: [...scopingObjects, ...externalBusinessObjects],
+    unmap: _.difference(businessObjects,
+      ['Assessment', 'Audit', 'Regulation']),
+    indirectMappings: ['Assessment', 'Person', 'TaskGroup', 'Workflow'],
   },
   Risk: {
-    _mixins: ['coreObjectsMappings'],
+    ...createRule,
+    map: _.difference(businessObjects, ['Assessment',
+      ...scopingObjects,
+      ...externalDirectiveObjects, 'Control']),
+    externalMap: [...scopingObjects, ...externalDirectiveObjects, 'Control'],
+    unmap: _.difference(businessObjects, ['Assessment', 'Audit']),
+    indirectMappings: ['Assessment', 'Person', 'TaskGroup', 'Workflow'],
   },
   Standard: {
-    _mixins: ['relatedObject'],
-    _canonical: {
-      related_objects_as_source:
-        _.difference(businessObjects,
-          [...scopingObjects, 'Assessment', 'Standard']),
-    },
-    _related:
-      [...scopingObjects, 'Assessment', 'Person', 'TaskGroup', 'Workflow'],
+    ...createRule,
+    map: _.difference(businessObjects,
+      [...scopingObjects, 'Assessment', 'Standard',
+        ...externalBusinessObjects]),
+    externalMap: [...scopingObjects, ...externalBusinessObjects],
+    unmap: _.difference(businessObjects,
+      ['Assessment', 'Audit', 'Standard']),
+    indirectMappings: ['Assessment', 'Person', 'TaskGroup', 'Workflow'],
   },
   Threat: {
-    _mixins: ['coreObjectsMappings'],
+    ...coreObjectConfig,
   },
 
   // Scoping objects
-  scopingObjectsMappings: {
-    _mixins: ['relatedObject'],
-    _canonical: {
-      related_objects_as_source:
-        _.difference(businessObjects,
-          ['Assessment', 'Standard', 'Regulation']),
-    },
-    _related: ['Assessment', 'Person', 'Regulation', 'Standard', 'TaskGroup',
-      'Workflow'],
-  },
   AccessGroup: {
-    _mixins: ['scopingObjectsMappings'],
-    _canonical: {
-      related_objects_as_source:
-        _.difference(businessObjects,
-          ['Assessment', 'AccessGroup', 'Standard', 'Regulation']),
-    },
+    ...createRule,
+    map: _.difference(businessObjects,
+      ['Assessment', 'AccessGroup',
+        ...externalBusinessObjects,
+        ...externalDirectiveObjects,
+      ]),
+    externalMap: [...externalBusinessObjects, ...externalDirectiveObjects],
+    unmap: _.difference(businessObjects,
+      ['Assessment', 'AccessGroup', 'Audit']),
+    indirectMappings: ['Assessment', 'Person', 'TaskGroup', 'Workflow'],
+  },
+  AccountBalance: {
+    ...scopingObjectConfig,
   },
   DataAsset: {
-    _mixins: ['scopingObjectsMappings'],
+    ...scopingObjectConfig,
   },
   Facility: {
-    _mixins: ['scopingObjectsMappings'],
+    ...scopingObjectConfig,
+  },
+  KeyReport: {
+    ...scopingObjectConfig,
   },
   Market: {
-    _mixins: ['scopingObjectsMappings'],
+    ...scopingObjectConfig,
   },
   Metric: {
-    _mixins: ['scopingObjectsMappings'],
+    ...scopingObjectConfig,
   },
   OrgGroup: {
-    _mixins: ['scopingObjectsMappings'],
+    ...scopingObjectConfig,
   },
   Process: {
-    _mixins: ['scopingObjectsMappings'],
+    ...scopingObjectConfig,
   },
   Product: {
-    _mixins: ['scopingObjectsMappings'],
+    ...scopingObjectConfig,
   },
   ProductGroup: {
-    _mixins: ['scopingObjectsMappings'],
+    ...scopingObjectConfig,
   },
   Project: {
-    _mixins: ['scopingObjectsMappings'],
+    ...scopingObjectConfig,
   },
   System: {
-    _mixins: ['scopingObjectsMappings'],
+    ...scopingObjectConfig,
   },
   TechnologyEnvironment: {
-    _mixins: ['scopingObjectsMappings'],
+    ...scopingObjectConfig,
   },
   Vendor: {
-    _mixins: ['scopingObjectsMappings'],
+    ...scopingObjectConfig,
   },
 
   // Audit
   Audit: {
-    _mixins: ['relatedObject'],
-    _canonical: {
-      related_objects_as_source: coreObjects,
-    },
-    _related:
-      ['Assessment', 'AssessmentTemplate', 'Evidence', 'Person', 'Program'],
+    create: ['Assessment', 'AssessmentTemplate', 'CycleTaskGroupObjectTask'],
+    map: [...snapshotableObjects, 'Issue'],
+    unmap: ['Issue'],
+    indirectMappings: ['Evidence', 'Person', 'Program'],
   },
   Assessment: {
-    _mixins: ['relatedObject'],
-    _canonical: {
-      related_objects_as_source: coreObjects,
-    },
-    _related: ['Audit', 'Evidence', 'Person'],
+    map: [...snapshotableObjects, 'Issue'],
+    unmap: [...snapshotableObjects, 'Issue'],
+    indirectMappings: ['Audit', 'Evidence', 'Person'],
   },
   Evidence: {
-    _related: ['Assessment', 'Audit', 'Person'],
+    indirectMappings: ['Assessment', 'Audit', 'Person'],
   },
   AssessmentTemplate: {
-    _related: ['Audit'],
+    indirectMappings: ['Audit'],
+  },
+
+  // Workflow
+  TaskGroup: {
+    map: [...coreObjects, 'Program'],
+    unmap: [...coreObjects, 'Program'],
+    indirectMappings: ['Workflow'],
+  },
+  TaskGroupTask: {
+    indirectMappings: ['Person', 'Workflow'],
+  },
+  Workflow: {
+    indirectMappings: ['Person', 'TaskGroup', 'TaskGroupTask'],
+  },
+  CycleTaskGroupObjectTask: {
+    map: [...coreObjects, 'Audit', 'Program'],
+    unmap: [...coreObjects, 'Audit', 'Program'],
+    indirectMappings: ['Person', 'Workflow'],
   },
 
   // Other
   UserRole: {
-    person: Direct('Person', 'user_roles', 'person'),
-    role: Direct('Role', 'user_roles', 'role'),
-  },
-  MultitypeSearch: {
-    _canonical: {
-      related_objects_as_source: [
-        'AccessGroup', 'Assessment', 'AssessmentTemplate', 'Audit',
-        'Contract', 'Control', 'CycleTaskGroupObjectTask', 'DataAsset',
-        'Document', 'Evidence', 'Facility', 'Issue', 'Market', 'Metric',
-        'Objective', 'OrgGroup', 'Person', 'Process', 'Product',
-        'ProductGroup', 'Project', 'Policy', 'Program', 'Regulation',
-        'Requirement', 'Risk', 'Standard', 'System', 'TaskGroup',
-        'TaskGroupTask', 'TechnologyEnvironment', 'Threat',
-        'Vendor', 'Workflow',
-      ],
+    mappers: {
+      person: Direct('Person', 'user_roles', 'person'),
+      role: Direct('Role', 'user_roles', 'role'),
     },
   },
-  // Used by Custom Attributes widget
-  CustomAttributable: {
-    custom_attribute_definitions: Search(function (binding) {
-      return CustomAttributeDefinition.findAll({
-        definition_type: binding.instance.root_object,
-        definition_id: null,
-      });
-    }, 'CustomAttributeDefinition'),
-  },
-  // used by the Custom Roles admin panel tab
-  Roleable: {
-    access_control_roles: Search(function (binding) {
-      return AccessControlRole.findAll({
-        object_type: binding.instance.model_singular,
-        internal: false,
-      });
-    }, 'AccessControlRole'),
+  MultitypeSearch: {
+    map: [
+      'AccessGroup', 'AccountBalance', 'Assessment', 'AssessmentTemplate',
+      'Audit', 'Contract', 'Control', 'CycleTaskGroupObjectTask', 'DataAsset',
+      'Document', 'Evidence', 'Facility', 'Issue', 'KeyReport', 'Market',
+      'Metric', 'Objective', 'OrgGroup', 'Person', 'Process', 'Product',
+      'ProductGroup', 'Project', 'Policy', 'Program', 'Regulation',
+      'Requirement', 'Risk', 'Standard', 'System', 'TaskGroup',
+      'TaskGroupTask', 'TechnologyEnvironment', 'Threat',
+      'Vendor', 'Workflow',
+    ],
   },
 });

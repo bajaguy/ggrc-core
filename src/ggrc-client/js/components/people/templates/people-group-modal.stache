@@ -1,0 +1,84 @@
+{{!
+  Copyright (C) 2019 Google Inc.
+  Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
+}}
+
+<simple-modal modalTitle:from="title"
+              state:from="modalState"
+              replaceContent:from="true"
+              extraCssClass:from="'people-group-modal'"
+              on:hide="cancel()">
+  <div class="simple-modal__header flex-box flex-row">
+    <div class="simple-modal__header-text flex-size-1">
+      <div class="simple-modal__title">
+        <div class="simple-modal__title__name">
+          {{title}}
+        </div>
+      </div>
+    </div>
+    <button type="button" class="btn btn-small btn-icon" on:el:click="cancel()">
+      <i class="fa fa-times black"></i>
+    </button>
+  </div>
+
+  <div class="simple-modal__body {{#if isLoading}}loading{{/if}}">
+    <div class="simple-modal__section simple-modal__sub-header-section">
+      <p>
+        Add person
+      </p>
+      {{#if isLoading}}
+        <spinner-component toggle:from="isLoading"></spinner-component>
+      {{else}}
+        {{#if_config_exist 'external_services.Person'}}
+          <external-data-autocomplete type:from="'Person'"
+                                      placeholder:from="'Type person'"
+                                      minLength:from="2"
+                                      on:itemSelected="personSelected(scope.event.selectedItem)">
+          </external-data-autocomplete>
+        {{else}}
+          <autocomplete-component searchItemsType:from="'Person'"
+                        on:itemSelected="personSelected(scope.event.selectedItem)"
+                        placeholder:from="'Type person'">
+          </autocomplete-component>
+        {{/if_config_exist}}
+      {{/if}}
+    </div>
+    <div class="simple-modal__section people-group-modal__people-section">
+      <div>
+        <object-list items:bind="people"
+                     isDisabled:from="isLoading"
+                     emptyMessage:from="emptyListMessage">
+            <person-data person:from="{.}">
+              {{#unmapablePerson}}
+                <a href="javascript://"
+                  class="people-group-modal__unmap {{#if isDisabled}}disabled{{/if}}"
+                  on:el:click="unmap(person)">
+                    <i class="fa fa-close"></i>
+                </a>
+              {{/unmapablePerson}}
+            </person-data>
+        </object-list>
+      </div>
+    </div>
+  </div>
+
+  <div class="simple-modal__footer">
+    <div class="simple-modal__toolbar people-group-modal__footer">
+      <button type="button"
+              class="btn btn-green people-group-modal__button"
+              on:el:click="save()"
+        {{#if isLoading}}disabled{{/if}}>
+        Save &amp; Close
+      </button>
+      <button type="button"
+              class="btn btn-small people-group-modal__button btn-white"
+              on:el:click="cancel()"
+        {{#if isLoading}}disabled{{/if}}>
+        Cancel
+      </button>
+      <div class="people-group-modal__selected-count">
+        {{selectedCount}}
+      </div>
+    </div>
+  </div>
+</simple-modal>

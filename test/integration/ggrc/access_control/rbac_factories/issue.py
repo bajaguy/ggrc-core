@@ -1,4 +1,4 @@
-# Copyright (C) 2018 Google Inc.
+# Copyright (C) 2019 Google Inc.
 # Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 
 """Issue RBAC Factory."""
@@ -61,6 +61,7 @@ class IssueRBACFactory(base.BaseRBACFactory):
             }],
             "title": factories.random_str(),
             "context": None,
+            "due_date": "10/10/2019"
         }
     })
 
@@ -133,7 +134,8 @@ class IssueRBACFactory(base.BaseRBACFactory):
                 "type": assessment.type,
             },
             "title": factories.random_str(),
-            "context": None
+            "context": None,
+            "due_date": "10/10/2019"
         }
     }]
     return self.api.post(all_models.Issue, data)

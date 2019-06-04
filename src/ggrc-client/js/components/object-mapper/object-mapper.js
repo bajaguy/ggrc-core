@@ -1,5 +1,5 @@
 /*
- Copyright (C) 2018 Google Inc.
+ Copyright (C) 2019 Google Inc.
  Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
  */
 
@@ -10,13 +10,14 @@ import '../../components/advanced-search/advanced-search-wrapper';
 import '../../components/unified-mapper/mapper-results';
 import '../../components/collapsible-panel/collapsible-panel';
 import '../../components/mapping-controls/mapping-type-selector';
+import '../questionnaire-mapping-link/questionnaire-mapping-link';
+import './create-and-map';
 
-import template from './object-mapper.mustache';
+import template from './object-mapper.stache';
 
 import tracker from '../../tracker';
 import ObjectOperationsBaseVM from '../view-models/object-operations-base-vm';
 import {
-  isInScopeModel,
   isSnapshotModel,
   isSnapshotParent,
 } from '../../plugins/utils/snapshot-utils';
@@ -27,14 +28,19 @@ import {
   REFRESH_MAPPING,
   REFRESH_SUB_TREE,
   BEFORE_MAPPING,
+  OBJECTS_MAPPED_VIA_MAPPER,
   DEFERRED_MAP_OBJECTS,
 } from '../../events/eventTypes';
 import Mappings from '../../models/mappers/mappings';
 import {mapObjects as mapObjectsUtil} from '../../plugins/utils/mapper-utils';
 import * as businessModels from '../../models/business-models';
 import TreeViewConfig from '../../apps/base_widgets';
+import {confirm} from '../../plugins/utils/modals';
+import {isMegaMapping} from '../../plugins/utils/mega-object-utils';
+import pubSub from '../../pub-sub';
 
 let DEFAULT_OBJECT_MAP = {
+  AccountBalance: 'Control',
   Assessment: 'Control',
   Objective: 'Control',
   Requirement: 'Objective',
@@ -45,6 +51,7 @@ let DEFAULT_OBJECT_MAP = {
   Contract: 'Requirement',
   Control: 'Objective',
   System: 'Product',
+  KeyReport: 'Control',
   Metric: 'Product',
   Process: 'Risk',
   AccessGroup: 'System',
@@ -61,7 +68,6 @@ let DEFAULT_OBJECT_MAP = {
   Threat: 'Risk',
   Vendor: 'Program',
   Audit: 'Product',
-  RiskAssessment: 'Program',
   TaskGroup: 'Control',
   TechnologyEnvironment: 'Product',
 };
@@ -81,7 +87,8 @@ let getDefaultType = function (type, object) {
  */
 export default can.Component.extend({
   tag: 'object-mapper',
-  template,
+  view: can.stache(template),
+  leakScope: true,
   viewModel: function (attrs, parentViewModel) {
     let config = {
       general: parentViewModel.attr('general'),
@@ -94,6 +101,10 @@ export default can.Component.extend({
     );
 
     return ObjectOperationsBaseVM.extend({
+      isRefreshCountsNeeded:
+        (parentViewModel.attr('is_refresh_counts_needed') !== undefined)
+          ? parentViewModel.attr('is_refresh_counts_needed')
+          : true,
       join_object_id: resolvedConfig.isNew ? null :
         resolvedConfig['join-object-id'] ||
         (getPageInstance() && getPageInstance().id),
@@ -118,34 +129,39 @@ export default can.Component.extend({
        * @property {boolean}
        */
       deferred: false,
-      allowedToCreate: function () {
-        // Don't allow to create new instances for "In Scope" Objects that
-        // are snapshots
-        let isInScopeSrc = isInScopeModel(this.attr('object'));
-
-        return !isInScopeSrc ||
-          (isInScopeSrc && !isSnapshotModel(this.attr('type')));
+      isMappableExternally: false,
+      searchModel: null,
+      /**
+       * Stores "id: relation" pairs for mega objects mapping
+       * @type {Object}
+       * @example
+       * {
+       *    1013: 'parent',
+       *    1025: 'child',
+       *    defaultValue: 'child',
+       * }
+       */
+      megaRelationObj: {
+        defaultValue: config.general.megaRelation || 'child',
       },
+      pubSub,
       showAsSnapshots: function () {
         if (this.attr('freezedConfigTillSubmit.useSnapshots')) {
           return true;
         }
         return false;
       },
-      showWarning: function () {
-        let isInScopeSrc = isInScopeModel(this.attr('object'));
+      isSnapshotMapping: function () {
         let isSnapshotParentSrc = isSnapshotParent(this.attr('object'));
         let isSnapshotParentDst = isSnapshotParent(this.attr('type'));
         let isSnapshotModelSrc = isSnapshotModel(this.attr('object'));
         let isSnapshotModelDst = isSnapshotModel(this.attr('type'));
 
         let result =
-          // Dont show message if source is inScope model, for example Assessment.
-          !isInScopeSrc &&
           // Show message if source is snapshotParent and destination is snapshotable.
-          ((isSnapshotParentSrc && isSnapshotModelDst) ||
+          (isSnapshotParentSrc && isSnapshotModelDst) ||
           // Show message if destination is snapshotParent and source is snapshotable.
-          (isSnapshotParentDst && isSnapshotModelSrc));
+          (isSnapshotParentDst && isSnapshotModelSrc);
 
         return result;
       },
@@ -154,42 +170,46 @@ export default can.Component.extend({
       },
       onSubmit: function () {
         this.updateFreezedConfigToLatest();
-        // calls base version
-        this._super(...arguments);
+        this.attr('searchModel', this.attr('model'));
+
+        let source = this.attr('object');
+        let destination = this.attr('type');
+        if (Mappings.shouldBeMappedExternally(source, destination)) {
+          this.attr('isMappableExternally', true);
+          return;
+        } else {
+          this.attr('isMappableExternally', false);
+          // calls base version
+          this._super(...arguments);
+        }
       },
     });
   },
 
   events: {
-    [`{parentInstance} ${MAP_OBJECTS.type}`](instance, event) {
-      this.mapObjects(event.objects);
+    [`{parentInstance} ${MAP_OBJECTS.type}`]([instance], event) {
+      // this event is called when objects just created and should be mapped
+      // so object-mapper modal should be closed and removed from DOM
+      this.closeModal();
+
+      if (event.objects.length) {
+        this.map(event.objects, event.options);
+      }
     },
-    '.create-control modal:success': function (el, ev, model) {
-      this.map(model);
-    },
-    '.create-control modal:added': function (el, ev, model) {
-      this.viewModel.attr('newEntries').push(model);
-    },
-    '.create-control click': function () {
-      // reset new entries
-      this.viewModel.attr('newEntries', []);
+    // hide object-mapper modal when create new object button clicked
+    'create-and-map click'() {
       this.element.trigger('hideModal');
     },
-    '.create-control modal:dismiss'() {
+    // close mapper as mapping will be handled externally
+    'create-and-map mapExternally'() {
       this.closeModal();
     },
-    '{window} modal:dismiss': function (el, ev, options) {
-      let joinObjectId = this.viewModel.attr('join_object_id');
-
-      // mapper sets uniqueId for modal-ajax.
-      // we can check using unique id which modal-ajax is closing
-      if (options && options.uniqueId &&
-        joinObjectId === options.uniqueId &&
-        this.viewModel.attr('newEntries').length > 0) {
-        this.mapObjects(this.viewModel.attr('newEntries'));
-      } else {
-        this.element.trigger('showModal');
-      }
+    // reopen object-mapper if creating was canceled
+    'create-and-map canceled'() {
+      this.element.trigger('showModal');
+    },
+    '{pubSub} mapAsChild'(el, ev) {
+      this.viewModel.attr('megaRelationObj')[ev.id] = ev.val;
     },
     inserted: function () {
       let self = this;
@@ -208,22 +228,27 @@ export default can.Component.extend({
         this.viewModel.attr('deferred_list', deferredToList);
       }
 
-      self.viewModel.attr('submitCbs').fire();
+      self.viewModel.onSubmit();
     },
-    map(model) {
+    map(objects, options) {
       const viewModel = this.viewModel;
-      const newEntries = viewModel.attr('newEntries');
 
       viewModel.updateFreezedConfigToLatest();
-      newEntries.push(model);
 
       if (this.viewModel.attr('deferred')) {
         // postpone map operation unless target object is saved
-        this.deferredSave(newEntries);
+        this.deferredSave(objects);
+      } else if (options && options.megaMapping) {
+        this.performMegaMap(objects, options.megaRelation);
       } else {
         // map objects immediately
-        this.mapObjects(newEntries);
+        this.mapObjects(objects);
       }
+    },
+    performMegaMap(objects, relation) {
+      const relationsObj = {};
+      objects.forEach((obj) => relationsObj[obj.id] = relation);
+      this.mapObjects(objects, true, relationsObj);
     },
     closeModal: function () {
       this.viewModel.attr('is_saving', false);
@@ -256,14 +281,41 @@ export default can.Component.extend({
       }
 
       const selectedObjects = this.viewModel.attr('selected');
+      // If we need to map object later on (set by 'data-deferred' attribute)
       // TODO: Figure out nicer / proper way to handle deferred save
       if (this.viewModel.attr('deferred')) {
         return this.deferredSave(selectedObjects);
       }
+
+      const megaMapping = isMegaMapping(this.viewModel.attr('object'),
+        this.viewModel.attr('type'));
+
+      if (megaMapping) {
+        this.proceedWithMegaMapping(selectedObjects);
+      } else {
+        this.proceedWithRegularMapping(selectedObjects);
+      }
+    },
+    proceedWithMegaMapping(selectedObjects) {
+      confirm({
+        modal_title: 'Confirmation',
+        modal_description: 'Objects from the child program will' +
+        ' automatically be mapped to parent program. Do you want' +
+        ' to proceed?',
+        modal_confirm: 'Proceed',
+        button_view:
+          `${GGRC.templates_path}/modals/confirm_cancel_buttons.stache`,
+      }, () => {
+        this.viewModel.attr('is_saving', true);
+        this.mapObjects(selectedObjects, true,
+          this.viewModel.attr('megaRelationObj'));
+      });
+    },
+    proceedWithRegularMapping(selectedObjects) {
       this.viewModel.attr('is_saving', true);
       this.mapObjects(selectedObjects);
     },
-    mapObjects(objects) {
+    mapObjects(objects, megaMapping, relationsObj) {
       const viewModel = this.viewModel;
       const object = viewModel.attr('object');
       const type = viewModel.attr('type');
@@ -283,10 +335,16 @@ export default can.Component.extend({
 
       mapObjectsUtil(instance, objects, {
         useSnapshots: viewModel.attr('useSnapshots'),
+        megaMapping,
+        relationsObj,
       })
         .then(() => {
           stopFn();
 
+          instance.dispatch({
+            ...OBJECTS_MAPPED_VIA_MAPPER,
+            objects,
+          });
           instance.dispatch('refreshInstance');
           instance.dispatch({
             ...REFRESH_MAPPING,
@@ -294,14 +352,15 @@ export default can.Component.extend({
           });
           instance.dispatch(REFRESH_SUB_TREE);
 
-          // This Method should be modified to event
-          refreshCounts();
+          if (viewModel.attr('isRefreshCountsNeeded')) {
+            // This Method should be modified to event
+            refreshCounts();
+          }
         })
         .catch((response, message) => {
           $('body').trigger('ajax:flash', {error: message});
         })
         .finally(() => {
-          viewModel.attr('is_saving', false);
           this.closeModal();
         });
     },

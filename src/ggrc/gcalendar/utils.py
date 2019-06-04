@@ -1,4 +1,4 @@
-# Copyright (C) 2018 Google Inc.
+# Copyright (C) 2019 Google Inc.
 # Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 
 """Module with gcalendar utils."""
@@ -23,6 +23,13 @@ def get_active_cycle_tasks_url(due_date):
       u'"Task Status" IN ("Assigned","In Progress")'
       u')) and "Task Due Date"={due_date}'
   ).format(due_date=due_date)
+  return base + urllib.quote(active_filter.encode('utf-8'))
+
+
+def get_cycle_tasks_url_by_slug(slug):
+  """Get CycleTask notification url based on slug."""
+  base = urljoin(get_url_root(), u"dashboard#!task&query=")
+  active_filter = u'"task slug"={slug}'.format(slug=slug)
   return base + urllib.quote(active_filter.encode('utf-8'))
 
 

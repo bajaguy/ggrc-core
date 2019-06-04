@@ -1,9 +1,8 @@
-# Copyright (C) 2018 Google Inc.
+# Copyright (C) 2019 Google Inc.
 # Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 """Date utils."""
 import datetime
 
-import holidays
 from dateutil import tz
 
 
@@ -20,16 +19,16 @@ def first_working_day(date):
   """Returns the nearest working day today or in past.
   This algorithm is used when back-end generates a cycle task.
   """
-  while _is_weekend(date) or date in holidays.UnitedStates():
+  while _is_weekend(date):
     date += datetime.timedelta(days=-1)
   return date
 
 
-def first_working_day_after_today(date):
+def first_working_day_after_today(date=datetime.date.today()):
   """Returns the nearest working day today or in future.
   """
   date = date + datetime.timedelta(days=1)
-  while _is_weekend(date) or date in holidays.UnitedStates():
+  while _is_weekend(date):
     date += datetime.timedelta(days=1)
   return date
 
@@ -81,3 +80,10 @@ def assert_chronological_order(list_of_datetimes):
   for i in range(len(list_of_datetimes) - 1):
     current_item, next_item = list_of_datetimes[i], list_of_datetimes[i + 1]
     assert current_item >= next_item
+
+
+def iso8601_to_ui_str_with_zone(iso8601_str):
+  """Converts ISO 8601 (yyyy-mm-ddThh:mm:ss) string to
+   (mm/dd/yyyy hh:mm:ss AM/PM) format."""
+  return datetime.datetime.strftime(
+      iso8601_to_local_datetime(iso8601_str), "%m/%d/%Y %I:%M:%S %p")

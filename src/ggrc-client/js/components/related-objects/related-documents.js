@@ -1,5 +1,5 @@
 /*
-    Copyright (C) 2018 Google Inc.
+    Copyright (C) 2019 Google Inc.
     Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 */
 
@@ -15,7 +15,7 @@ import {
   REFRESH_MAPPING,
   DESTINATION_UNMAPPED,
 } from '../../events/eventTypes';
-import pubsub from '../../pub-sub';
+import pubSub from '../../pub-sub';
 import Relationship from '../../models/service-models/relationship';
 import Context from '../../models/service-models/context';
 import Evidence from '../../models/business-models/evidence';
@@ -29,13 +29,14 @@ let DOCUMENT_KIND_MAP = {
 
 export default can.Component.extend({
   tag: 'related-documents',
-  viewModel: {
+  leakScope: true,
+  viewModel: can.Map.extend({
     instance: {},
     modelType: 'Document',
-    kind: '@',
+    kind: '',
     documents: [],
     isLoading: false,
-    pubsub,
+    pubSub,
     define: {
 
       // automatically refresh instance on related document create/remove
@@ -221,7 +222,7 @@ export default can.Component.extend({
         pageInstance.id
       );
     },
-  },
+  }),
   init: function () {
     let instance = this.viewModel.attr('instance');
     let isNew = instance.isNew();
@@ -234,12 +235,12 @@ export default can.Component.extend({
     }
   },
   events: {
-    [`{viewModel.instance} ${REFRESH_MAPPING.type}`](instance, event) {
+    [`{viewModel.instance} ${REFRESH_MAPPING.type}`]([instance], event) {
       if (this.viewModel.attr('modelType') === event.destinationType) {
         this.viewModel.refreshRelatedDocuments();
       }
     },
-    [`{viewModel.instance} ${DESTINATION_UNMAPPED.type}`](instance, event) {
+    [`{viewModel.instance} ${DESTINATION_UNMAPPED.type}`]([instance], event) {
       let item = event.item;
       let viewModel = this.viewModel;
 
@@ -248,7 +249,7 @@ export default can.Component.extend({
         viewModel.loadDocuments();
       }
     },
-    '{pubsub} objectDeleted'(pubsub, event) {
+    '{pubSub} objectDeleted'(pubSub, event) {
       let instance = event.instance;
       if (instance instanceof Evidence ||
         instance instanceof Document) {

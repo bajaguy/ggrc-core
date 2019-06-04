@@ -1,12 +1,12 @@
 /*
-    Copyright (C) 2018 Google Inc.
+    Copyright (C) 2019 Google Inc.
     Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 */
 
 import SummaryWidgetController from '../controllers/summary_widget_controller';
 import DashboardWidget from '../controllers/dashboard_widget_controller';
 import InfoWidget from '../controllers/info_widget_controller';
-import {getWidgetConfig} from '../plugins/utils/object-versions-utils';
+import {getWidgetConfig} from '../plugins/utils/widgets-utils';
 import Program from '../models/business-models/program';
 
 const widgetDescriptors = {};
@@ -26,10 +26,10 @@ export default can.Construct.extend({
     widgetView [optional] - a template for rendering the info.
   */
   make_info_widget: function (instance, widgetView) {
-    let defaultInfoWidgetView = GGRC.mustache_path +
-                                    '/base_objects/info.mustache';
+    let defaultInfoWidgetView = GGRC.templates_path +
+                                    '/base_objects/info.stache';
     return new this(
-      instance.constructor.shortName + ':info', {
+      instance.constructor.model_singular + ':info', {
         widget_id: 'info',
         widget_name: function () {
           if (instance.constructor.title_singular === 'Person') {
@@ -55,10 +55,10 @@ export default can.Construct.extend({
     widgetView [optional] - a template for rendering the info.
   */
   make_summary_widget: function (instance, widgetView) {
-    let defaultView = GGRC.mustache_path +
-      '/base_objects/summary.mustache';
+    let defaultView = GGRC.templates_path +
+      '/base_objects/summary.stache';
     return new this(
-      instance.constructor.shortName + ':summary', {
+      instance.constructor.model_singular + ':summary', {
         widget_id: 'summary',
         widget_name: function () {
           return instance.constructor.title_singular + ' Summary';
@@ -75,10 +75,10 @@ export default can.Construct.extend({
       });
   },
   make_dashboard_widget: function (instance, widgetView) {
-    let defaultView = GGRC.mustache_path +
-      '/base_objects/dashboard.mustache';
+    let defaultView = GGRC.templates_path +
+      '/base_objects/dashboard.stache';
     return new this(
-      instance.constructor.shortName + ':dashboard', {
+      instance.constructor.model_singular + ':dashboard', {
         widget_id: 'dashboard',
         widget_name: function () {
           if (instance.constructor.title_singular === 'Person') {
@@ -106,16 +106,21 @@ export default can.Construct.extend({
   */
   make_tree_view: function (instance, farModel, extenders, id) {
     let descriptor;
-    let objectVersionConfig = getWidgetConfig(id);
+    let objectConfig = getWidgetConfig(id);
+
     // Should not even try to create descriptor if configuration options are missing
     if (!instance || !farModel) {
       console.warn(
         `Arguments are missing or have incorrect format ${arguments}`);
       return null;
     }
-    let widgetId = objectVersionConfig.isObjectVersion ?
+
+    let widgetId = objectConfig.isObjectVersion ?
       farModel.table_singular + '_version' :
-      farModel.table_singular;
+      (objectConfig.isMegaObject ?
+        farModel.table_singular + '_' + objectConfig.relation :
+        farModel.table_singular);
+
     descriptor = {
       widgetType: 'treeview',
       treeViewDepth: 2,
@@ -130,21 +135,23 @@ export default can.Construct.extend({
         return true;
       },
       widget_name: function () {
-        let farModelName = objectVersionConfig.isObjectVersion ?
-          objectVersionConfig.widgetName :
-          farModel.title_plural;
+        let farModelName =
+          objectConfig.isObjectVersion || objectConfig.isMegaObject ?
+            objectConfig.widgetName :
+            farModel.title_plural;
 
         return farModelName;
       },
       widget_icon: farModel.table_singular,
       object_category: farModel.category || 'default',
       model: farModel,
-      objectVersion: objectVersionConfig.isObjectVersion,
+      objectVersion: objectConfig.isObjectVersion,
       content_controller_options: {
         parent_instance: instance,
         model: farModel,
-        objectVersion: objectVersionConfig.isObjectVersion,
-        countsName: objectVersionConfig.countsName,
+        objectVersion: objectConfig.isObjectVersion,
+        megaRelated: objectConfig.isMegaObject,
+        countsName: objectConfig.countsName,
         widgetId,
       },
     };
@@ -152,8 +159,8 @@ export default can.Construct.extend({
     $.extend(...([true, descriptor].concat(extenders || [])));
 
     return new this(
-      instance.constructor.shortName + ':' +
-      id || instance.constructor.shortName,
+      instance.constructor.model_singular + ':' +
+      id || instance.constructor.model_singular,
       descriptor
     );
   },

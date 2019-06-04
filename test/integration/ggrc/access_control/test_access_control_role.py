@@ -1,4 +1,4 @@
-# Copyright (C) 2018 Google Inc.
+# Copyright (C) 2019 Google Inc.
 # Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 
 """Test Access Control Role"""
@@ -17,7 +17,7 @@ from integration.ggrc.generator import ObjectGenerator
 
 ROLE_NAME = "ACR for mandatory test"
 MANDATORY_ROLE_RESPONSE = {
-    "Control": {"row_warnings": {errors.OWNER_MISSING.format(
+    "Program": {"row_warnings": {errors.OWNER_MISSING.format(
         line=3, column_name=ROLE_NAME)}}}
 NON_MANDATORY_ROLE_RESPONSE = {}
 
@@ -37,14 +37,14 @@ class TestAccessControlRole(TestCase):
           data={"name": name}, user_role=name)
       self.people[name] = user
 
-  def _post_role(self, name=None):
+  def _post_role(self, name=None, object_type="Control"):
     """Helper function for POSTing roles"""
     if name is None:
       name = random_str(prefix="Access Control Role - ")
     return self.api.post(AccessControlRole, {
         "access_control_role": {
             "name": name,
-            "object_type": "Control",
+            "object_type": object_type,
             "context": None,
             "read": True
         },
@@ -52,16 +52,16 @@ class TestAccessControlRole(TestCase):
 
   def test_create_after_objects(self):
     """Test eager creation of ACLs on existing objects with new ACR."""
-    control_id = factories.ControlFactory().id
+    program_id = factories.ProgramFactory().id
     role_name = "New Custom Role"
-    self._post_role(name=role_name)
-    control = all_models.Control.query.get(control_id)
-    self.assertIn(role_name, control.acr_name_acl_map.keys())
-    self.assertIsNotNone(control.acr_name_acl_map[role_name])
+    self._post_role(name=role_name, object_type="Program")
+    program = all_models.Program.query.get(program_id)
+    self.assertIn(role_name, program.acr_name_acl_map.keys())
+    self.assertIsNotNone(program.acr_name_acl_map[role_name])
 
   def test_create(self):
     """Test Access Control Role creation"""
-    response = self._post_role()
+    response = self._post_role(object_type="Program")
     assert response.status_code == 201, \
         "Failed to create a new access control role, response was {}".format(
             response.status)
@@ -84,26 +84,26 @@ class TestAccessControlRole(TestCase):
     """Test set empty field via import if acr mandatory is {mandatory}"""
     role = factories.AccessControlRoleFactory(
         name=ROLE_NAME,
-        object_type="Control",
+        object_type="Program",
         mandatory=mandatory,
     )
     with factories.single_commit():
       user = factories.PersonFactory()
-      control = factories.ControlFactory()
+      program = factories.ProgramFactory()
       role_id = role.id
       factories.AccessControlPersonFactory(
-          ac_list=control.acr_name_acl_map[ROLE_NAME],
+          ac_list=program.acr_name_acl_map[ROLE_NAME],
           person=user,
       )
     response = self.import_data(OrderedDict([
-        ("object_type", "Control"),
-        ("Code*", control.slug),
+        ("object_type", "Program"),
+        ("Code*", program.slug),
         (ROLE_NAME, "--"),
     ]))
     self._check_csv_response(response, exp_response)
     db_data = defaultdict(set)
-    control = all_models.Control.query.get(control.id)
-    for person, acl in control.access_control_list:
+    program = all_models.Program.query.get(program.id)
+    for person, acl in program.access_control_list:
       db_data[acl.ac_role_id].add(person.id)
     if mandatory:
       cur_user = all_models.Person.query.filter_by(
@@ -154,3 +154,74 @@ class TestAccessControlRole(TestCase):
     assert response.status_code == 403, \
         "Forbidden error should be thrown when non-editable " \
         "role {} deleted.".format(ac_role.name)
+
+  @ddt.data("Control")
+  def test_create_from_ggrcq(self, object_type):
+    """Test that create action only for GGRCQ."""
+    with self.api.as_external():
+      response = self._post_role(object_type=object_type)
+      self.assertEqual(response.status_code, 201)
+
+  @ddt.data("Control")
+  def test_create_from_ggrc(self, object_type):
+    """Test create action not allowed for GGRC."""
+    response = self._post_role(object_type=object_type)
+    self.assertEqual(response.status_code, 405)
+
+  @ddt.data("Control")
+  def test_modify_from_ggrcq(self, object_type):
+    """Test that modify action only for GGRCQ."""
+    with factories.single_commit():
+      acr_id = factories.AccessControlRoleFactory(object_type=object_type).id
+
+    with self.api.as_external():
+      acr = all_models.AccessControlRole.query.get(acr_id)
+      response = self.api.put(acr, {"name": "new acr"})
+      self.assertEqual(response.status_code, 200)
+
+  @ddt.data("Control")
+  def test_modify_from_ggrc(self, object_type):
+    """Test modify action not allowed for GGRC."""
+    with factories.single_commit():
+      acr = factories.AccessControlRoleFactory(object_type=object_type)
+
+    response = self.api.put(acr, {"name": "new acr"})
+    self.assertEqual(response.status_code, 405)
+
+  @ddt.data("Control")
+  def test_delete_from_ggrcq(self, object_type):
+    """Test that modify action only for GGRCQ."""
+    with factories.single_commit():
+      acr_id = factories.AccessControlRoleFactory(object_type=object_type).id
+
+    with self.api.as_external():
+      acr = all_models.AccessControlRole.query.get(acr_id)
+      response = self.api.delete(acr)
+      self.assertEqual(response.status_code, 200)
+
+  @ddt.data("Control")
+  def test_delete_from_ggrc(self, object_type):
+    """Test modify action not allowed for GGRC."""
+    with factories.single_commit():
+      acr = factories.AccessControlRoleFactory(object_type=object_type)
+
+    response = self.api.delete(acr)
+    self.assertEqual(response.status_code, 405)
+
+  def test_create_with_wrong_options(self):
+    """ Test if user create ACR with wrong options."""
+    options = [{
+        'access_control_role':
+            {
+                'name': 'Test',
+                'modal_title': 'Add Custom Role to type Regulation',
+                'read': False,
+                'object_type': 'Regulation',
+                'parent_type': 'Regulation',
+                'update': True,
+                'context': {'id': None},
+                'delete': True
+            }
+    }]
+    response = self.api.post(AccessControlRole, options)
+    self.assert400(response)

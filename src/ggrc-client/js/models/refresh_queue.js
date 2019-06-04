@@ -1,18 +1,10 @@
 /*
- Copyright (C) 2018 Google Inc.
+ Copyright (C) 2019 Google Inc.
  Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
  */
 
-import Mappings from './mappers/mappings';
-import * as businessModels from './business-models';
-import * as serviceModels from './service-models';
-import * as mappingModels from './mapping-models';
-
-const allModels = Object.assign({},
-  businessModels,
-  serviceModels,
-  mappingModels
-);
+import {reify} from '../plugins/utils/reify-utils';
+import allModels from './all-models';
 
 /*  RefreshQueue
  *
@@ -20,7 +12,7 @@ const allModels = Object.assign({},
  *  trigger() -> Deferred
  */
 
-const ModelRefreshQueue = can.Construct({}, {
+const ModelRefreshQueue = can.Construct.extend({}, {
   init: function (model) {
     this.model = model;
     this.ids = [];
@@ -66,7 +58,7 @@ const ModelRefreshQueue = can.Construct({}, {
         this.trigger();
       } else {
         setTimeout(
-          this.proxy('trigger_with_debounce', delay, manager), msToWait);
+          () => this.trigger_with_debounce(delay, manager), msToWait);
       }
     }
 
@@ -74,13 +66,13 @@ const ModelRefreshQueue = can.Construct({}, {
   },
 });
 
-const RefreshQueueManager = can.Construct({}, {
+const RefreshQueueManager = can.Construct.extend({}, {
   init: function () {
     this.null_queue = new ModelRefreshQueue(null);
     this.queues = [];
   },
   triggered_queues: function () {
-    return can.map(this.queues, function (queue) {
+    return _.filteredMap(this.queues, (queue) => {
       if (queue.triggered) {
         return queue;
       }
@@ -89,13 +81,13 @@ const RefreshQueueManager = can.Construct({}, {
   enqueue: function (obj, force) {
     let self = this;
     let model = obj.constructor;
-    let modelName = model.shortName;
+    let modelName = model.model_singular;
     let foundQueue = null;
     let id = obj.id;
 
     if (!obj.selfLink) {
       if (obj instanceof can.Model) {
-        modelName = obj.constructor.shortName;
+        modelName = obj.constructor.model_singular;
       } else if (obj.type) {
         // FIXME: obj.kind is to catch invalid stubs coming from Directives
         modelName = obj.type || obj.kind;
@@ -139,7 +131,7 @@ const RefreshQueueManager = can.Construct({}, {
   },
 });
 
-const RefreshQueue = can.Construct({
+const RefreshQueue = can.Construct.extend({
   refresh_queue_manager: new RefreshQueueManager(),
   refresh_all: function (instance, props, force) {
     let dfd = new $.Deferred();
@@ -155,24 +147,12 @@ const RefreshQueue = can.Construct({
       let refreshQueue = new RefreshQueue();
       let dfds = [];
       let deferred;
-      let hasBinding;
 
       if (next) {
         refreshQueue.enqueue(next, force);
         deferred = refreshQueue.trigger();
-      } else if (instance.get_binding) {
-        next = Mappings.get_binding(prop, instance);
-        hasBinding = Mappings.has_binding(prop, instance);
-
-        if (!hasBinding) {
-          dfd.reject({
-            message: prop + ' binding not found',
-          });
-        }
-        if (hasBinding && next) {
-          deferred = next.refresh_instances(force);
-        }
       }
+
       if (deferred) {
         deferred.then(function (refreshedItems) {
           if (nextProps.length) {
@@ -256,9 +236,7 @@ const RefreshQueue = can.Construct({
 
     if (deferreds.length) {
       $.when(...deferreds).then(function () {
-        self.deferred.resolve(can.map(self.objects, function (obj) {
-          return obj.reify();
-        }));
+        self.deferred.resolve(_.filteredMap(self.objects, (obj) => reify(obj)));
       }, function () {
         self.deferred.reject(...arguments);
       });

@@ -1,5 +1,5 @@
 /*
-    Copyright (C) 2018 Google Inc.
+    Copyright (C) 2019 Google Inc.
     Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 */
 
@@ -11,7 +11,8 @@
  */
 export default can.Component.extend({
   tag: 'assessment-template-attributes',
-  viewModel: {
+  leakScope: true,
+  viewModel: can.Map.extend({
     fields: [],
     types: [{
       type: 'Text',
@@ -29,6 +30,10 @@ export default can.Component.extend({
       type: 'Checkbox',
       name: 'Checkbox',
       text: '',
+    }, {
+      type: 'Multiselect',
+      name: 'Multiselect',
+      text: 'Enter values separated by comma',
     }, {
       type: 'Dropdown',
       name: 'Dropdown',
@@ -57,7 +62,7 @@ export default can.Component.extend({
           field.title + '" title');
       }
     },
-  },
+  }),
   events: {
     inserted: function () {
       let el = $(this.element);

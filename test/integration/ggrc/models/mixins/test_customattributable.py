@@ -1,4 +1,4 @@
-# Copyright (C) 2018 Google Inc.
+# Copyright (C) 2019 Google Inc.
 # Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 
 """Integration test for custom attributable mixin"""
@@ -265,13 +265,17 @@ class TestCustomAttributableMixin(TestCase):
   def test_adding_mapping_ca_dict(self):
     """Test adding mapping custom attribute values with a dict."""
     with factories.single_commit():
+      person = factories.PersonFactory()
+      prog = factories.ProgramFactory()
       cad1 = factories.CustomAttributeDefinitionFactory(
           definition_type="program",
+          definition_id=prog.id,
           attribute_type="Map:Person",
           title="CA 1",
       )
       cad2 = factories.CustomAttributeDefinitionFactory(
           definition_type="program",
+          definition_id=prog.id,
           attribute_type="Map:Person",
           title="CA 2",
       )
@@ -304,11 +308,12 @@ class TestCustomAttributableMixin(TestCase):
   def test_validate_ca_with_wrong_id(self):
     """Test adding custom "Map:Person" attribute with not existing Person."""
     with factories.single_commit():
+      program = factories.ProgramFactory()
       attribute_definition = factories.CustomAttributeDefinitionFactory(
           definition_type="program",
+          definition_id=program.id,
           attribute_type="Map:Person"
       )
-      program = factories.ProgramFactory()
 
     program.custom_attribute_values = [
         {
@@ -323,39 +328,16 @@ class TestCustomAttributableMixin(TestCase):
       self.assertEqual(exception.exception.message,
                        'Person with 0 id not exists')
 
-  def test_validate_ca_with_empty_id(self):
-    """Test adding empty id to mandatory custom "Map:Person" attribute."""
-    with factories.single_commit():
-      attribute_definition = factories.CustomAttributeDefinitionFactory(
-          definition_type="program",
-          attribute_type="Map:Person",
-          title='Person',
-          mandatory=True
-      )
-      program = factories.ProgramFactory()
-
-    program.custom_attribute_values = [
-        {
-            "attribute_value": "Person",
-            "custom_attribute_id": attribute_definition.id,
-        }
-    ]
-
-    with self.assertRaises(ValueError) as exception:
-      program.validate_custom_attributes()
-
-      self.assertEqual(exception.exception.message,
-                       'Missing mandatory attribute: Person')
-
   def test_validate_empty_mapping_ca(self):
     """Test adding empty id non-mandatory custom "Map:Person" attribute."""
     with factories.single_commit():
+      program = factories.ProgramFactory()
       attribute_definition = factories.CustomAttributeDefinitionFactory(
           definition_type="program",
+          definition_id=program.id,
           attribute_type="Map:Person",
           title='Person'
       )
-      program = factories.ProgramFactory()
 
     program.custom_attribute_values = [
         {
@@ -372,12 +354,13 @@ class TestCustomAttributableMixin(TestCase):
   def test_validate_invalid_type_ca(self):
     """Test adding invalid attribute type to custom "Map:Person" attribute."""
     with factories.single_commit():
+      program = factories.ProgramFactory()
       attribute_definition = factories.CustomAttributeDefinitionFactory(
           definition_type="program",
+          definition_id=program.id,
           attribute_type="Map:Person",
           mandatory=True
       )
-      program = factories.ProgramFactory()
 
     program.custom_attribute_values = [
         {
@@ -397,7 +380,9 @@ class TestCustomAttributableMixin(TestCase):
 class TestCreateRevisionAfterDeleteCAD(TestCase):
   """Test cases for creating new revision after delete CAD"""
   def setUp(self):
+    super(TestCreateRevisionAfterDeleteCAD, self).setUp()
     self.api_helper = api_helper.Api()
+    self.api_helper.login_as_external()
 
   @ddt.data(True, False)
   def test_latest_revision_delete_cad(self, is_add_cav):
@@ -530,3 +515,28 @@ class TestCADUpdate(TestCase):
         definition_id=template.id,
     )
     self.assertEqual(cads_query.count(), cads_count)
+
+  def test_lcad_empty_no_update(self):
+    """Test that empty mandatory LCA does not prevent put requests."""
+    assessment = factories.AssessmentFactory()
+    cad1 = factories.CustomAttributeDefinitionFactory(
+        definition_type="assessment",
+        mandatory=True,
+        definition_id=assessment.id,
+        attribute_type="Map:Person",
+        title="CA 1",
+    )
+    empty_cav_data = {
+        "custom_attribute_values": [{
+            "assessment": 26340,
+            "attributable_type": "Assessment",
+            "attributeType": None,
+            "attribute_object": None,
+            "attribute_object_id": None,
+            "attribute_value": None,
+            "context": None,
+            "custom_attribute_id": cad1.id,
+        }]
+    }
+    response = self.api.put(assessment, data=empty_cav_data)
+    self.assert200(response)

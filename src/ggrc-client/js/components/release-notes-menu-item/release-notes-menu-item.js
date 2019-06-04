@@ -1,10 +1,10 @@
 /*
-    Copyright (C) 2018 Google Inc.
+    Copyright (C) 2019 Google Inc.
     Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 */
 
 import '../release-notes-modal/release-notes-modal';
-import template from './release-notes-menu-item.mustache';
+import template from './release-notes-menu-item.stache';
 import PersonProfile from '../../models/service-models/person-profile';
 import {getFormattedUtcDate} from '../../plugins/utils/date-utils';
 
@@ -36,7 +36,7 @@ const events = {
 
     if (releaseNotesDate !== lastSeenDate) {
       profile.attr('last_seen_whats_new', releaseNotesDate);
-      profile.save()
+      return profile.save()
         .then(() => {
           this.viewModel.open();
         });
@@ -46,7 +46,8 @@ const events = {
 
 export default can.Component.extend({
   tag: 'release-notes-menu-item',
-  template,
+  view: can.stache(template),
+  leakScope: true,
   viewModel,
   events,
 });

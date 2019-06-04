@@ -1,0 +1,106 @@
+{{!
+    Copyright (C) 2019 Google Inc.
+    Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
+}}
+
+<gca-controls instance:from="instance"></gca-controls>
+
+<div class="ggrc-form-item">
+  <div class="ggrc-form-item__row">
+    <label class="ggrc-form-item__label">
+      Notes
+    </label>
+    <rich-text 
+        tabindex="10"
+        hiddenToolbar:from="true"
+        placeholder:from="'Enter Notes'"
+        content:bind="notes">
+    </rich-text>
+  </div>
+</div>
+
+<div class="ggrc-form-item">
+  <div class="ggrc-form-item__row">
+    <label class="ggrc-form-item__label">
+      Description
+    </label>
+    <rich-text 
+        tabindex="11"
+        hiddenToolbar:from="true"
+        placeholder:from="'Enter Description'"
+        content:bind="description">
+    </rich-text>
+  </div>
+</div>
+
+<div class="ggrc-form-item">
+  <div class="ggrc-form-item__multiple-row">
+    <label class="ggrc-form-item__label">
+      Code
+    </label>
+    <input {{^if new_object_form}} disabled {{/if}} data-id="code_txtbx"
+      tabindex="14"
+      class="input-block-level"
+      name="slug"
+      placeholder="ASSESSMENT-XXX"
+      type="text"
+      value:from="slug">
+  </div>
+  <div class="ggrc-form-item__multiple-row">
+    <label class="ggrc-form-item__label">
+      Due Date
+    </label>
+    <datepicker-component
+      tabindex="15"
+      date:bind="start_date"
+      setMaxDate:from="end_date"
+      helptext:from="'Enter the date this object becomes effective.'"
+    />
+  </div>
+</div>
+
+<div class="ggrc-form-item">
+  <div class="ggrc-form-item__multiple-row">
+    <label class="ggrc-form-item__label">
+      Conclusion: Design
+    </label>
+    <div class="ggrc-form-item__small-text">
+      <small>
+        <em>Is this control design effective?</em>
+      </small>
+    </div>
+    <dropdown-component optionsList:from="model.conclusions"
+              noValue:from="true"
+              noValueLabel:from="'---'"
+              name:bind="instance.design"
+              tabindex="17">
+    </dropdown-component>
+  </div>
+  <div class="ggrc-form-item__multiple-row">
+    <label class="ggrc-form-item__label">
+      Conclusion: Operation
+    </label>
+    <div class="ggrc-form-item__small-text">
+      <small>
+        <em>Is this control design effective?</em>
+      </small>
+    </div>
+    <dropdown-component optionsList:from="model.conclusions"
+              noValue:from="true"
+              noValueLabel:from="'---'"
+              name:bind="instance.operationally"
+              tabindex="18">
+    </dropdown-component>
+  </div>
+</div>
+
+<div class="ggrc-form-item">
+  <div class="ggrc-form-item__row">
+    <label class="ggrc-form-item__label">
+      Audit
+    </label>
+    <div class="ggrc-form-item__text">
+      {{instance.audit.title}}
+    </div>
+  </div>
+</div>

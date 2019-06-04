@@ -1,5 +1,5 @@
 /*
- Copyright (C) 2018 Google Inc.
+ Copyright (C) 2019 Google Inc.
  Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
  */
 
@@ -19,14 +19,14 @@ const messages = {
 /**
  * Shows flash notification
  * @param  {String} type    type of notification. error|warning
- * @param  {String} message Plain text message or mustache template if data is passed
- * @param  {Object} [data] data to populate mustache template
+ * @param  {String} message Plain text message or template if data is passed
+ * @param  {Object} [data] data to populate template
  */
 function notifier(type, message, data) {
   let props = {};
 
   if ( message && data ) {
-    message = can.mustache(message);
+    message = can.stache(message);
     props.data = data;
   }
 
@@ -35,16 +35,18 @@ function notifier(type, message, data) {
   $('body').trigger('ajax:flash', props);
 }
 
-function notifierXHR(type, message) {
-  return function (err) {
-    let status = err && err.status ? err.status : null;
+function notifierXHR(type, xhr) {
+  let message = (xhr.responseJSON && xhr.responseJSON.message) ?
+    xhr.responseJSON.message :
+    xhr.responseText;
 
-    if (status && !message) {
-      message = messages[status];
-    }
+  let status = xhr && xhr.status ? xhr.status : null;
 
-    notifier(type, message);
-  };
+  if (!message && status) {
+    message = messages[status];
+  }
+
+  notifier(type, message);
 }
 
 window.addEventListener('error', (event) => {

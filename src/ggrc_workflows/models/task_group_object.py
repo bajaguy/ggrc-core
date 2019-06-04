@@ -1,4 +1,4 @@
-# Copyright (C) 2018 Google Inc.
+# Copyright (C) 2019 Google Inc.
 # Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 
 """A module containing the workflow TaskGroupObject model."""
@@ -73,9 +73,9 @@ class TaskGroupObject(roleable.Roleable,
   _sanitize_html = []
 
   @classmethod
-  def eager_query(cls):
+  def eager_query(cls, **kwargs):
 
-    query = super(TaskGroupObject, cls).eager_query()
+    query = super(TaskGroupObject, cls).eager_query(**kwargs)
     return query.options(
         orm.subqueryload('task_group'))
 
@@ -114,13 +114,13 @@ class TaskGroupable(object):
 
   _api_attrs = reflection.ApiAttributes(
       reflection.Attribute('task_groups', create=False, update=False),
-      'task_group_objects',
+      reflection.Attribute('task_group_objects', update=False),
   )
 
   _include_links = []
 
   @classmethod
-  def eager_query(cls):
-    query = super(TaskGroupable, cls).eager_query()
+  def eager_query(cls, **kwargs):
+    query = super(TaskGroupable, cls).eager_query(**kwargs)
     return cls.eager_inclusions(query, TaskGroupable._include_links).options(
         orm.subqueryload('task_group_objects'))

@@ -1,24 +1,29 @@
-# Copyright (C) 2018 Google Inc.
+# Copyright (C) 2019 Google Inc.
 # Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 
 """Custom attribute definition module"""
 
+import re
 import flask
+import sqlalchemy as sa
 from sqlalchemy import func
 from sqlalchemy.ext.declarative import declared_attr
 from sqlalchemy.orm import validates
 from sqlalchemy.sql.schema import UniqueConstraint
 
 from ggrc import db
+from ggrc.utils import errors
 from ggrc.models.mixins import attributevalidator
 from ggrc import builder
-from ggrc.models.mixins import base
 from ggrc.models import mixins
+from ggrc.models.mixins import after_flush_handleable
+from ggrc.models.mixins import base
 from ggrc.models.custom_attribute_value import CustomAttributeValue
 from ggrc.access_control import role as acr
-from ggrc.models.exceptions import ValidationError, ReservedNameError
+from ggrc.models.exceptions import ValidationError
 from ggrc.models import reflection
 from ggrc.cache import memcache
+from ggrc.utils import validators
 
 
 @memcache.cached
@@ -35,6 +40,7 @@ def get_inflector_model_name_dict():
 
 class CustomAttributeDefinition(attributevalidator.AttributeValidator,
                                 base.ContextRBAC, mixins.Base, mixins.Titled,
+                                after_flush_handleable.AfterFlushHandleable,
                                 db.Model):
   """Custom attribute definition model.
 
@@ -89,6 +95,28 @@ class CustomAttributeDefinition(attributevalidator.AttributeValidator,
     else:
       self.definition_type = ''
     return setattr(self, self.definition_attr, value)
+
+  @property
+  def is_lca(self):
+    """Check if CAD is Local CAD"""
+    created_via_template = getattr(self, 'definition', None)
+    created_via_post = self.definition_id
+    return created_via_post or created_via_template
+
+  @property
+  def is_gca(self):
+    """Check if CAD is Global CAD"""
+    return not self.is_lca
+
+  def validate_gca_person_type(self):
+    """Custom attributes with Person type not allowed for GCA"""
+    if self.is_gca and self.attribute_type == "Map:Person":
+      raise ValidationError("Invalid attribute_type: 'Map:Person' "
+                            "is not allowed for Global Custom Attributes")
+
+  def handle_after_flush(self):
+    """Validate object 'after flash' sqlalchemy event"""
+    self.validate_gca_person_type()
 
   _extra_table_args = (
       UniqueConstraint('definition_type', 'definition_id', 'title',
@@ -149,11 +177,13 @@ class CustomAttributeDefinition(attributevalidator.AttributeValidator,
     RICH_TEXT = "Rich Text"
     DROPDOWN = "Dropdown"
     CHECKBOX = "Checkbox"
+    MULTISELECT = "Multiselect"
     DATE = "Date"
     MAP = "Map"
 
     DEFAULT_VALUE = {
         CHECKBOX: "0",
+        MULTISELECT: "",
         RICH_TEXT: "",
         TEXT: "",
         DROPDOWN: "",
@@ -181,6 +211,7 @@ class CustomAttributeDefinition(attributevalidator.AttributeValidator,
       "Rich Text": "Rich Text",
       "Dropdown": "Dropdown",
       "Checkbox": "Checkbox",
+      "Multiselect": "Multiselect",
       "Date": "Date",
       "Person": "Map:Person",
   }
@@ -204,10 +235,10 @@ class CustomAttributeDefinition(attributevalidator.AttributeValidator,
       value_list = [part.strip() for part in value.split(",")]
       value_set = set(value_list)
       if len(value_set) != len(value_list):
-        raise ValidationError("Duplicate dropdown options are not allowed: "
+        raise ValidationError("Duplicate attribute options are not allowed: "
                               "'{}'".format(value))
       if "" in value_set:
-        raise ValidationError("Empty dropdown options are not allowed: '{}'"
+        raise ValidationError("Empty attribute options are not allowed: '{}'"
                               .format(value))
       value = ",".join(value_list)
 
@@ -261,13 +292,15 @@ class CustomAttributeDefinition(attributevalidator.AttributeValidator,
     """Validate CAD title/name uniqueness.
 
     Note: title field is used for storing CAD names.
-    CAD names need to follow 4 uniqueness rules:
+    CAD names need to follow 6 uniqueness rules:
       1) Names must not match any attribute name on any existing object.
       2) Object level CAD names must not match any global CAD name.
       3) Object level CAD names can clash, but not for the same Object
          instance. This means we can have two CAD with a name "my cad", with
          different attributable_id fields.
       4) Names must not match any existing custom attribute role name
+      5) Names should not contains special values (.validate_name_correct)
+      6) Names should be stripped
 
     Third rule is handled by the database with unique key uq_custom_attribute
     (`definition_type`,`definition_id`,`title`).
@@ -285,31 +318,33 @@ class CustomAttributeDefinition(attributevalidator.AttributeValidator,
       value if the name passes all uniqueness checks.
     """
 
+    value = value if value is None else re.sub(r"\s+", " ", value).strip()
+
+    if key == "title":
+      validators.validate_name_correctness(value)
+
     if key == "title" and self.definition_type:
-      name = value.lower()
+      orig_name = value
       definition_type = self.definition_type
     elif key == "definition_type" and self.title:
-      name = self.title.lower()
+      orig_name = self.title
       definition_type = value.lower()
     else:
       return value
 
+    name = orig_name.lower()
     if name in self._get_reserved_names(definition_type):
-      raise ReservedNameError(
-          u"Attribute '{}' is reserved for this object type."
-          .format(name)
+      raise ValueError(
+          errors.DUPLICATE_RESERVED_NAME.format(attr_name=orig_name)
       )
 
     if (self._get_global_cad_names(definition_type).get(name) is not None and
             self._get_global_cad_names(definition_type).get(name) != self.id):
-      raise ValueError(u"Global custom attribute '{}' "
-                       u"already exists for this object type"
-                       .format(name))
-    model_name = get_inflector_model_name_dict()[definition_type]
-    acrs = {i.lower() for i in acr.get_custom_roles_for(model_name).values()}
-    if name in acrs:
-      raise ValueError(u"Custom Role with a name of '{}' "
-                       u"already exists for this object type".format(name))
+      raise ValueError(errors.DUPLICATE_GCAD_NAME.format(attr_name=orig_name))
+
+    self.assert_acr_exist(orig_name, definition_type)
+    if definition_type == "assessment_template":
+      self.assert_acr_exist(orig_name, "assessment")
 
     if definition_type == "assessment":
       self.validate_assessment_title(name)
@@ -321,6 +356,33 @@ class CustomAttributeDefinition(attributevalidator.AttributeValidator,
     results = super(CustomAttributeDefinition, self).log_json()
     results["default_value"] = self.default_value
     return results
+
+  @staticmethod
+  def assert_acr_exist(name, definition_type):
+    """Validate that there is no ACR with provided name."""
+    model_name = get_inflector_model_name_dict()[definition_type]
+    acrs = {i.lower() for i in acr.get_custom_roles_for(model_name).values()}
+    if name.lower() in acrs:
+      raise ValueError(
+          errors.DUPLICATE_CUSTOM_ROLE.format(role_name=name)
+      )
+
+
+sa.event.listen(
+    CustomAttributeDefinition,
+    "before_insert",
+    validators.validate_definition_type_ggrcq
+)
+sa.event.listen(
+    CustomAttributeDefinition,
+    "before_update",
+    validators.validate_definition_type_ggrcq
+)
+sa.event.listen(
+    CustomAttributeDefinition,
+    "before_delete",
+    validators.validate_definition_type_ggrcq
+)
 
 
 @memcache.cached

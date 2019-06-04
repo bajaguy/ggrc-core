@@ -1,5 +1,5 @@
 /*
-    Copyright (C) 2018 Google Inc.
+    Copyright (C) 2019 Google Inc.
     Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 */
 
@@ -14,12 +14,13 @@ import {getCustomAttributableModels} from '../../plugins/utils/models-utils';
   * CustomAttributeDefinitions as children
   *
   */
-export default Cacheable('CMS.Models.CustomAttributable', {
+export default Cacheable.extend({
+  root_object: 'custom_attributable',
   findAll: function () {
     let types = _.orderBy(getCustomAttributableModels(),
       'category', false);
 
-    return $.when(can.map(types, (type, i) => {
+    return $.when(_.filteredMap(types, (type, i) => {
       return new this(Object.assign({}, type, {
         id: i,
       }));

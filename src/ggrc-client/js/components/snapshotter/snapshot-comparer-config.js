@@ -1,13 +1,12 @@
 /*
- Copyright (C) 2018 Google Inc., authors, and contributors
+ Copyright (C) 2019 Google Inc., authors, and contributors
  Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
  */
 
-const tag = 'snapshot-comparer-config';
-
 export default can.Component.extend({
-  tag,
-  viewModel: {
+  tag: 'snapshot-comparer-config',
+  leakScope: true,
+  viewModel: can.Map.extend({
     define: {
       rightRevision: {
         get() {
@@ -16,10 +15,10 @@ export default can.Component.extend({
       },
     },
     instance: {},
-    leftRevisionId: '@',
+    leftRevisionId: '',
     rightRevisions: [],
     modalTitle: 'Compare with the latest version',
     modalConfirm: 'Update',
-    buttonView: `${GGRC.mustache_path}/modals/prompt_buttons.mustache`,
-  },
+    buttonView: `${GGRC.templates_path}/modals/prompt_buttons.stache`,
+  }),
 });

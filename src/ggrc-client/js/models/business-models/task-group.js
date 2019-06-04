@@ -1,5 +1,5 @@
 /*
- Copyright (C) 2018 Google Inc.
+ Copyright (C) 2019 Google Inc.
  Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
  */
 
@@ -7,7 +7,7 @@ import Cacheable from '../cacheable';
 import contactable from '../mixins/contactable';
 import Stub from '../stub';
 
-export default Cacheable('CMS.Models.TaskGroup', {
+export default Cacheable.extend({
   root_object: 'task_group',
   root_collection: 'task_groups',
   category: 'workflow',
@@ -19,19 +19,15 @@ export default Cacheable('CMS.Models.TaskGroup', {
   mixins: [contactable],
   attributes: {
     workflow: Stub,
-    task_group_tasks: Stub.List,
-    tasks: Stub.List,
-    task_group_objects: Stub.List,
-    objects: Stub.List,
     modified_by: Stub,
     context: Stub,
     end_date: 'date',
   },
 
   tree_view_options: {
-    add_item_view: GGRC.mustache_path + '/task_groups/tree_add_item.mustache',
+    add_item_view: 'task_groups/tree_add_item',
     mapper_attr_list: [
-      {attr_title: 'Summary', attr_name: 'title'},
+      {attr_title: 'Title', attr_name: 'title'},
       {attr_title: 'Assignee', attr_name: 'assignee',
         attr_sort_field: 'contact'},
       {attr_title: 'Description', attr_name: 'description'},
@@ -44,10 +40,6 @@ export default Cacheable('CMS.Models.TaskGroup', {
     if (this._super) {
       this._super(...arguments);
     }
-    this.validateNonBlank('title');
-    this.validateNonBlank('contact');
-    this.validateNonBlank('workflow');
-    this.validateContact(['_transient.contact', 'contact']);
 
     this.bind('updated', function (ev, instance) {
       if (instance instanceof that) {
@@ -60,4 +52,23 @@ export default Cacheable('CMS.Models.TaskGroup', {
       }
     });
   },
-}, {});
+}, {
+  define: {
+    title: {
+      value: '',
+      validate: {
+        required: true,
+      },
+    },
+    contact: {
+      validate: {
+        required: true,
+      },
+    },
+    workflow: {
+      validate: {
+        required: true,
+      },
+    },
+  },
+});

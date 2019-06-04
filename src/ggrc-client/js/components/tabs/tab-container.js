@@ -1,16 +1,19 @@
 /*
- Copyright (C) 2018 Google Inc.
+ Copyright (C) 2019 Google Inc.
  Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
  */
 
 import {NAVIGATE_TO_TAB} from '../../events/eventTypes';
 import './tab-panel';
-import template from './tab-container.mustache';
+import './tab-link/tab-link';
+import '../questionnaire-link/questionnaire-link';
+import template from './tab-container.stache';
 
 export default can.Component.extend({
   tag: 'tab-container',
-  template,
-  viewModel: {
+  view: can.stache(template),
+  leakScope: true,
+  viewModel: can.Map.extend({
     lastErrorTab: null,
     define: {
       showTabs: {
@@ -21,20 +24,10 @@ export default can.Component.extend({
         },
       },
     },
+    tabOptions: {},
     hideOneTab: true,
     selectedTabIndex: 0,
     panels: [],
-    /**
-     * Activate currently selected panel
-     *
-     * @param {Object} scope - current item value from `viewModel.panels`
-     * @param {jQuery.Element} el - clicked element
-     * @param {Object} ev - click event handler
-     */
-    setActive: function (scope, el, ev) {
-      ev.preventDefault();
-      this.setActivePanel(scope.attr('tabIndex'));
-    },
     /**
      * Update Panels List setting all panels except selected to inactive state
      * @param {Number} tabIndex - id of activated panel
@@ -65,15 +58,16 @@ export default can.Component.extend({
     setLastErrorTab: function (tabIndex) {
       this.attr('lastErrorTab', tabIndex);
     },
-    navigate(tabId) {
+    navigate(tabId, tabOptions) {
       const panels = this.attr('panels');
       const panel = _.find(panels, (panel) => panel.tabId === tabId);
 
       if (panel) {
+        this.attr('tabOptions', tabOptions);
         this.setActivePanel(panel.tabIndex);
       }
     },
-  },
+  }),
   events: {
     /**
      * Update Currently selected Tab on each add of Panels
@@ -94,7 +88,7 @@ export default can.Component.extend({
       this.viewModel.setActivePanel(this.viewModel.lastErrorTab);
     },
     [`{viewModel.instance} ${NAVIGATE_TO_TAB.type}`](el, ev) {
-      this.viewModel.navigate(ev.tabId);
+      this.viewModel.navigate(ev.tabId, ev.options);
     },
   },
 });

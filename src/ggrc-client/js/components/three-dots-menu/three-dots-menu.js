@@ -1,9 +1,9 @@
 /*
- Copyright (C) 2018 Google Inc.
+ Copyright (C) 2019 Google Inc.
  Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 */
 
-import template from './templates/three-dots-menu.mustache';
+import template from './templates/three-dots-menu.stache';
 
 const viewModel = can.Map.extend({
   disabled: true,
@@ -37,9 +37,10 @@ const events = {
   },
 };
 
-export default can.Component({
+export default can.Component.extend({
   tag: 'three-dots-menu',
-  template,
+  view: can.stache(template),
+  leakScope: true,
   viewModel,
   events,
 });

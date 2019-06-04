@@ -1,18 +1,19 @@
 /*
- Copyright (C) 2018 Google Inc.
+ Copyright (C) 2019 Google Inc.
  Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
  */
 
 export default can.Component.extend({
   tag: 'tree-header-selector',
-  viewModel: {},
+  leakScope: true,
+  viewModel: can.Map.extend({}),
   events: {
     init: function (element, options) {
       this.viewModel.attr('controller', this);
       this.viewModel.attr('$rootEl', $(element));
     },
 
-    disable_attrs: function (el, ev) {
+    disable_attrs: function () {
       let MAX_ATTR = 7;
       let $check = this.element.find('.attr-checkbox');
       let $mandatory = $check.filter('.mandatory');
@@ -44,7 +45,7 @@ export default can.Component.extend({
       this.disable_attrs(el, ev);
     },
 
-    '.set-tree-attrs,.close-dropdown click': function (el, ev) {
+    '.set-tree-attrs,.close-dropdown click': function () {
       this.viewModel.$rootEl.removeClass('open');
       this.viewModel.$rootEl.parents('.dropdown-menu')
         .parent().removeClass('open');

@@ -1,0 +1,19 @@
+{{!
+  Copyright (C) 2019 Google Inc.
+  Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
+}}
+
+<div>
+  {{#instance}}
+    <form>
+      <p>
+        {{instance.task_groups.length}} task group{{^is(instance.task_groups.length, 1)}}s{{/is}} 
+        will be started, tasks will be assigned and notifications will be sent.
+      </p>
+      <p>
+      {{! TODO: Fix for CORE-1678, our current/next start date isn't working as expected }}
+        Are you sure you want to generate a cycle?
+      </p>
+    </form>
+  {{/instance}}
+</div>

@@ -1,0 +1,16 @@
+{{!
+    Copyright (C) 2019 Google Inc.
+    Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
+}}
+
+<three-dots-menu>
+  <li class="border-bottom">
+    <permalink-component instance:from="instance"/>
+  </li>
+  <li>
+    <a href="/people/{{instance.id}}" target="_blank">
+      <i class="fa fa-long-arrow-right"></i>
+      Open Profile Page
+    </a>
+  </li>
+</three-dots-menu>

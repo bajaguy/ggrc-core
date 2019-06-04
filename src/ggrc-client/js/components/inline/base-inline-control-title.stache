@@ -1,0 +1,29 @@
+{{!
+  Copyright (C) 2019 Google Inc.
+  Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
+}}
+
+<div class="inline__header action-toolbar">
+  <!-- header (laber/h1-6) -->
+  <content></content>
+
+  {{#if redirectionEnabled}}
+    <div class="action-toolbar__controls">
+      <div class="action-toolbar__controls-item">
+        <proposable-control
+          instance:from="instance"
+          attrName:from="redirectionAttrName"
+        >
+        </proposable-control>
+      </div>
+    </div>
+  {{else}}
+    {{#if isEditIconAllowed}}
+      <div class="action-toolbar__controls">
+        <action-toolbar-control>
+          <i class="fa fa-pencil inline-edit-icon"></i>
+        </action-toolbar-control>
+      </div>
+    {{/if}}
+  {{/if}}
+ </div>

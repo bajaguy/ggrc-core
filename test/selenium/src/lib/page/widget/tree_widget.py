@@ -1,4 +1,4 @@
-# Copyright (C) 2018 Google Inc.
+# Copyright (C) 2019 Google Inc.
 # Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 """Tree view."""
 import inflection
@@ -80,6 +80,20 @@ class TreeItem(object):
   def select(self):
     """Clicks tree item to open info panel."""
     self._root.element(class_name="selectable-attrs").click()
+
+  def hover(self):
+    """Hovers over tree item."""
+    self._root.element(class_name="selectable-attrs").hover()
+
+  def hover_actions_gear(self):
+    """Hovers over gear actions for tree item."""
+    self.hover()
+    self._root.element(tag_name="tree-item-actions").hover()
+
+  def select_map_to_this_object(self):
+    """Select map to this object from gear."""
+    self.hover_actions_gear()
+    self._root.link(data_toggle="unified-mapper").click()
 
   @property
   def is_expanded(self):

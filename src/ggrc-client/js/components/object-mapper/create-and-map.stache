@@ -1,0 +1,55 @@
+{{!
+    Copyright (C) 2019 Google Inc.
+    Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
+}}
+
+{{#if allowedToCreate}}
+
+  <span class="create-new-object">
+
+  {{#is(destinationType, "Document")}}
+    
+      Do you want to search for an existing document or
+      <create-document-button
+        parentInstance:from="source"
+        on:mapObjects="mapObjects(scope.event.objects)"
+        on:cancel="cancel()">
+        Attach new
+      </create-document-button>
+
+  {{else}}
+
+      Map existing object or
+
+      {{#if destinationModel.isChangeableExternally}} 
+
+        <button class="btn btn-link" on:el:click="createExternally()">
+          Create and map new object
+        </button>
+
+      {{else}}
+
+        <button class="btn btn-link create-control"
+          on:el:click="resetEntries()"
+          href="javascript://"
+          data-toggle="modal-ajax-form"
+          data-modal-class="modal-wide"
+          data-object-singular="{{destinationModel.model_singular}}"
+          data-object-plural="{{destinationModel.table_plural}}"
+          data-unique-id="{{source.id}}"
+          data-join-object-id="{{source.id}}">
+
+          {{#if isMegaMapping}}
+            Create and map new {{megaRelation}} {{destinationType}}
+          {{else}}
+            Create and map new object
+          {{/if}}
+        </button>
+
+      {{/if}}
+
+  {{/is}}
+
+  </span>
+
+{{/if}}

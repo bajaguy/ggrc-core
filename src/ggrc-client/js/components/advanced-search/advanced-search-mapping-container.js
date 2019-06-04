@@ -1,5 +1,5 @@
 /*
- Copyright (C) 2018 Google Inc.
+ Copyright (C) 2019 Google Inc.
  Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
  */
 
@@ -8,7 +8,7 @@ import './advanced-search-mapping-criteria';
 import './advanced-search-filter-operator';
 import AdvancedSearchContainer from '../view-models/advanced-search-container-vm';
 import * as AdvancedSearch from '../../plugins/utils/advanced-search-utils';
-import template from './advanced-search-mapping-container.mustache';
+import template from './advanced-search-mapping-container.stache';
 
 /**
  * Mapping Container view model.
@@ -67,6 +67,7 @@ let viewModel = AdvancedSearchContainer.extend({
  */
 export default can.Component.extend({
   tag: 'advanced-search-mapping-container',
-  template: template,
+  view: can.stache(template),
+  leakScope: true,
   viewModel: viewModel,
 });

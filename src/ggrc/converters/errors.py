@@ -1,8 +1,9 @@
-# Copyright (C) 2018 Google Inc.
+# Copyright (C) 2019 Google Inc.
 # Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 
 """List of all error and warning messages for imports."""
 
+ERROR_TEMPLATE = u"Line {line}: {message}"
 
 WRONG_FILE_TYPE = (u"Line {line}: Wrong file type. Only .csv files are"
                    u" supported. Please upload a .csv file.")
@@ -11,7 +12,7 @@ MISSING_COLUMN = (u"Line {line}: Missing mandatory column{s} {column_names},"
                   u" when adding object.")
 
 MISSING_CUSTOM_ATTRIBUTE_COLUMN = (u"Line {line}: Missing custom column"
-                                   " {column_name}, when adding object.")
+                                   u" {column_name}, when adding object.")
 
 WRONG_OBJECT_TYPE = (u"Line {line}: Object type '{object_name}' doesn't "
                      u"exist or can't be imported.")
@@ -36,10 +37,6 @@ DUPLICATE_IN_MULTI_VALUE = (
 
 DUPLICATE_VALUE_IN_CSV = (u"Line {line} has the same {column_name} '{value}' "
                           u"as {processed_line}. The line will be ignored.")
-
-DUPLICATE_CAD_NAME = (u"Line {line}: Attribute name already exists at this "
-                      u"object type. Please choose another attribute name "
-                      u"and restart the import.")
 
 MAP_UNMAP_CONFLICT = (u"Line {line}: Object '{slug}' scheduled for mapping and"
                       u" unmapping at the same time. Mapping rule update will"
@@ -73,6 +70,22 @@ WRONG_REQUIRED_VALUE = (u"Line {line}: Required field {column_name} contains"
                         u" invalid data '{value}'. The default value will be"
                         u" used.")
 
+WRONG_ISSUE_TICKET_STATUS = (u"Line {line}: You are not allowed to "
+                             u"autogenerate tickets at Ticket Tracker for "
+                             u"Issues at statuses 'Fixed', 'Fixed and "
+                             u"Verified' and 'Deprecated'. Column "
+                             u"'{column_name}' will be set to 'Off'. Please "
+                             u"use a manual linking option instead.")
+
+WRONG_ASSESSMENT_TICKET_STATUS = (u"Line {line}: You are not allowed to "
+                                  u"autogenerate tickets at Ticket Tracker "
+                                  u"for Assessments at statuses 'In Review', "
+                                  u"'Completed (no verification)', 'Completed "
+                                  u"and Verified' and 'Deprecated' statuses. "
+                                  u"Column '{column_name}' will be ignored. "
+                                  u"Please use a manual linking option "
+                                  u"instead.")
+
 MISSING_VALUE_WARNING = (u"Line {line}: Field '{column_name}' is required. "
                          u"The default value '{default_value}' will be used.")
 
@@ -83,7 +96,11 @@ PERMISSION_ERROR = (u"Line {line}: You don't have permission to update/delete"
                     u" this record.")
 
 MAPPING_PERMISSION_ERROR = (u"Line {line}: You don't have permission to update"
-                            " mappings for {object_type}: {slug}.")
+                            u" mappings for {object_type}: {slug}.")
+
+UNSUPPORTED_MAPPING = (u"Line {line}: You are not able to map/unmap "
+                       u"{obj_a} to {obj_b} via import. "
+                       u"The column '{column_name}' will be skipped.")
 
 MAPPING_SCOPING_ERROR = (u"Line {line}: You do not have the necessary "
                          u"permissions to {action} scoping objects to "
@@ -92,10 +109,10 @@ MAPPING_SCOPING_ERROR = (u"Line {line}: You do not have the necessary "
                          u"Column '{action}:{object_type}' will be ignored.")
 
 DELETE_NEW_OBJECT_ERROR = (u"Line {line}: Tried to create and delete the same"
-                           " object {object_type}: {slug} in one import.")
+                           u" object {object_type}: {slug} in one import.")
 
 DELETE_CASCADE_ERROR = (u"Line {line}: Cannot delete object {object_type}:"
-                        " {slug} without deleting other objects")
+                        u" {slug} without deleting other objects")
 
 UNKNOWN_ERROR = u"Line {line}: Import failed due to unknown error."
 
@@ -140,10 +157,10 @@ ONLY_IMPORTABLE_COLUMNS_WARNING = (u"Line {line}: Only the following "
 EXPORT_ONLY_WARNING = (u"Line {line}: Field '{column_name}' "
                        u"can not be imported. The value will be ignored.")
 
-ILLEGAL_APPEND_CONTROL_VALUE = ("Line {line}: "
-                                "You can not map {mapped_type} to "
-                                "{object_type}, because this {mapped_type} is "
-                                "not mapped to the related audit.")
+ILLEGAL_APPEND_CONTROL_VALUE = (u"Line {line}: "
+                                u"You can not map {mapped_type} to "
+                                u"{object_type}, because this {mapped_type} "
+                                u"is not mapped to the related audit.")
 
 UNMODIFIABLE_COLUMN = (u"Line {line}: Column '{column_name}' can not be "
                        u"modified. The value will be ignored.")
@@ -167,9 +184,10 @@ UNABLE_TO_EXTRACT_GDRIVE_ID = (u"Line {line}: Unable to extract gdrive_id "
                                u"from {link}. This evidence can't be "
                                u"reused after import")
 
-INVALID_TASKGROUP_MAPPING_WARNING = (u"Line {line}: You can not map "
-                                     u"{object_class} to TaskGroup. The value "
-                                     u"will be ignored.")
+INVALID_TASKGROUP_MAPPING_WARNING = (u"Line {line}: "
+                                     u"Attribute 'map:{header_name}' "
+                                     u"does not exist. "
+                                     u"Column will be ignored.")
 
 DISALLOW_EVIDENCE_FILE = (u"Line {line}: 'Evidence File' can't be changed "
                           u"via import. Please go on Assessment page and "
@@ -197,3 +215,22 @@ NO_VALID_USERS_ERROR = (u"Line {line}: Required field '{column_name}' "
 NO_VERIFIER_WARNING = (u"Line {line}: Assessment without verifier cannot "
                        u"be moved to {status} state. "
                        u"The value will be ignored.")
+
+UNEXPECTED_ERROR = u"Unexpected error on import."
+
+EXTERNAL_MODEL_IMPORT_RESTRICTION = (u"Line {line}: Import for "
+                                     u"{external_model_name} object is not "
+                                     u"available in GGRC system anymore. "
+                                     u"Go to new frontend to perform import "
+                                     u"there. The line will be ignored.")
+
+READONLY_ACCESS_WARNING = (u"Line {line}: The system is in a "
+                           u"read-only mode and is dedicated for SOX needs. "
+                           u"The following columns will be ignored: "
+                           u"{columns}.")
+
+NON_ADMIN_ACCESS_ERROR = (u"Line {line}: You don't have permissions to use "
+                          u"column '{column_name}' for {object_type}. Please "
+                          u"contact your administrator if you have any "
+                          u"questions. Column '{column_name}' will be "
+                          u"ignored.")

@@ -1,5 +1,5 @@
 /*
- Copyright (C) 2018 Google Inc.
+ Copyright (C) 2019 Google Inc.
  Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
  */
 
@@ -11,13 +11,8 @@
    *      list.  This may be an instance of can.Model or a pair containing
    *      (binding, result) in the case of a chained ListLoader.
    *
-   *  For FilteredListLoader, the mappings are (`result`, `binding`), where
-   *    `binding` is the binding in which the result appears, and thus,
-   *    `binding.loader` contains information about the filter.
-   *    `binding.instance`, then, is the instance on which the original,
-   *    unfiltered list is specified.
    */
-  can.Map.extend('GGRC.ListLoaders.MappingResult', {}, {
+  GGRC.ListLoaders.MappingResult = can.Map.extend({}, {
     init: function (instance, mappings, binding) {
       if (!mappings) {
         // Assume item was passed in as an object
@@ -122,13 +117,6 @@
       });
     },
 
-    //  `get_mappings`, `mappings_compute`, and `get_mappings_compute`
-    //  - Returns a list of first-level mapping instances, even if they're
-    //    several levels down due to virtual mappers like Multi
-    //  - "First-level mappings" are the objects whose existence causes the
-    //    `binding.instance` to be in the current `binding.list`.  (E.g.,
-    //    if any of the "first-level mappings" exist, the instance will
-    //    appear in the list.
     get_mappings: function () {
       let self = this;
       let mappings = [];
@@ -162,12 +150,6 @@
       });
     },
 
-    //  `walk_instances`
-    //  - `binding.mappings` can have several "virtual" levels due to mappers
-    //    like `Multi` and `Filter` -- e.g., mappers which just
-    //    aggregate or filter results of other mappers.  `walk_instances`
-    //    iterates over these "virtual" levels to emit instances only once
-    //    per time they appear in a traversal path of `binding.mappings`.
     walk_instances: function (fn, lastInstance, depth) {
       let i;
       if (!depth) {

@@ -1,12 +1,12 @@
 /*
- Copyright (C) 2018 Google Inc.
+ Copyright (C) 2019 Google Inc.
  Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
  */
 
 import Cacheable from '../cacheable';
 import Stub from '../stub';
 
-export default Cacheable('CMS.Models.Review', {
+export default Cacheable.extend({
   root_object: 'review',
   root_collection: 'reviews',
   table_singular: 'review',
@@ -21,11 +21,4 @@ export default Cacheable('CMS.Models.Review', {
   attributes: {
     reviewable: Stub,
   },
-}, {
-  setShowLastReviewUpdates(value) {
-    this._showLastReviewUpdates = value;
-  },
-  getShowLastReviewUpdates() {
-    return this._showLastReviewUpdates;
-  },
-});
+}, {});

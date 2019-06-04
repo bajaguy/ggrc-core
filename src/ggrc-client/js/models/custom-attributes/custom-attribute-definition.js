@@ -1,12 +1,12 @@
 /*
-    Copyright (C) 2018 Google Inc.
+    Copyright (C) 2019 Google Inc.
     Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 */
 
 import Cacheable from '../cacheable';
 import Stub from '../stub';
 
-export default Cacheable('CMS.Models.CustomAttributeDefinition', {
+export default Cacheable.extend({
   root_object: 'custom_attribute_definition',
   root_collection: 'custom_attribute_definitions',
   category: 'custom_attribute_definitions',
@@ -22,8 +22,8 @@ export default Cacheable('CMS.Models.CustomAttributeDefinition', {
     title: '',
     attribute_type: 'Text',
   },
-  attributeTypes: ['Text', 'Rich Text', 'Date', 'Checkbox', 'Dropdown',
-    'Map:Person'],
+  attributeTypes: ['Text', 'Rich Text', 'Date', 'Checkbox', 'Multiselect',
+    'Dropdown'],
 
   _customValidators: {
     /**
@@ -43,30 +43,27 @@ export default Cacheable('CMS.Models.CustomAttributeDefinition', {
      *   is returned if the validation passes.
      */
     multiChoiceOptions: function (newVal, propName) {
-      let choices;
-      let nonBlanks;
-      let uniques;
-
       if (propName !== 'multi_choice_options') {
         return ''; // nothing  to validate here
       }
 
-      if (this.attribute_type !== 'Dropdown') {
+      if (this.attribute_type !== 'Dropdown' &&
+        this.attribute_type !== 'Multiselect') {
         return ''; // all ok, the value of multi_choice_options not needed
       }
 
-      choices = _.splitTrim(newVal, ',');
+      const choices = _.splitTrim(newVal, ',');
 
       if (!choices.length) {
         return 'At least one possible value required.';
       }
 
-      nonBlanks = _.compact(choices);
+      const nonBlanks = _.compact(choices);
       if (nonBlanks.length < choices.length) {
         return 'Blank values not allowed.';
       }
 
-      uniques = _.uniq(nonBlanks);
+      const uniques = _.uniq(nonBlanks);
       if (uniques.length < nonBlanks.length) {
         return 'Duplicate values found.';
       }
@@ -74,23 +71,28 @@ export default Cacheable('CMS.Models.CustomAttributeDefinition', {
       return ''; // no errors
     },
   },
-
-  init: function () {
-    this.validateNonBlank('title');
-
+}, {
+  define: {
+    title: {
+      value: '',
+      validate: {
+        required: true,
+      },
+    },
     // Besides multi_choice_options we need toset the validation on the
     // attribute_type field as well, even though its validation always
     // succeeds. For some reson this is required for the modal UI buttons to
     // properly update themselves when choosing a different attribute type.
-    this.validate(
-      ['multi_choice_options', 'attribute_type'],
-      this._customValidators.multiChoiceOptions
-    );
-
-    this._super(...arguments);
-  },
-}, {
-  init: function () {
-    this._super(...arguments);
+    multi_choice_options: {
+      value: '',
+      validate: {
+        validateMultiChoiceOptions: true,
+      },
+    },
+    attribute_type: {
+      validate: {
+        validateMultiChoiceOptions: true,
+      },
+    },
   },
 });

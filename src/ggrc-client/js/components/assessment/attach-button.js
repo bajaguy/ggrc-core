@@ -1,19 +1,22 @@
 /*
- Copyright (C) 2018 Google Inc.
+ Copyright (C) 2019 Google Inc.
  Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
  */
 
 import Permission from '../../permission';
-import template from './attach-button.mustache';
-import {findGDriveItemById} from '../../plugins/utils/gdrive-picker-utils';
-
-const tag = 'attach-button';
+import template from './attach-button.stache';
+import {
+  getGDriveItemId,
+  findGDriveItemById,
+} from '../../plugins/utils/gdrive-picker-utils';
+import pubSub from '../../pub-sub';
 
 export default can.Component.extend({
-  tag,
-  template,
-  confirmationCallback: '@',
-  viewModel: {
+  tag: 'attach-button',
+  view: can.stache(template),
+  confirmationCallback: '',
+  leakScope: true,
+  viewModel: can.Map.extend({
     define: {
       hasPermissions: {
         get: function (prevValue, setValue) {
@@ -28,6 +31,12 @@ export default can.Component.extend({
           }
         },
       },
+      folderId: {
+        type: String,
+        get() {
+          return getGDriveItemId(this.attr('error.message'));
+        },
+      },
     },
     canAttach: false,
     isFolderAttached: false,
@@ -35,11 +44,18 @@ export default can.Component.extend({
     instance: null,
     isAttachActionDisabled: false,
     onBeforeCreate: function (event) {
-      let items = event.items;
-      this.dispatch({type: 'beforeCreate', items: items});
+      pubSub.dispatch({
+        type: 'relatedItemBeforeSave',
+        itemType: 'files',
+        items: event.items,
+      });
     },
-    finish: function () {
-      this.dispatch('finish');
+    created: function (event) {
+      pubSub.dispatch({
+        ...event,
+        type: 'relatedItemSaved',
+        itemType: 'files',
+      });
     },
     checkFolder: function () {
       let self = this;
@@ -70,5 +86,5 @@ export default can.Component.extend({
 
       return findGDriveItemById(folderId);
     },
-  },
+  }),
 });

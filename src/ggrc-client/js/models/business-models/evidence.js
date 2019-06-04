@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2018 Google Inc.
+  Copyright (C) 2019 Google Inc.
   Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 */
 
@@ -18,7 +18,7 @@ const getAccessControlList = () => {
   }] : [];
 };
 
-export default Cacheable('CMS.Models.Evidence', {
+export default Cacheable.extend({
   root_object: 'evidence',
   root_collection: 'evidence',
   title_singular: 'Evidence',
@@ -71,11 +71,15 @@ export default Cacheable('CMS.Models.Evidence', {
         disable_sorting: true,
       }],
   },
-  init() {
-    this.validateNonBlank('title');
-    this._super(...arguments);
-  },
 }, {
+  define: {
+    title: {
+      value: '',
+      validate: {
+        required: true,
+      },
+    },
+  },
   kindTitle() {
     let value = this.attr('kind');
     let title = _.find(this.class.kinds, {value}).title;

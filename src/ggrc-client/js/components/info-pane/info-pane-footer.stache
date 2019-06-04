@@ -1,0 +1,20 @@
+{{!
+    Copyright (C) 2019 Google Inc.
+    Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
+}}
+
+<div class="info-widget-footer">
+    <p>
+      <small>
+        <em>
+          Created date {{dateTime createdAt}}
+          &nbsp;&nbsp;&nbsp;&nbsp;
+          Last updated
+          {{#if modifiedBy}}
+            by <person-data personId:from="modifiedBy.id"></person-data>
+          {{/if}}
+          on {{dateTime modifiedAt}}
+        </em>
+      </small>
+    </p>
+  </div>

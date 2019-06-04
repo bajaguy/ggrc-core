@@ -1,4 +1,4 @@
-# Copyright (C) 2018 Google Inc.
+# Copyright (C) 2019 Google Inc.
 # Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 
 """Test for proposal permissions."""
@@ -12,6 +12,7 @@ from ggrc.models import all_models
 from integration.ggrc import TestCase
 from integration.ggrc.api_helper import Api
 from integration.ggrc.models import factories
+from integration.ggrc.proposal import _get_query_proposal_request
 from integration.ggrc_basic_permissions.models \
     import factories as rbac_factories
 
@@ -24,31 +25,18 @@ class TestPermissions(TestCase):
     super(TestPermissions, self).setUp()
     self.api = Api()
     roles = {r.name: r for r in all_models.Role.query.all()}
-    factories.AccessControlRoleFactory(
-        name="ACL_Reader",
-        object_type="Control",
-        update=0
-    )
-    factories.AccessControlRoleFactory(
-        name="ACL_Editor",
-        object_type="Control"
-    )
-    factories.AccessControlRoleFactory(
-        name="ACL_Nobody",
-        object_type="Control",
-        read=0,
-        update=0,
-        delete=0,
-    )
+    factories.AccessControlRoleFactory(name="ACL_Reader", update=0,
+                                       object_type="Program")
+    factories.AccessControlRoleFactory(name="ACL_Editor",
+                                       object_type="Program")
+    factories.AccessControlRoleFactory(name="ACL_Nobody",
+                                       object_type="Program",
+                                       read=0,
+                                       update=0,
+                                       delete=0,)
     with factories.single_commit():
-      self.control = factories.ControlFactory()
       self.program = factories.ProgramFactory()
       self.program.context.related_object = self.program
-      self.relationship = factories.RelationshipFactory(
-          source=self.program,
-          destination=self.control,
-          context=self.program.context,
-      )
       self.people = {
           "Creator": factories.PersonFactory(),
           "Reader": factories.PersonFactory(),
@@ -74,7 +62,7 @@ class TestPermissions(TestCase):
             person=person,
         )
       self.proposal = factories.ProposalFactory(
-          instance=self.control,
+          instance=self.program,
           content={
               "access_control_list": {},
               "custom_attribute_values": {},
@@ -83,16 +71,12 @@ class TestPermissions(TestCase):
               "mapping_list_fields": {},
           }
       )
-      factories.RelationshipFactory(
-          source=self.control,
-          destination=self.proposal,
-      )
 
       for role_name in ["ACL_Reader", "ACL_Editor", "ACL_Nobody"]:
         person = self.people[role_name]
         rbac_factories.UserRoleFactory(role=roles["Creator"], person=person)
         factories.AccessControlPersonFactory(
-            ac_list=self.control.acr_name_acl_map[role_name],
+            ac_list=self.program.acr_name_acl_map[role_name],
             person=person,
         )
 
@@ -183,8 +167,8 @@ class TestPermissions(TestCase):
     data = {
         "proposal": {
             "instance": {
-                "id": self.control.id,
-                "type": self.control.type,
+                "id": self.program.id,
+                "type": self.program.type,
             },
             "full_instance_content": {"title": "new_title"},
             "agenda": "update cav",
@@ -207,9 +191,9 @@ class TestPermissions(TestCase):
       # ("ACL_Editor", 1),
       ("ACL_Nobody", 0),
       ("Administrator", 1),
-      ("Program Editors", 1),
-      ("Program Managers", 1),
-      ("Program Readers", 1),
+      ("Program Editors", 0),
+      ("Program Managers", 0),
+      ("Program Readers", 0),
   )
   @ddt.unpack
   def test_query_filter(self, role_name, expected_count):
@@ -221,30 +205,8 @@ class TestPermissions(TestCase):
         expected_count: int, number of proposals,
                         that should be filtered by query
     """
-    control_id = self.control.id
-    data = [{
-        "limit": [0, 5],
-        "object_name": all_models.Proposal.__name__,
-        "order_by":[
-            {"name": "status", "desc": True},
-            {"name": "created_at", "desc": True},
-        ],
-        "filters": {
-            "expression": {
-                "left": {
-                    "left": "instance_type",
-                    "op": {"name": "="},
-                    "right": self.control.type,
-                },
-                "op": {"name": "AND"},
-                "right": {
-                    "left": "instance_id",
-                    "op": {"name": "="},
-                    "right": control_id,
-                },
-            },
-        },
-    }]
+    program_id = self.program.id
+    data = _get_query_proposal_request(program_id)
     self.api.set_user(self.people[role_name])
     self.client.get("/login")
     headers = {"Content-Type": "application/json", }

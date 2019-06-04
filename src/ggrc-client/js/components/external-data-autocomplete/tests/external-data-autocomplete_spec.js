@@ -1,11 +1,12 @@
 /*
- Copyright (C) 2018 Google Inc.
+ Copyright (C) 2019 Google Inc.
  Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
  */
 
 import {getComponentVM} from '../../../../js_specs/spec_helpers';
 import Component from '../external-data-autocomplete';
 import * as businessModels from '../../../models/business-models';
+import * as ReifyUtils from '../../../plugins/utils/reify-utils';
 
 describe('external-data-autocomplete component', () => {
   let viewModel;
@@ -116,15 +117,15 @@ describe('external-data-autocomplete component', () => {
     });
 
     describe('onItemPicked() method', () => {
+      let saveDfd;
       let item;
-      let created;
 
       beforeEach(() => {
+        saveDfd = $.Deferred();
         item = {
           test: true,
         };
-        created = Promise.resolve(item);
-        spyOn(viewModel, 'createOrGet').and.returnValue(created);
+        spyOn(viewModel, 'createOrGet').and.returnValue(saveDfd);
       });
 
       it('turns on "saving" flag', () => {
@@ -146,7 +147,7 @@ describe('external-data-autocomplete component', () => {
 
         viewModel.onItemPicked(item);
 
-        created.then(() => {
+        saveDfd.resolve(item).then(() => {
           expect(viewModel.dispatch).toHaveBeenCalledWith({
             type: 'itemSelected',
             selectedItem: item,
@@ -158,11 +159,13 @@ describe('external-data-autocomplete component', () => {
       it('turns off "saving" flag', (done) => {
         viewModel.attr('saving', true);
 
-        viewModel.onItemPicked(item);
+        let onItemPickedChain = viewModel.onItemPicked(item);
 
-        created.then().finally(() => {
-          expect(viewModel.attr('saving')).toBe(false);
-          done();
+        saveDfd.resolve().always(() => {
+          onItemPickedChain.then(() => {
+            expect(viewModel.attr('saving')).toBe(false);
+            done();
+          });
         });
       });
 
@@ -172,7 +175,7 @@ describe('external-data-autocomplete component', () => {
 
         viewModel.onItemPicked(item);
 
-        created.then(() => {
+        saveDfd.resolve().then(() => {
           expect(viewModel.attr('searchCriteria')).toBe('');
           done();
         });
@@ -185,7 +188,7 @@ describe('external-data-autocomplete component', () => {
 
           viewModel.onItemPicked(item);
 
-          created.then(() => {
+          saveDfd.resolve().then(() => {
             expect(viewModel.attr('searchCriteria')).toBe('someText');
             done();
           });
@@ -262,11 +265,12 @@ describe('external-data-autocomplete component', () => {
       });
 
       it('calls model reify', (done) => {
-        model.reify = jasmine.createSpy('reify').and.returnValue(model);
+        spyOn(ReifyUtils, 'reify').and.returnValue(model);
+        spyOn(ReifyUtils, 'isReifiable').and.returnValue(true);
 
         viewModel.createOrGet(item)
-          .then((resultModel) => {
-            expect(model.reify).toHaveBeenCalled();
+          .then(() => {
+            expect(ReifyUtils.reify).toHaveBeenCalledWith(model);
             done();
           });
       });

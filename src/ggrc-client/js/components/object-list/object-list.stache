@@ -1,0 +1,37 @@
+{{!
+    Copyright (C) 2019 Google Inc.
+    Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
+}}
+{{#if showSpinner}}
+  <div class="spinner-section {{#if isGrid}}spinner-section_grid{{/if}}">
+    {{#if isGrid}}
+      <spinner-component toggle:from="isLoading" extraCssClass:from="'grid-spinner'" class="spinner-wrapper active"></spinner-component>
+    {{else}}
+      <spinner-component toggle:from="isLoading" class="spinner-wrapper active"></spinner-component>
+    {{/if}}
+  </div>
+{{else}}
+  {{#if items.length}}
+      {{#if showMore}}
+        <show-more class="list-more" items:from="items" limit:from="3">
+          <div class="object-list__item {{#if isSelected}}object-list__item-selected{{/if}}" on:el:click="modifySelection">
+            <content>No item component or template is provided</content>
+          </div>
+        </show-more>
+      {{else}}
+        {{! We've added _cid of view model to class because canjs can't
+            correctly render 2 versions of the same component with the same data}}
+        <div class="object-list__items {{_cid}}">
+        {{#each items}}
+          <div class="object-list__item {{#if isSelected}}object-list__item-selected{{/if}}" on:el:click="modifySelection">
+              <content>No item component or template is provided</content>
+          </div>
+        {{/each}}
+        </div>
+      {{/if}}
+  {{else}}
+      <div class="object-list__item object-list__item-empty">
+        {{emptyMessage}}
+      </div>
+  {{/if}}
+{{/if}}

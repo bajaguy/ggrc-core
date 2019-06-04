@@ -1,0 +1,10 @@
+{{!
+  Copyright (C) 2019 Google Inc.
+  Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
+}}
+
+<h6>Assessment template</h6>
+<dropdown-component className:from="'assessment-templates'"
+                    optionsList:from="templates"
+                    name:bind="assessmentTemplate">
+</dropdown-component>

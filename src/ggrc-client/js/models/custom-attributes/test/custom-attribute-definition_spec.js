@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2018 Google Inc.
+  Copyright (C) 2019 Google Inc.
   Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 */
 
@@ -35,11 +35,11 @@ describe('CustomAttributeDefinition model', function () {
     }
     );
 
-    it('returns an empty message for non-dropdown types', function () {
+    it('returns an empty message for non-multichoiceable types', function () {
       Model.attributeTypes.forEach(function (attrType) {
         let msg;
 
-        if (attrType === 'Dropdown') {
+        if (attrType === 'Dropdown' || attrType === 'Multiselect') {
           return;
         }
 

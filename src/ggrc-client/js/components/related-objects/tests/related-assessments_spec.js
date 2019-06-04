@@ -1,5 +1,5 @@
 /*
- Copyright (C) 2018 Google Inc.
+ Copyright (C) 2019 Google Inc.
  Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
  */
 
@@ -258,46 +258,44 @@ describe('related-assessments component', () => {
 
       describe('after saving', () => {
         it('cleans selectedEvidences', (done) => {
-          viewModel.reuseSelected();
+          let reuseSelectedChain = viewModel.reuseSelected();
 
           saveDfd.resolve().then(() => {
-            expect(viewModel.attr('selectedEvidences.length')).toBe(0);
-            done();
+            reuseSelectedChain.then(() => {
+              expect(viewModel.attr('selectedEvidences.length')).toBe(0);
+              done();
+            });
           });
         });
 
         it('turns off isSaving flag', (done) => {
-          viewModel.reuseSelected();
+          let reuseSelectedChain = viewModel.reuseSelected();
 
           viewModel.attr('isSaving', true);
 
           saveDfd.resolve().then(() => {
-            expect(viewModel.attr('isSaving')).toBe(false);
-            done();
+            reuseSelectedChain.then(() => {
+              expect(viewModel.attr('isSaving')).toBe(false);
+              done();
+            });
           });
         });
 
-        it('dispatches "afterObjectReused" event', (done) => {
+        it('dispatches "reusableObjectsCreated" event', (done) => {
           spyOn(viewModel, 'dispatch');
 
-          viewModel.reuseSelected();
+          let reuseSelectedChain = viewModel.reuseSelected();
 
-          saveDfd.resolve().then(() => {
-            expect(viewModel.dispatch)
-              .toHaveBeenCalledWith('afterObjectReused');
-            done();
-          });
-        });
-
-        it('dispatches "refreshInstance" event on instance', (done) => {
-          spyOn(viewModel.attr('instance'), 'dispatch');
-
-          viewModel.reuseSelected();
-
-          saveDfd.resolve().then(() => {
-            expect(viewModel.attr('instance').dispatch)
-              .toHaveBeenCalledWith('refreshInstance');
-            done();
+          let model = {};
+          saveDfd.resolve(model).then(() => {
+            reuseSelectedChain.then(() => {
+              expect(viewModel.dispatch)
+                .toHaveBeenCalledWith({
+                  type: 'reusableObjectsCreated',
+                  items: [model],
+                });
+              done();
+            });
           });
         });
       });
@@ -389,13 +387,14 @@ describe('related-assessments component', () => {
           fn: jasmine.createSpy(),
           inverse: jasmine.createSpy(),
         };
-        spyOn(Mustache, 'resolve');
       });
 
       it('resolves compute argument', () => {
+        spyOn(viewModel, 'isFunction');
+
         ifAllowedToReuse(evidence, options);
 
-        expect(Mustache.resolve).toHaveBeenCalledWith(evidence);
+        expect(viewModel.isFunction).toHaveBeenCalledWith(evidence);
       });
 
       it('calls fn if able to reuse', () => {

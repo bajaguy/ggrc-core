@@ -1,4 +1,4 @@
-# Copyright (C) 2018 Google Inc.
+# Copyright (C) 2019 Google Inc.
 # Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 
 from ggrc import models
@@ -21,6 +21,6 @@ class TestBasicCsvImport(TestCase):
     self.assertEqual(response_data[0]["deleted"], 0)
     self.assertEqual(response_data[0]["ignored"], 2)
     self.assertEqual(
-        models.Control.query.count(),
+        models.Program.query.count(),
         2,
     )

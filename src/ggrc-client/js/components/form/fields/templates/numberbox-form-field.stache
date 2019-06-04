@@ -1,0 +1,11 @@
+{{!
+  Copyright (C) 2019 Google Inc.
+  Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
+}}
+
+<div class="input-wrapper">
+  <numberbox-component additionalClass:from="'text-field'"
+                       placeholder:from="placeholder"
+                       value:bind="inputValue">
+  </numberbox-component>
+</div>

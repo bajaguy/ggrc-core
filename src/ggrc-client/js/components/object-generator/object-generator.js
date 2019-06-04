@@ -1,5 +1,5 @@
 /*
- Copyright (C) 2018 Google Inc.
+ Copyright (C) 2019 Google Inc.
  Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
  */
 
@@ -13,7 +13,8 @@ import '../../components/unified-mapper/mapper-results';
 import '../../components/mapping-controls/mapping-type-selector';
 import ObjectOperationsBaseVM from '../view-models/object-operations-base-vm';
 import * as businessModels from '../../models/business-models';
-import template from './object-generator.mustache';
+import template from './object-generator.stache';
+import Mappings from '../../models/mappers/mappings';
 
 /**
  * A component implementing a modal for mapping objects to other objects,
@@ -21,7 +22,8 @@ import template from './object-generator.mustache';
  */
 export default can.Component.extend({
   tag: 'object-generator',
-  template,
+  view: can.stache(template),
+  leakScope: true,
   viewModel: function (attrs, parentViewModel) {
     return ObjectOperationsBaseVM.extend({
       object: attrs.object,
@@ -37,6 +39,9 @@ export default can.Component.extend({
         //  disable changing of object type while loading
         //  to prevent errors while speedily selecting different types
         this.attr('is_loading');
+      },
+      availableTypes() {
+        return Mappings.groupTypes(GGRC.config.snapshotable_objects);
       },
     });
   },
@@ -79,7 +84,7 @@ export default can.Component.extend({
         context: this,
       });
     },
-    '{viewModel} assessmentTemplate': function (viewModel, ev, val, oldVal) {
+    '{viewModel} assessmentTemplate': function ([viewModel], ev, val) {
       let type;
       if (_.isEmpty(val)) {
         return this.viewModel.attr('block_type_change', false);

@@ -1,4 +1,4 @@
-# Copyright (C) 2018 Google Inc.
+# Copyright (C) 2019 Google Inc.
 # Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 
 # ~/.bashrc: executed by bash(1) for non-login shells.
@@ -92,6 +92,9 @@ alias l='ls -CF'
 # Add an "alert" alias for long running commands.  Use like so:
 #   sleep 10; alert
 alias alert='notify-send --urgency=low -i "$([ $? = 0 ] && echo terminal || echo error)" "$(history|tail -n1|sed -e '\''s/^\s*[0-9]\+\s*//;s/[;&|]\s*alert$//'\'')"'
+
+# alias to refresh packages on FE
+alias refresh="rm -rf node_modules/*; git checkout package-lock.json; npm i --unsafe-perm"
 
 # Alias definitions.
 # You may want to put all your additions into a separate file like

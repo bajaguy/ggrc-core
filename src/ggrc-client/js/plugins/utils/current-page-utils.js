@@ -1,5 +1,5 @@
 /*
- Copyright (C) 2018 Google Inc.
+ Copyright (C) 2019 Google Inc.
  Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
  */
 
@@ -21,12 +21,7 @@ import {changeUrl, reloadPage} from '../../router';
  */
 
 let relatedToCurrentInstance = new can.Map({
-  define: {
-    initialized: {
-      type: 'boolean',
-      value: false,
-    },
-  },
+  initialized: false,
 });
 
 function getPageModel() {

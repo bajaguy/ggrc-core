@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2018 Google Inc.
+  Copyright (C) 2019 Google Inc.
   Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 */
 
@@ -7,10 +7,7 @@ import {notifier} from './notifiers-utils';
 import RefreshQueue from '../../models/refresh_queue';
 import * as businessModels from '../../models/business-models';
 import * as serviceModels from '../../models/service-models';
-
-const allModels = Object.assign({},
-  businessModels,
-  serviceModels);
+import allModels from '../../models/all-models';
 
 const relatedAssessmentsTypes = Object.freeze(['Control', 'Objective']);
 
@@ -47,6 +44,8 @@ const objectTypeDecisionTree = Object.freeze({
   threat: businessModels.Threat,
   risk: businessModels.Risk,
   workflow: businessModels.Workflow,
+  key_report: businessModels.KeyReport,
+  account_balance: businessModels.AccountBalance,
 });
 
 const getModelInstance = (id, type, requiredAttr) => {
@@ -128,7 +127,7 @@ function isScopeModel(type) {
 /**
  * Return Model Constructor Instance
  * @param {String} type - Model type
- * @return {CMS.Model.Cacheble|null} - Return Model Constructor
+ * @return {Cacheble|null} - Return Model Constructor
  */
 const getModelByType = (type) => {
   if (!type || typeof type !== 'string') {
@@ -137,31 +136,6 @@ const getModelByType = (type) => {
     return null;
   }
   return allModels[type];
-};
-
-
-can.Map.prototype.reify = function () {
-  let type;
-  let model;
-
-  if (this instanceof can.Model) {
-    return this;
-  }
-
-  type = this.type;
-  model = allModels[type];
-
-  if (!model) {
-    console.warn('`reify()` called with unrecognized type', this);
-  } else {
-    return model.model(this);
-  }
-};
-
-can.List.prototype.reify = function () {
-  return new can.List(can.map(this, function (obj) {
-    return obj.reify();
-  }));
 };
 
 /**

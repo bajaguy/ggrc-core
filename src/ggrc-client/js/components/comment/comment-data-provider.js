@@ -1,5 +1,5 @@
 /*
- Copyright (C) 2018 Google Inc.
+ Copyright (C) 2019 Google Inc.
  Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
  */
 
@@ -13,7 +13,8 @@ import Context from '../../models/service-models/context';
 
 export default can.Component.extend({
   tag: 'comment-data-provider',
-  viewModel: {
+  leakScope: true,
+  viewModel: can.Map.extend({
     instance: null,
     comments: [],
     isLoading: false,
@@ -24,7 +25,11 @@ export default can.Component.extend({
       this.attr('comments').replace(comments);
     },
     buildQuery() {
-      let query = QueryAPI.buildParam('Comment', {sort: [{
+      let objectName = this.attr('instance').class.isChangeableExternally
+        ? 'ExternalComment'
+        : 'Comment';
+
+      let query = QueryAPI.buildParam(objectName, {sort: [{
         key: 'created_at',
         direction: 'desc',
       }]}, {
@@ -86,7 +91,7 @@ export default can.Component.extend({
           this.removeComment(comment);
         });
     },
-  },
+  }),
   init() {
     this.viewModel.loadComments();
   },

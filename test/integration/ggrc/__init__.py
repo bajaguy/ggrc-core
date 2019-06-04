@@ -1,4 +1,4 @@
-# Copyright (C) 2018 Google Inc.
+# Copyright (C) 2019 Google Inc.
 # Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 
 """Base test case for all ggrc integration tests."""
@@ -9,14 +9,15 @@ import logging
 import os
 import tempfile
 import csv
+import itertools
 from StringIO import StringIO
 from mock import patch
 
+from flask_testing import TestCase as BaseTestCase
 import sqlalchemy as sa
 from sqlalchemy import exc
 from sqlalchemy import func
 from sqlalchemy.sql.expression import tuple_
-from flask.ext.testing import TestCase as BaseTestCase
 from google.appengine.ext import testbed
 
 from ggrc import db
@@ -28,6 +29,8 @@ from ggrc.models import Revision, all_models
 from integration.ggrc import api_helper
 from integration.ggrc.api_helper import Api
 from integration.ggrc.models import factories
+from integration.ggrc_basic_permissions.models \
+    import factories as rbac_factories
 
 # Hide errors during testing. Errors are still displayed after all tests are
 # done. This is for the bad request error messages while testing the api calls.
@@ -35,6 +38,29 @@ logging.disable(logging.CRITICAL)
 
 
 THIS_ABS_PATH = os.path.abspath(os.path.dirname(__file__))
+
+# Test relationship between Standard/Regulation and scope objects
+_SCOPING_MODELS = all_models.get_scope_models()
+READONLY_MAPPING_PAIRS = list(
+    # make a list of object combinations from 1st and 2nd iterables
+    # itertools.product("AB", "CD") is ["AC", "AD", "BC", "BD"]
+    itertools.product(_SCOPING_MODELS, (all_models.Standard,
+                                        all_models.Regulation))
+)
+
+# Test relationship for Control and Scope objects, Standard and Regulation
+READONLY_MAPPING_PAIRS.extend(
+    (all_models.Control, m) for m in itertools.chain(_SCOPING_MODELS,
+                                                     (all_models.Standard,
+                                                      all_models.Regulation,)
+                                                     )
+)
+READONLY_MAPPING_PAIRS.extend(
+    (all_models.Risk, m) for m in itertools.chain(_SCOPING_MODELS,
+                                                  (all_models.Standard,
+                                                   all_models.Regulation,)
+                                                  )
+)
 
 
 def read_imported_file(file_data):  # pylint: disable=unused-argument
@@ -130,7 +156,6 @@ class TestCase(BaseTestCase, object):
       order in then incorrect.
     """
     ignore_tables = (
-        "categories",
         "notification_types",
         "object_types",
         "options",
@@ -278,14 +303,23 @@ class TestCase(BaseTestCase, object):
     with tempfile.NamedTemporaryFile(dir=cls.CSV_DIR, suffix=".csv") as tmp:
       writer = csv.writer(tmp)
       object_type = None
+      object_len = None
       for data in import_data:
         data = data.copy()
+        data_object_len = len(data)
         data_object_type = data.pop("object_type")
         keys = data.keys()
         if data_object_type != object_type:
           if object_type is not None:
             writer.writerow([])
           object_type = data_object_type
+          object_len = data_object_len
+          writer.writerow(["Object type"])
+          writer.writerow([data_object_type] + keys)
+        elif data_object_len != object_len:
+          if object_len:
+            writer.writerow([])
+          object_len = data_object_len
           writer.writerow(["Object type"])
           writer.writerow([data_object_type] + keys)
         writer.writerow([""] + [data[k] for k in keys])
@@ -523,6 +557,17 @@ class TestCase(BaseTestCase, object):
           )
           assignees.append((person, role))
     return assignees
+
+  @staticmethod
+  def create_user_with_role(role, **person_params):
+    """Create new user and assign global role to him."""
+    with factories.single_commit():
+      user = factories.PersonFactory(**person_params)
+      system_role = all_models.Role.query.filter(
+          all_models.Role.name == role
+      ).one()
+      rbac_factories.UserRoleFactory(role=system_role, person=user)
+    return user
 
   @staticmethod
   def get_model_ca(model_name, ids):

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2018 Google Inc.
+ * Copyright (C) 2019 Google Inc.
  * Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
  */
 
@@ -49,10 +49,14 @@ collapsible-panel-header {
     display: inline-block;
   }
 
-  collapse-panel-click-area {
+  .collapsible-panel-header__toggle-button {
     cursor: pointer;
     display: flex;
+    align-items: center;
     max-width: 70%;
+    background: none;
+    border: none;
+    padding: 0;
   }
 
   &:after {

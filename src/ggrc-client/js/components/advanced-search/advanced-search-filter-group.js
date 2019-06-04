@@ -1,11 +1,11 @@
 /*
- Copyright (C) 2018 Google Inc.
+ Copyright (C) 2019 Google Inc.
  Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
  */
 
 import AdvancedSearchContainer from '../view-models/advanced-search-container-vm';
 import * as AdvancedSearch from '../../plugins/utils/advanced-search-utils';
-import template from './advanced-search-filter-group.mustache';
+import template from './advanced-search-filter-group.stache';
 
 /**
  * Filter Group view model.
@@ -33,6 +33,7 @@ let viewModel = AdvancedSearchContainer.extend({
  */
 export default can.Component.extend({
   tag: 'advanced-search-filter-group',
-  template: template,
+  view: can.stache(template),
+  leakScope: true,
   viewModel: viewModel,
 });

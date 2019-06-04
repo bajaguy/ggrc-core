@@ -1,10 +1,10 @@
 /*
-    Copyright (C) 2018 Google Inc.
+    Copyright (C) 2019 Google Inc.
     Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 */
 
 import {sortByName} from '../../plugins/utils/label-utils';
-import template from './templates/multi-select-label.mustache';
+import template from './templates/multi-select-label.stache';
 import './../custom-autocomplete/autocomplete-input';
 import './label-autocomplete-results';
 
@@ -12,8 +12,9 @@ import './label-autocomplete-wrapper';
 
 export default can.Component.extend({
   tag: 'multi-select-label',
-  template: template,
-  viewModel: {
+  view: can.stache(template),
+  leakScope: true,
+  viewModel: can.Map.extend({
     define: {
       onlyEditMode: {
         type: 'boolean',
@@ -90,7 +91,7 @@ export default can.Component.extend({
       this.attr('labels').splice(index, 1);
       this.valueChanged(this.attr('labels'));
     },
-  },
+  }),
   events: {
     '{viewModel.instance} modal:discard': function () {
       let viewModel = this.viewModel;

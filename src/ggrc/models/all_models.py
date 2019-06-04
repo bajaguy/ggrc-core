@@ -1,4 +1,4 @@
-# Copyright (C) 2018 Google Inc.
+# Copyright (C) 2019 Google Inc.
 # Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 
 """All GGRC model classes grouped together for convenience."""
@@ -17,6 +17,7 @@ from ggrc.data_platform.object_templates import ObjectTemplates
 from ggrc.data_platform.object_types import ObjectTypes
 from ggrc.models import inflector
 from ggrc.models.access_group import AccessGroup
+from ggrc.models.account_balance import AccountBalance
 from ggrc.models.assessment import Assessment
 from ggrc.models.assessment_template import AssessmentTemplate
 from ggrc.models.audit import Audit
@@ -25,13 +26,9 @@ from ggrc.models.background_operation_type import BackgroundOperationType
 from ggrc.models.background_task import BackgroundTask
 from ggrc.models.background_operation import BackgroundOperation
 from ggrc.models.calendar_event import CalendarEvent
-from ggrc.models.categorization import Categorization
-from ggrc.models.category import CategoryBase
-from ggrc.models.comment import Comment
+from ggrc.models.comment import Comment, ExternalComment
 from ggrc.models.context import Context
 from ggrc.models.control import Control
-from ggrc.models.control import ControlAssertion
-from ggrc.models.control import ControlCategory
 from ggrc.models.custom_attribute_definition import CustomAttributeDefinition
 from ggrc.models.custom_attribute_value import CustomAttributeValue
 from ggrc.models.data_asset import DataAsset
@@ -47,6 +44,7 @@ from ggrc.models.facility import Facility
 from ggrc.models.import_export import ImportExport
 from ggrc.models.issue import Issue
 from ggrc.models.issuetracker_issue import IssuetrackerIssue
+from ggrc.models.key_report import KeyReport
 from ggrc.models.label import Label
 from ggrc.models.maintenance import Maintenance
 from ggrc.models.market import Market
@@ -80,6 +78,8 @@ from ggrc.models.technology_environment import TechnologyEnvironment
 from ggrc.models.threat import Threat
 from ggrc.models.vendor import Vendor
 from ggrc.models.review import Review
+from ggrc.models.mixins import ScopeObject as _ScopeObject
+
 
 all_models = [  # pylint: disable=invalid-name
     # data platform models
@@ -97,6 +97,7 @@ all_models = [  # pylint: disable=invalid-name
     AccessControlPerson,
     AccessControlRole,
     AccessGroup,
+    AccountBalance,
     Assessment,
     AssessmentTemplate,
     Audit,
@@ -105,14 +106,10 @@ all_models = [  # pylint: disable=invalid-name
     BackgroundOperation,
     BackgroundOperationType,
     CalendarEvent,
-    Categorization,
-    CategoryBase,
     Comment,
     Context,
     Contract,
     Control,
-    ControlAssertion,
-    ControlCategory,
     CustomAttributeDefinition,
     CustomAttributeValue,
     DataAsset,
@@ -120,10 +117,12 @@ all_models = [  # pylint: disable=invalid-name
     Document,
     Event,
     Evidence,
+    ExternalComment,
     Facility,
     ImportExport,
     Issue,
     IssuetrackerIssue,
+    KeyReport,
     Label,
     Maintenance,
     Market,
@@ -161,7 +160,7 @@ all_models = [  # pylint: disable=invalid-name
     Vendor,
 ]
 
-__all__ = [m.__name__ for m in all_models]
+__all__ = list(m.__name__ for m in all_models)
 
 
 def register_model(model):
@@ -196,3 +195,21 @@ def unregister_model(model):
     all_models.remove(model)
   if model.__name__ in __all__:
     __all__.remove(model.__name__)
+
+
+def get_scope_models():
+  """Return all usable scope model classes"""
+  ret = list(m for m in all_models
+             if issubclass(m, _ScopeObject))
+
+  # SystemOrProcess is abstract model which represents models System & Process
+  # We have to exclude it from the list, as cannot be used directly
+  ret.remove(SystemOrProcess)
+
+  return ret
+
+
+def get_scope_model_names():
+  # type: () -> List[str]
+  """Return list of names of usable scope models"""
+  return list(model.__name__ for model in get_scope_models())

@@ -1,4 +1,4 @@
-# Copyright (C) 2018 Google Inc.
+# Copyright (C) 2019 Google Inc.
 # Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 
 """Context model definition."""
@@ -119,8 +119,8 @@ class HasOwnContext(object):
     ).exists()
 
   @classmethod
-  def eager_query(cls):
-    return super(HasOwnContext, cls).eager_query().options(
+  def eager_query(cls, **kwargs):
+    return super(HasOwnContext, cls).eager_query(**kwargs).options(
         orm.Load(cls).subqueryload(
             "contexts"
         ).undefer_group(

@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2018 Google Inc.
+  Copyright (C) 2019 Google Inc.
   Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 */
 
@@ -124,25 +124,19 @@ const getValueAndDefinition = (values, definitions, attrId) => {
 };
 
 const getModifiedValue = (modifiedAttr, attr) => {
-  const isPerson = attr.def.attribute_type === 'Map:Person';
-  const contentProperty = isPerson ? 'attribute_object' : 'attribute_value';
   let value = attr.value;
 
-  if (!modifiedAttr || !modifiedAttr.hasOwnProperty(contentProperty)) {
+  if (!modifiedAttr || !modifiedAttr.attribute_value) {
     return value;
   }
 
-  if (value && value.hasOwnProperty(contentProperty)) {
-    value[contentProperty] = modifiedAttr[contentProperty];
+  if (value && value.attribute_value) {
+    value.attribute_value = modifiedAttr.attribute_value;
   } else {
     value = {
-      [contentProperty]: modifiedAttr[contentProperty],
+      attribute_value: modifiedAttr.attribute_value,
       custom_attribute_id: attr.def.id,
     };
-  }
-
-  if (isPerson && value.attribute_object) {
-    value.attribute_object_id = value.attribute_object.id;
   }
 
   return value;
@@ -176,7 +170,7 @@ const buildModifiedAttValues = (values, definitions, modifiedAttrs) => {
 const getInstanceView = (instance) => {
   let typeView;
   let view;
-  const defaultPath = `${GGRC.mustache_path}/base_objects/info.mustache`;
+  const defaultPath = `${GGRC.templates_path}/base_objects/info.stache`;
 
   if (!instance) {
     return '';
@@ -185,7 +179,7 @@ const getInstanceView = (instance) => {
   typeView = `${instance.class.table_plural}/info`;
 
   if (typeView in GGRC.Templates) {
-    view = `${GGRC.mustache_path}/${typeView}.mustache`;
+    view = `${GGRC.templates_path}/${typeView}.stache`;
   } else {
     view = defaultPath;
   }

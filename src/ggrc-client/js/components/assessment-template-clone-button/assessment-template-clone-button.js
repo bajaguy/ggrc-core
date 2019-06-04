@@ -1,16 +1,17 @@
 /*
- Copyright (C) 2018 Google Inc.
+ Copyright (C) 2019 Google Inc.
  Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
  */
 
-import template from './assessment-template-clone-button.mustache';
+import template from './assessment-template-clone-button.stache';
 import router from '../../router';
 import {getPageInstance} from '../../plugins/utils/current-page-utils';
 
 export default can.Component.extend({
   tag: 'assessment-template-clone-button',
-  template,
-  viewModel: {
+  view: can.stache(template),
+  leakScope: true,
+  viewModel: can.Map.extend({
     model: null,
     text: null,
     parentId: null,
@@ -41,5 +42,5 @@ export default can.Component.extend({
         }
       }
     },
-  },
+  }),
 });

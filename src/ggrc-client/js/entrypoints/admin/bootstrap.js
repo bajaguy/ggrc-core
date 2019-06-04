@@ -1,5 +1,5 @@
 /*
-    Copyright (C) 2018 Google Inc.
+    Copyright (C) 2019 Google Inc.
     Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 */
 
@@ -19,18 +19,15 @@ import Roleable from '../../models/custom-roles/roleable';
 import Person from '../../models/business-models/person';
 import WidgetList from '../../modules/widget_list';
 import ListView from '../../controllers/tree/list_view_controller';
-import TreeView from '../../controllers/tree/tree-view';
+import TreeViewControl from '../../controllers/tree/tree-view';
+import {DashboardControl} from '../../controllers/dashboard_controller';
 
-const path = GGRC.mustache_path || '/static/mustache';
-const HEADER_VIEW = `${path}/base_objects/page_header.mustache`;
-
-const $area = $('.area').first();
 const sortByNameEmail = (list) => {
   return new list.constructor(can.makeArray(list).sort(function (a, b) {
     a = a.person || a;
     b = b.person || b;
-    a = (can.trim(a.name) || can.trim(a.email)).toLowerCase();
-    b = (can.trim(b.name) || can.trim(b.email)).toLowerCase();
+    a = (_.trim(a.name) || _.trim(a.email)).toLowerCase();
+    b = (_.trim(b.name) || _.trim(b.email)).toLowerCase();
     if (a > b) {
       return 1;
     }
@@ -57,11 +54,10 @@ const adminListDescriptors = {
         });
     },
     object_display: 'People',
-    tooltip_view: '/static/mustache/people/object_tooltip.mustache',
     header_view:
     // includes only the filter, not the column headers
-      '/static/mustache/people/filters.mustache',
-    list_view: '/static/mustache/people/object_list.mustache',
+      '/static/templates/people/filters.stache',
+    list_view: '/static/templates/people/object_list.stache',
     fetch_post_process: sortByNameEmail,
   },
   roles: {
@@ -69,23 +65,23 @@ const adminListDescriptors = {
     extra_params: {scope__in: 'System,Admin,Private Program,Workflow'},
     object_category: 'governance',
     object_display: 'Roles',
-    list_view: '/static/mustache/roles/object_list.mustache',
+    list_view: '/static/templates/roles/object_list.stache',
     fetch_post_process: sortByNameEmail,
   },
   events: {
     model: Event,
     object_category: 'governance',
     object_display: 'Events',
-    list_view: '/static/mustache/events/object_list.mustache',
+    list_view: '/static/templates/events/object_list.stache',
   },
   custom_attributes: {
     parent_instance: CustomAttributable,
     model: CustomAttributable,
     header_view:
-    GGRC.mustache_path +
-    '/custom_attribute_definitions/tree_header.mustache',
+    GGRC.templates_path +
+    '/custom_attribute_definitions/tree_header.stache',
     show_view:
-    GGRC.mustache_path + '/custom_attribute_definitions/tree.mustache',
+    GGRC.templates_path + '/custom_attribute_definitions/tree.stache',
     sortable: false,
     list_loader: function () {
       return CustomAttributable.findAll();
@@ -94,8 +90,8 @@ const adminListDescriptors = {
       model: CustomAttributeDefinition,
       mapping: 'custom_attribute_definitions',
       show_view:
-      GGRC.mustache_path +
-      '/custom_attribute_definitions/subtree.mustache',
+      GGRC.templates_path +
+      '/custom_attribute_definitions/subtree.stache',
       add_item_view: null,
     }],
   },
@@ -103,9 +99,9 @@ const adminListDescriptors = {
     parent_instance: Roleable,
     model: Roleable,
     header_view:
-    GGRC.mustache_path + '/access_control_roles/tree_header.mustache',
+    GGRC.templates_path + '/access_control_roles/tree_header.stache',
     show_view:
-    GGRC.mustache_path + '/access_control_roles/tree.mustache',
+    GGRC.templates_path + '/access_control_roles/tree.stache',
     sortable: false,
     list_loader: function () {
       return Roleable.findAll();
@@ -114,7 +110,7 @@ const adminListDescriptors = {
       model: AccessControlRole,
       mapping: 'access_control_roles',
       show_view:
-      GGRC.mustache_path + '/access_control_roles/subtree.mustache',
+      GGRC.templates_path + '/access_control_roles/subtree.stache',
       add_item_view: null,
     }],
   },
@@ -129,10 +125,10 @@ new WidgetList('ggrc_admin', {
       widget_id: 'people_list',
       widget_icon: 'person',
       show_filter: false,
-      widget_name: function () {
+      widget_name() {
         return 'People';
       },
-      widget_info: function () {
+      widget_info() {
         return '';
       },
     },
@@ -143,10 +139,10 @@ new WidgetList('ggrc_admin', {
       widget_id: 'roles_list',
       widget_icon: 'role',
       show_filter: false,
-      widget_name: function () {
+      widget_name() {
         return 'Roles';
       },
-      widget_info: function () {
+      widget_info() {
         return '';
       },
     },
@@ -156,51 +152,54 @@ new WidgetList('ggrc_admin', {
       content_controller_options: adminListDescriptors.events,
       widget_id: 'events_list',
       widget_icon: 'event',
-      widget_name: function () {
+      widget_name() {
         return 'Events';
       },
-      widget_info: function () {
+      widget_info() {
         return '';
       },
     },
     custom_attributes: {
-      widget_id: 'custom_attribute',
-      widget_name: 'Custom Attributes',
-      widget_icon: 'workflow',
-      content_controller: TreeView,
-      content_controller_selector: 'ul',
       model: CustomAttributable,
-      widget_initial_content:
-      '<ul' +
-      '  class="tree-structure new-tree colored-list"' +
-      '  data-no-pin="true"' +
-      '></ul>',
+      content_controller: TreeViewControl,
       content_controller_options: adminListDescriptors.custom_attributes,
+      widget_id: 'custom_attribute',
+      widget_icon: 'workflow',
+      widget_name() {
+        return 'Custom Attributes';
+      },
+      content_controller_selector: 'ul',
+      widget_initial_content:
+        '<ul class="tree-structure new-tree colored-list tree-view-control"' +
+        ' data-no-pin="true">' +
+        '</ul>',
     },
     custom_roles: {
-      widget_id: 'custom_roles',
-      widget_name: 'Custom Roles',
-      widget_icon: 'unlock',
-      content_controller: TreeView,
-      content_controller_selector: 'ul',
-      content_controller_options: adminListDescriptors.custom_roles,
       model: Roleable,
-      widget_initial_content: [
-        '<ul',
-        '  class="tree-structure new-tree colored-list"',
-        '  data-no-pin="true"',
-        '></ul>',
-      ].join('\n'),
+      content_controller: TreeViewControl,
+      content_controller_options: adminListDescriptors.custom_roles,
+      widget_id: 'custom_roles',
+      widget_icon: 'unlock',
+      widget_name() {
+        return 'Custom Roles';
+      },
+      content_controller_selector: 'ul',
+      widget_initial_content:
+        '<ul class="tree-structure new-tree colored-list tree-view-control"' +
+        ' data-no-pin="true">' +
+        '</ul>',
     },
   },
 });
 
-$area.cms_controllers_dashboard({
+new DashboardControl('#pageContent', {
   widget_descriptors: WidgetList.get_widget_list_for('admin'),
   menu_tree_spec: GGRC.admin_menu_spec,
-  header_view: HEADER_VIEW,
+  header_view: `${GGRC.templates_path}/base_objects/page_header.stache`,
+  innernav_view: `${GGRC.templates_path}/base_objects/inner-nav.stache`,
   default_widgets: [
     'people', 'roles', 'events', 'custom_attributes', 'custom_roles',
   ],
 });
+
 initWidgets();

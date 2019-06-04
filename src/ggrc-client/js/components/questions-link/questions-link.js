@@ -1,5 +1,5 @@
 /*
-    Copyright (C) 2018 Google Inc.
+    Copyright (C) 2019 Google Inc.
     Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 */
 
@@ -7,12 +7,13 @@ import {
   hasQuestions,
   getQuestionsUrl,
 } from '../../plugins/utils/ggrcq-utils';
-import template from './questions-link.mustache';
+import template from './questions-link.stache';
 
 export default can.Component.extend({
   tag: 'questions-link',
-  template: template,
-  viewModel: {
+  view: can.stache(template),
+  leakScope: true,
+  viewModel: can.Map.extend({
     define: {
       hasQuestions: {
         type: Boolean,
@@ -35,7 +36,7 @@ export default can.Component.extend({
       },
     },
     instance: null,
-  },
+  }),
   events: {
     '.question-link click': function (el, ev) {
       ev.stopPropagation();

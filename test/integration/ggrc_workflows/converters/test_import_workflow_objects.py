@@ -1,4 +1,4 @@
-# Copyright (C) 2018 Google Inc.
+# Copyright (C) 2019 Google Inc.
 # Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 
 """Tests for workflow specific imports."""
@@ -20,7 +20,6 @@ from integration.ggrc.models import factories
 from ggrc import db
 from ggrc.converters import errors
 from ggrc_workflows.models.task_group import TaskGroup
-from ggrc_workflows.models.task_group_object import TaskGroupObject
 from ggrc_workflows.models.task_group_task import TaskGroupTask
 from ggrc_workflows.models.workflow import Workflow
 
@@ -45,7 +44,12 @@ class TestWorkflowObjectsImport(TestCase):
     self.assertEqual(1, Workflow.query.count())
     self.assertEqual(1, TaskGroup.query.count())
     self.assertEqual(4, TaskGroupTask.query.count())
-    self.assertEqual(2, TaskGroupObject.query.count())
+    task_group = TaskGroup.query.first()
+    mapped_objs = filter(
+        lambda rel: rel.destination_type != 'TaskGroupTask',
+        task_group.related_destinations
+    )
+    self.assertEqual(2, len(mapped_objs))
 
     task2 = TaskGroupTask.query.filter_by(slug="t-2").first()
     task3 = TaskGroupTask.query.filter_by(slug="t-3").first()
@@ -86,13 +90,13 @@ class TestWorkflowObjectsImport(TestCase):
         "Task Group Task": {
             "row_warnings": {
                 errors.WRONG_REQUIRED_VALUE.format(
-                    line=82, value="aaaa", column_name="Task Type"
+                    line=73, value="aaaa", column_name="Task Type"
                 ),
                 errors.MISSING_VALUE_WARNING.format(
-                    line=83, default_value="Rich Text", column_name="Task Type"
+                    line=74, default_value="Rich Text", column_name="Task Type"
                 ),
                 errors.MISSING_VALUE_WARNING.format(
-                    line=84, default_value="Rich Text", column_name="Task Type"
+                    line=75, default_value="Rich Text", column_name="Task Type"
                 ),
             }
         },

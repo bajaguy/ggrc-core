@@ -1,5 +1,5 @@
 /*
- Copyright (C) 2018 Google Inc.
+ Copyright (C) 2019 Google Inc.
  Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
  */
 
@@ -8,11 +8,11 @@ import uniqueTitle from '../mixins/unique-title';
 import caUpdate from '../mixins/ca-update';
 import timeboxed from '../mixins/timeboxed';
 import accessControlList from '../mixins/access-control-list';
-import scopeObjectNotifications from '../mixins/scope-object-notifications';
+import scopeObjectNotifications from '../mixins/notifications/scope-object-notifications';
 import questionnaire from '../mixins/questionnaire';
 import Stub from '../stub';
 
-export default Cacheable('CMS.Models.System', {
+export default Cacheable.extend({
   root_object: 'system',
   root_collection: 'systems',
   category: 'scope',
@@ -42,7 +42,7 @@ export default Cacheable('CMS.Models.System', {
     status: 'Draft',
   },
   tree_view_options: {
-    attr_list: can.Model.Cacheable.attr_list.concat([
+    attr_list: Cacheable.attr_list.concat([
       {
         attr_title: 'Network Zone',
         attr_name: 'network_zone',
@@ -73,11 +73,20 @@ export default Cacheable('CMS.Models.System', {
     default_filter: ['Product'],
   },
   statuses: ['Draft', 'Deprecated', 'Active'],
-  init: function () {
-    if (this._super) {
-      this._super(...arguments);
-    }
-
-    this.validateNonBlank('title');
+}, {
+  define: {
+    title: {
+      value: '',
+      validate: {
+        required: true,
+        validateUniqueTitle: true,
+      },
+    },
+    _transient_title: {
+      value: '',
+      validate: {
+        validateUniqueTitle: true,
+      },
+    },
   },
-}, {});
+});

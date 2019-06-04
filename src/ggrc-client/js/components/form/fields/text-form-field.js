@@ -1,17 +1,17 @@
 /*
- Copyright (C) 2018 Google Inc.
+ Copyright (C) 2019 Google Inc.
  Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
  */
 
-import template from './templates/text-form-field.mustache';
+import template from './templates/text-form-field.stache';
 
-const TEXT_FORM_FIELD_VM = {
+const TEXT_FORM_FIELD_VM = can.Map.extend({
   define: {
     inputValue: {
       set(newValue) {
         let _value = this.attr('_value');
         if (_value === newValue ||
-          newValue.length && !can.trim(newValue).length) {
+          newValue.length && !_.trim(newValue).length) {
           return;
         }
 
@@ -58,11 +58,12 @@ const TEXT_FORM_FIELD_VM = {
       value: newValue,
     });
   },
-};
+});
 
 export default can.Component.extend({
-  template,
+  view: can.stache(template),
   tag: 'text-form-field',
+  leakScope: true,
   viewModel: TEXT_FORM_FIELD_VM,
   events: {
     inserted() {

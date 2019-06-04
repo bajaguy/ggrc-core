@@ -1,31 +1,30 @@
 /*
- Copyright (C) 2018 Google Inc.
+ Copyright (C) 2019 Google Inc.
  Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
  */
 
 import Component from '../reusable-objects-item.js';
+import {getComponentVM} from '../../../../js_specs/spec_helpers';
 
 describe('reusable-object-item component', () => {
   describe('events', () => {
     let viewModel;
     let events;
     beforeEach(() => {
-      viewModel = new can.Map({
-        instance: {},
-      });
+      viewModel = getComponentVM(Component);
       events = Component.prototype.events;
     });
 
     describe('"{viewModel} isChecked" event handler', () => {
       let handler;
       beforeEach(() => {
-        handler = events['{viewModel} isChecked'];
+        handler = events['{viewModel} isChecked'].bind({viewModel});
       });
 
       it('pushes instance to the list if isChecked is true', () => {
         viewModel.attr('selectedList', []);
 
-        handler(viewModel, null, true);
+        handler([viewModel], null, true);
 
         let index = viewModel.attr('selectedList')
           .indexOf(viewModel.attr('instance'));
@@ -39,7 +38,7 @@ describe('reusable-object-item component', () => {
         ];
         viewModel.attr('selectedList', selectedList);
 
-        handler(viewModel, null, false);
+        handler([viewModel], null, false);
 
         let index = viewModel.attr('selectedList')
           .indexOf(viewModel.attr('instance'));
@@ -48,10 +47,10 @@ describe('reusable-object-item component', () => {
       });
     });
 
-    describe('"{viewModel.selectedList} change" event handler', () => {
+    describe('"{viewModel.selectedList} length" event handler', () => {
       let handler;
       beforeEach(() => {
-        handler = events['{viewModel.selectedList} change'];
+        handler = events['{viewModel.selectedList} length'].bind({viewModel});
       });
 
       it('turns ON isChecked flag if instance is in list', () => {
@@ -61,8 +60,9 @@ describe('reusable-object-item component', () => {
           {id: 2},
         ];
         viewModel.attr('isChecked', false);
+        viewModel.attr('selectedList', list);
 
-        handler.call({viewModel}, list);
+        handler();
 
         expect(viewModel.attr('isChecked')).toBe(true);
       });
@@ -73,8 +73,9 @@ describe('reusable-object-item component', () => {
           {id: 2},
         ];
         viewModel.attr('isChecked', true);
+        viewModel.attr('selectedList', list);
 
-        handler.call({viewModel}, list);
+        handler();
 
         expect(viewModel.attr('isChecked')).toBe(false);
       });

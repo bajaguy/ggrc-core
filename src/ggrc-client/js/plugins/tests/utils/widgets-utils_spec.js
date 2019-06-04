@@ -1,5 +1,5 @@
 /*
- Copyright (C) 2018 Google Inc.
+ Copyright (C) 2019 Google Inc.
  Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
  */
 
@@ -84,11 +84,11 @@ describe('GGRC Utils Widgets', function () {
     beforeEach(function () {
       spyOn(WidgetList, 'get_widget_list_for')
         .and.returnValue({
-          control: {
+          Control: {
             widgetType: 'treeview',
             content_controller_options: {
               model: {
-                shortName: 'Control',
+                model_singular: 'Control',
               },
             },
           },
@@ -96,22 +96,22 @@ describe('GGRC Utils Widgets', function () {
             widgetType: 'treeview',
             content_controller_options: {
               model: {
-                shortName: 'Assessment',
+                model_singular: 'Assessment',
               },
             },
           },
-          objective: {
+          Objective: {
             widgetType: 'treeview',
             content_controller_options: {
               model: {
-                shortName: 'Objective',
+                model_singular: 'Objective',
               },
             },
           },
-          info: {
+          Info: {
             content_controller_options: {
               model: {
-                shortName: 'Info',
+                model_singular: 'Info',
               },
             },
           },
@@ -128,7 +128,7 @@ describe('GGRC Utils Widgets', function () {
     it('returns assessment model name only for assessment view', function () {
       let result = method('assessment', '/assessments_view');
 
-      expect(result).toContain('Assessment');
+      expect(result).toContain('assessment');
     });
 
     it('returns appropriate models for non-assessment view',
@@ -372,7 +372,7 @@ describe('GGRC Utils Widgets', function () {
             widgetType: 'treeview',
             content_controller_options: {
               model: {
-                shortName: 'Program',
+                model_singular: 'Program',
               },
             },
           },
@@ -380,7 +380,7 @@ describe('GGRC Utils Widgets', function () {
             widgetType: 'treeview',
             content_controller_options: {
               model: {
-                shortName: 'Assessment',
+                model_singular: 'Assessment',
               },
             },
           },
@@ -388,7 +388,7 @@ describe('GGRC Utils Widgets', function () {
             widgetType: 'treeview',
             content_controller_options: {
               model: {
-                shortName: 'Audit',
+                model_singular: 'Audit',
               },
             },
           },

@@ -1,4 +1,4 @@
-# Copyright (C) 2018 Google Inc.
+# Copyright (C) 2019 Google Inc.
 # Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 
 """Product model."""
@@ -71,8 +71,8 @@ class Product(Roleable,
     ).exists()
 
   @classmethod
-  def eager_query(cls):
-    query = super(Product, cls).eager_query()
+  def eager_query(cls, **kwargs):
+    query = super(Product, cls).eager_query(**kwargs)
     return query.options(orm.joinedload('kind'))
 
   @classmethod

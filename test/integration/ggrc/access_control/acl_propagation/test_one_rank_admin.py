@@ -1,4 +1,4 @@
-# Copyright (C) 2018 Google Inc.
+# Copyright (C) 2019 Google Inc.
 # Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 
 """Test Access Control roles Admin propagation"""
@@ -38,6 +38,22 @@ class TestAdminPropagation(base.TestACLPropagation):
               "delete": False,
               "read_comments": True,
               "add_comment": True
+          },
+          "Document KeyReport": {
+              "read": True,
+              "create_and_map": True,
+              "update": True,
+              "delete": False,
+              "read_comments": True,
+              "add_comment": True,
+          },
+          "Document AccountBalance": {
+              "read": True,
+              "create_and_map": True,
+              "update": True,
+              "delete": False,
+              "read_comments": True,
+              "add_comment": True,
           }
       },
       "Reader": {
@@ -56,6 +72,22 @@ class TestAdminPropagation(base.TestACLPropagation):
               "delete": False,
               "read_comments": True,
               "add_comment": True
+          },
+          "Document KeyReport": {
+              "read": True,
+              "create_and_map": True,
+              "update": True,
+              "delete": False,
+              "read_comments": True,
+              "add_comment": True,
+          },
+          "Document AccountBalance": {
+              "read": True,
+              "create_and_map": True,
+              "update": True,
+              "delete": False,
+              "read_comments": True,
+              "add_comment": True,
           }
       },
   }

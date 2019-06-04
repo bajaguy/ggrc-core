@@ -1,4 +1,4 @@
-# Copyright (C) 2018 Google Inc.
+# Copyright (C) 2019 Google Inc.
 # Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 
 """Assessment API resource optimization."""
@@ -117,6 +117,7 @@ class AssessmentResource(mixins.SnapshotCounts, common.ExtendedResource):
             "revisions": [],
             "revision_id": snapshot.revision_id,
             "type": snapshot.type,
+            "original_object_deleted": snapshot.original_object_deleted,
         })
     return data
 

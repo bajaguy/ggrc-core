@@ -1,4 +1,4 @@
-# Copyright (C) 2018 Google Inc.
+# Copyright (C) 2019 Google Inc.
 # Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 
 """Lists of ggrc contributions."""
@@ -13,7 +13,7 @@ from ggrc.notifications import import_export as import_export_notifications
 
 NIGHTLY_CRON_JOBS = [
     common.generate_cycle_tasks_notifs,
-    common.send_daily_digest_notifications,
+    common.create_daily_digest_bg,
     common.send_calendar_events,
     import_export.clear_overtimed_tasks,
 ]

@@ -1,0 +1,15 @@
+{{!
+    Copyright (C) 2019 Google Inc.
+    Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
+}}
+
+{{#visibleItems}}
+  <content></content>
+{{/visibleItems}}
+{{#if isOverLimit}}
+  <div class="flex-box flex-row limit-button-container">
+    <button type="button"
+            class="btn btn-link"
+            on:el:click="toggleShowAll(scope.event)">{{showAllButtonText}}</button>
+  </div>
+{{/if}}

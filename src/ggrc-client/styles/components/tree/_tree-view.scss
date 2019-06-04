@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2018 Google Inc.
+ * Copyright (C) 2019 Google Inc.
  * Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
  */
 
@@ -43,19 +43,6 @@ tree-widget-container {
   .tree-action {
     display: flex;
     justify-content: flex-end;
-
-    .map-button {
-      line-height: 26px;
-      background: $createBtn;
-      color: $white;
-      padding: 0 16px;
-      border: 1px solid transparent;
-      &:hover,
-      &:focus,
-      &:active {
-        background: mix($white, $createBtn, 30%);
-      }
-    }
   }
 
   .details-wrap {
@@ -97,7 +84,7 @@ tree-view {
   .tree-spinner {
     display: none;
 
-    spinner {
+    spinner-component {
       margin: auto;
     }
   }
@@ -118,6 +105,18 @@ tree-view {
         margin-bottom: 0;
       }
     }
+
+    tree-people-with-role-list-field {
+      .tree-field__item:nth-child(n+3) {
+        display: none;
+      }
+    }
+  }
+
+  .mega-object-tree-view-icon {
+    font-size: 1em;
+    margin-right: 0.2em;
+    color: $lightBlueBtn;
   }
 }
 
@@ -430,7 +429,7 @@ sub-tree-models {
     position: absolute;
     background-color: $white;
     top: 0;
-    width: 700px;
+    width: 730px;
     border: 1px solid #f1f1f1;
     padding: 15px;
 
@@ -447,7 +446,7 @@ sub-tree-models {
     }
 
     .sub-tree-models_select {
-      margin-bottom: 10px;
+      margin-bottom: 20px;
 
       span {
         margin-left: 15px;
@@ -457,9 +456,17 @@ sub-tree-models {
       }
     }
 
+    .sub-tree-models__options {
+      flex-direction: column;
+      max-height: 320px;
+    }
+
     .sub-models_item {
-      min-width: 140px;
       margin-bottom: 15px;
+      margin-right: 5px;
+      flex: 0 1 20px;
+      min-width: 120px;
+      max-width: 150px;
 
       input {
         margin-right: 5px;

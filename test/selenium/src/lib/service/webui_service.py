@@ -1,4 +1,4 @@
-# Copyright (C) 2018 Google Inc.
+# Copyright (C) 2019 Google Inc.
 # Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 """Services for create and manipulate objects via UI."""
 import os
@@ -11,7 +11,9 @@ from lib.constants import objects, messages, element, regex
 from lib.constants.locator import WidgetInfoAssessment
 from lib.element.tab_containers import DashboardWidget
 from lib.entities.entity import Representation
-from lib.page import dashboard, export_page
+from lib.page import dashboard, export_page, widget_bar
+from lib.page.modal import unified_mapper
+from lib.page.modal.request_review import RequestReviewModal
 from lib.page.widget import object_modal
 from lib.utils import (
     selenium_utils, file_utils, conftest_utils, test_utils, ui_utils)
@@ -104,7 +106,7 @@ class BaseWebUiService(object):
     """Builds obj from opened page."""
     info_page = (
         self.info_widget_cls(self.driver, root_elem) if
-        self.info_widget_cls.__name__ == objects.CONTROLS.title() else
+        self.info_widget_cls.__name__ == objects.RISKS.title() else
         self.info_widget_cls(self.driver))
     scope = info_page.get_info_widget_obj_scope()
     return self._create_list_objs(
@@ -124,7 +126,10 @@ class BaseWebUiService(object):
     generic_widget_url = self.url_mapped_objs.format(src_obj_url=src_obj.url)
     # todo fix freezing when navigate through tabs by URLs and using driver.get
     selenium_utils.open_url(generic_widget_url, is_via_js=True)
-    return self.generic_widget_cls(self.driver, self.obj_name)
+    return self.generic_widget_cls(
+        self.driver, self.obj_name, self.is_versions_widget) if hasattr(
+        self, "is_versions_widget") else self.generic_widget_cls(
+        self.driver, self.obj_name)
 
   def open_info_page_of_obj(self, obj):
     """Navigate to info page URL of object according to URL of object and
@@ -148,6 +153,8 @@ class BaseWebUiService(object):
     """Get and return list of objects from Tree View."""
     self.set_list_objs_scopes_representation_on_tree_view(src_obj)
     list_objs_scopes = self.get_list_objs_scopes_from_tree_view(src_obj)
+    for index in xrange(len(list_objs_scopes)):
+      self.add_review_status_if_not_in_control_scope(list_objs_scopes[index])
     return self._create_list_objs(entity_factory=self.entities_factory_cls,
                                   list_scopes=list_objs_scopes)
 
@@ -157,10 +164,24 @@ class BaseWebUiService(object):
     self._set_list_objs_scopes_repr_on_mapper_tree_view(src_obj)
     list_objs_scopes, mapping_statuses = (
         self._search_objs_via_tree_view(src_obj, dest_objs))
-    self._get_unified_mapper(src_obj).close_modal()
+    self._get_unified_mapper(src_obj).close()
+    for index in xrange(len(list_objs_scopes)):
+      self.add_review_status_if_not_in_control_scope(list_objs_scopes[index])
     return self._create_list_objs(
         entity_factory=self.entities_factory_cls,
         list_scopes=list_objs_scopes), mapping_statuses
+
+  def add_review_status_if_not_in_control_scope(self, scope):
+    """Add review status when getting control from panel or tree view."""
+    # pylint: disable=invalid-name
+    from lib.constants.element import ReviewStates
+    if (
+        self.obj_name == objects.CONTROLS and
+        all(attr not in scope for attr in ["REVIEW_STATUS",
+                                           "REVIEW_STATUS_DISPLAY_NAME"])
+    ):
+      scope["REVIEW_STATUS"] = ReviewStates.UNREVIEWED
+      scope["REVIEW_STATUS_DISPLAY_NAME"] = ReviewStates.UNREVIEWED
 
   def get_obj_from_info_page(self, obj):
     """Gets and returns object from Info page."""
@@ -172,7 +193,9 @@ class BaseWebUiService(object):
     objects' titles ('objs' can be list of objects or one object).
     """
     def get_obj_from_info_panel(src_obj, obj):
+      """Get obj from info panel."""
       scope = self.get_scope_from_info_panel(src_obj, obj)
+      self.add_review_status_if_not_in_control_scope(scope)
       return self._create_list_objs(
           entity_factory=self.entities_factory_cls, list_scopes=[scope])[0]
     return ([get_obj_from_info_panel(src_obj, obj) for obj in objs] if
@@ -191,6 +214,9 @@ class BaseWebUiService(object):
     obj_name_from_dict = objects.get_plural(
         StringMethods.get_first_word_from_str(dict_key))
     if self.obj_name == obj_name_from_dict:
+      if self.obj_name == objects.CONTROLS:
+        dict_list_objs_scopes[dict_key][0]["REVIEW_STATUS_DISPLAY_NAME"] = (
+            dict_list_objs_scopes[dict_key][0]["Review Status"])
       return self._create_list_objs(
           entity_factory=self.entities_factory_cls,
           list_scopes=dict_list_objs_scopes[dict_key])
@@ -231,7 +257,7 @@ class BaseWebUiService(object):
   def _get_unified_mapper(self, src_obj):
     """Open generic widget of mapped objects, open unified mapper modal from
     Tree View.
-    Return unified_mapper.MapObjectsModal"""
+    Return MapObjectsModal"""
     if self._unified_mapper is None:
       self._unified_mapper = (self.open_widget_of_mapped_objs(src_obj)
                               .tree_view.open_map())
@@ -441,6 +467,15 @@ class BaseWebUiService(object):
     obj_page = self.open_info_page_of_obj(obj)
     obj_page.fill_global_cas_inline(custom_attributes)
 
+  def has_gca_inline_edit(self, obj, ca_type):
+    """Checks if edit_inline is open for selected gca."""
+    obj_page = self.open_info_page_of_obj(obj)
+    ca_title = next(
+        x for x in obj_page.get_custom_attributes().keys()
+        if ca_type.lower() in x.lower()
+    )
+    return obj_page.has_ca_inline_edit(ca_title)
+
   def edit_obj_via_edit_modal_from_info_page(self, obj):
     """Open generic widget of object, open edit modal from drop down menu.
     Modify current title and code and then apply changes by pressing
@@ -457,6 +492,24 @@ class BaseWebUiService(object):
     modal = object_modal.get_modal_obj(obj.type, self.driver)
     modal.fill_form(**changes)
     modal.save_and_close()
+
+  def submit_for_review(self, obj, user_email, comment_msg):
+    """Submit object for review scenario."""
+    self.open_info_page_of_obj(obj).open_submit_for_review_popup()
+    RequestReviewModal(self.driver).fill_and_submit(user_email, comment_msg)
+
+  def approve_review(self, obj):
+    """Approve review scenario."""
+    self.open_info_page_of_obj(obj).click_approve_review()
+    ui_utils.wait_for_alert("Review is complete.")
+
+  def undo_review_approval(self, obj):
+    """Undo obj review approval."""
+    self.open_info_page_of_obj(obj).click_undo_button()
+
+  def get_obj_review_txt(self, obj):
+    """Return review message on info pane."""
+    return self.open_info_page_of_obj(obj).get_object_review_txt()
 
 
 class SnapshotsWebUiService(BaseWebUiService):
@@ -487,21 +540,6 @@ class SnapshotsWebUiService(BaseWebUiService):
     """
     obj_info_panel = (self.open_info_panel_of_obj_by_title(src_obj, obj).panel)
     return obj_info_panel.has_link_to_get_latest_version()
-
-  def submit_obj_for_review(self, obj, usr_email, comment_msg):
-    """Submit control for review scenario."""
-    widget = self.open_info_page_of_obj(obj)
-    widget.open_submit_for_review_popup()
-    widget.select_assignee_user(usr_email)
-    widget.leave_request_review_comment(comment_msg)
-    widget.click_request()
-    return self.info_widget_cls(self.driver)
-
-  def approve_review(self, obj):
-    """Approve review scenario."""
-    widget = self.open_info_page_of_obj(obj)
-    widget.click_approve_review()
-    ui_utils.wait_for_alert("Review is complete.")
 
 
 class AuditsService(BaseWebUiService):
@@ -713,3 +751,20 @@ class ProgramsService(BaseWebUiService):
   """Class for Programs business layer's services objects."""
   def __init__(self, driver):
     super(ProgramsService, self).__init__(driver, objects.PROGRAMS)
+
+  def add_and_map_obj_widget(self, obj):
+    """Adds widget of selected type and
+    click `Create and map new object` link and
+    returns modal object for selected object type."""
+    widget_bar.Programs().add_widget()
+    dashboard.CreateObjectDropdown().click_item_by_text(
+        text=objects.get_normal_form(obj))
+    obj_modal = unified_mapper.CommonUnifiedMapperModal(
+        self.driver, obj).click_create_and_map_obj()
+    return obj_modal
+
+
+class ProductsService(BaseWebUiService):
+  """Class for Programs business layer's services objects."""
+  def __init__(self, driver):
+    super(ProductsService, self).__init__(driver, objects.PRODUCTS)

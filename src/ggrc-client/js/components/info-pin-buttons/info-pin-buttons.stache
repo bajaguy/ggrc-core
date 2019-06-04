@@ -1,0 +1,21 @@
+{{!
+    Copyright (C) 2019 Google Inc.
+    Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
+}}
+
+<ul class="pin-action">
+  <li>
+    <a href="javascript:void(0)" class="normal" on:el:click="toggleSize(scope.element, scope.event)">
+      {{#if maximized}}
+        <i class="fa fa-fw fa-compress" rel="tooltip" data-placement="left" title="Minimize height"></i>
+      {{else}}
+        <i class="fa fa-fw fa-expand" rel="tooltip" data-placement="left" title="Maximize height"></i>
+      {{/if}}
+    </a>
+  </li>
+  <li>
+    <a href="javascript:void(0)" class="close-pane" on:el:click="close(scope.element, scope.event)" data-trigger="close">
+      <i class="fa fa-fw fa-times" rel="tooltip" data-placement="left" title="Close info pane"></i>
+    </a>
+  </li>
+</ul>

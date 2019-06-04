@@ -1,5 +1,5 @@
 /*
- Copyright (C) 2018 Google Inc.
+ Copyright (C) 2019 Google Inc.
  Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
  */
 
@@ -11,12 +11,15 @@ import {
   REFRESH_MAPPING,
   REFRESH_SUB_TREE,
   DEFERRED_MAP_OBJECTS,
+  DEFERRED_MAPPED_UNMAPPED,
 } from '../events/eventTypes';
 import {getPageInstance} from '../plugins/utils/current-page-utils';
+import {reify, isReifiable} from '../plugins/utils/reify-utils';
 
 export default can.Component.extend({
   tag: 'deferred-mapper',
-  viewModel: {
+  leakScope: true,
+  viewModel: can.Map.extend({
     define: {
       instance: {
         set(instance) {
@@ -77,11 +80,18 @@ export default can.Component.extend({
 
       return pendingUnmap;
     },
-    afterDeferredUpdate(objects) {
+    afterDeferredUpdate(objectsToMap, objectsToUnmap) {
+      const objects = objectsToMap.concat(objectsToUnmap);
       const instance = this.attr('instance');
       const objectTypes = _.uniq(objects
         .map((object) => object.type)
       );
+
+      instance.dispatch({
+        ...DEFERRED_MAPPED_UNMAPPED,
+        mapped: objectsToMap,
+        unmapped: objectsToUnmap,
+      });
 
       objectTypes.forEach((objectType) => {
         instance.dispatch({
@@ -107,13 +117,18 @@ export default can.Component.extend({
     async deferredUpdate() {
       const instance = this.attr('instance');
       const pendingJoins = instance.attr('_pendingJoins');
+
+      // If there are no objects for mapping/unmapping
+      if (!pendingJoins.length) {
+        return;
+      }
+
       const objectsToMap =
         _.filter(pendingJoins, ({how}) => how === 'map')
           .map(({what}) => what);
       const objectsToUnmap =
         _.filter(pendingJoins, ({how}) => how === 'unmap')
           .map(({what}) => what);
-
 
       await Promise.all([
         this.performMapActions(instance, objectsToMap),
@@ -122,8 +137,7 @@ export default can.Component.extend({
 
       instance.attr('_pendingJoins', []);
 
-      const objects = objectsToMap.concat(objectsToUnmap);
-      this.afterDeferredUpdate(objects);
+      this.afterDeferredUpdate(objectsToMap, objectsToUnmap);
     },
     _indexOfPendingJoin(object, action) {
       return _.findIndex(this.attr('instance._pendingJoins'),
@@ -178,10 +192,10 @@ export default can.Component.extend({
         item.attr('description', snapshotObject.description);
         item.attr('class', snapshotObject.class);
         item.attr('viewLink', snapshotObject.originalLink);
-      } else if (!isSnapshotType(item) && item.reify) {
+      } else if (!isSnapshotType(item) && isReifiable(item)) {
         // add full item object from cache
         // if it isn't snapshot
-        item = item.reify();
+        item = reify(item);
       }
 
       this.attr('list').push(item);
@@ -190,7 +204,7 @@ export default can.Component.extend({
       this.attr('list', []);
       objects.forEach((obj) => this.addListItem(obj));
     },
-  },
+  }),
   events: {
     '{instance} updated'() {
       this.viewModel.deferredUpdate();

@@ -1,13 +1,12 @@
 /*
- Copyright (C) 2018 Google Inc.
+ Copyright (C) 2019 Google Inc.
  Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
  */
 
-const tag = 'issue-tracker-switcher';
-
 export default can.Component.extend({
-  tag,
-  viewModel: {
+  tag: 'issue-tracker-switcher',
+  leakScope: true,
+  viewModel: can.Map.extend({
     define: {
       isIntegrationEnabled: {
         set: function (newValue, setValue) {
@@ -52,5 +51,5 @@ export default can.Component.extend({
         issueTracker.attr('title', value);
       }
     },
-  },
+  }),
 });

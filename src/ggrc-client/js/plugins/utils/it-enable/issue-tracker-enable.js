@@ -1,9 +1,9 @@
 /*
-  Copyright (C) 2018 Google Inc.
+  Copyright (C) 2019 Google Inc.
   Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 */
 
-import template from './issue-tracker-enable.mustache';
+import template from './issue-tracker-enable.stache';
 import logger from './issue-tracker-log';
 import {getPageInstance} from '../current-page-utils';
 import Assessment from '../../../models/business-models/assessment';
@@ -255,10 +255,8 @@ GGRC.enableIssueTracker = () => {
   } else {
     isButtonActivated = true;
 
-    vm = new IssueTrackerEnabler();
-
-    let renderer = can.view.mustache(template);
-    let fragment = renderer(vm);
+    let renderer = can.stache(template);
+    let fragment = renderer(new IssueTrackerEnabler());
 
     $('section.footer').append(fragment);
   }

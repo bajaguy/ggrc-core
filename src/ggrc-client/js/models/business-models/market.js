@@ -1,5 +1,5 @@
 /*
-    Copyright (C) 2018 Google Inc.
+    Copyright (C) 2019 Google Inc.
     Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 */
 
@@ -8,11 +8,11 @@ import uniqueTitle from '../mixins/unique-title';
 import caUpdate from '../mixins/ca-update';
 import timeboxed from '../mixins/timeboxed';
 import accessControlList from '../mixins/access-control-list';
-import scopeObjectNotifications from '../mixins/scope-object-notifications';
+import scopeObjectNotifications from '../mixins/notifications/scope-object-notifications';
 import questionnaire from '../mixins/questionnaire';
 import Stub from '../stub';
 
-export default Cacheable('CMS.Models.Market', {
+export default Cacheable.extend({
   root_object: 'market',
   root_collection: 'markets',
   category: 'scope',
@@ -66,11 +66,20 @@ export default Cacheable('CMS.Models.Market', {
     status: 'Draft',
   },
   statuses: ['Draft', 'Deprecated', 'Active'],
-  init: function () {
-    if (this._super) {
-      this._super(...arguments);
-    }
-
-    this.validateNonBlank('title');
+}, {
+  define: {
+    title: {
+      value: '',
+      validate: {
+        required: true,
+        validateUniqueTitle: true,
+      },
+    },
+    _transient_title: {
+      value: '',
+      validate: {
+        validateUniqueTitle: true,
+      },
+    },
   },
-}, {});
+});

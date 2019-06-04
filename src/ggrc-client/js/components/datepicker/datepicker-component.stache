@@ -1,0 +1,36 @@
+{{!
+  Copyright (C) 2019 Google Inc.
+  Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
+}}
+
+<div>
+  {{#if label}}
+    <label class="form-label">
+      {{label}}
+      {{#if required}}
+        <i class="fa fa-asterisk"></i>
+      {{/if}}
+      {{#if helptext}}
+        <i class="fa fa-question-circle" rel="tooltip" title="{{helptext}}"></i>
+      {{/if}}
+    </label>
+  {{/if}}
+  <div class="datepicker__input-wrapper">
+    <i class="fa fa-calendar"></i>
+    <input type="text" class="datepicker__input date {{#if readonly}}datepicker__input--denied{{/if}}"
+           placeholder="{{MOMENT_DISPLAY_FMT}}"
+           value:bind="_date"
+           on:el:focus="onFocus"
+           {{#if disabled}} disabled {{/if}}
+           {{#if readonly}} readonly {{/if}}/>
+    {{#if date}}
+    <a class="datepicker__remove-value" on:el:click="removeValue(scope.event)">
+      <i class="fa fa-times"></i>
+    </a>
+    {{/if}}
+    <div
+      class="datepicker__calendar {{#if showTop}}datepicker__calendar--top{{/if}}
+      {{#isHidden}}hide{{/isHidden}}"
+    ></div>
+  </div>
+</div>

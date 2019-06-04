@@ -1,14 +1,24 @@
 /*
- Copyright (C) 2018 Google Inc.
+ Copyright (C) 2019 Google Inc.
  Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
  */
 
-import template from './templates/ticket-id-checker.mustache';
+import template from './templates/ticket-id-checker.stache';
 
 export default can.Component.extend({
   tag: 'ticket-id-checker',
-  template,
-  viewModel: {
+  view: can.stache(template),
+  leakScope: true,
+  viewModel: can.Map.extend({
+    define: {
+      mandatory: {
+        get() {
+          let instance = this.attr('instance');
+          return instance.constructor.unchangeableIssueTrackerIdStatuses
+            .includes(instance.attr('status'));
+        },
+      },
+    },
     instance: null,
     ticketId: null,
     isValid: true,
@@ -63,7 +73,7 @@ export default can.Component.extend({
       this.attr('isValid', hasTicketId);
       return hasTicketId;
     },
-  },
+  }),
   events: {
     '{viewModel} ticketId'() {
       let hasTicketId = !!this.viewModel.attr('ticketId');

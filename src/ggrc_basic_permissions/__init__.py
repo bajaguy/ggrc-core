@@ -1,4 +1,4 @@
-# Copyright (C) 2018 Google Inc.
+# Copyright (C) 2019 Google Inc.
 # Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 
 """RBAC module"""
@@ -45,7 +45,6 @@ blueprint = flask.Blueprint(
 )
 
 PERMISSION_CACHE_TIMEOUT = 3600  # 60 minutes
-PERMISSION_NAMESPACE = "permissions"
 
 
 def get_public_config(_):
@@ -142,30 +141,34 @@ def collect_permissions(src_permissions, context_id, permissions):
             })
 
 
-def query_memcache(key):
-  """Check if cached permissions are available
+def _get_memcache_client():
+  """Return memcache client if it's enabled, otherwise return None"""
+  if not cache_utils.has_memcache():
+    return None
+
+  return cache_utils.get_cache_manager().cache_object.memcache_client
+
+
+def query_memcache(cache, key):
+  """Get cached permissions from memcache is available
 
   Args:
+      cache (memcache client): mecahce client
       key (string): key of the stored permissions
   Returns:
-      cache (memcache_client): memcache client or None if caching
-                               is not available
       permissions_cache (dict): dict with all permissions or None if there
                                 was a cache miss
   """
-  if not getattr(settings, 'MEMCACHE_MECHANISM', False):
-    return None, None
 
-  cache = cache_utils.get_cache_manager().cache_object.memcache_client
   cached_keys_set = cache.get('permissions:list') or set()
   if key not in cached_keys_set:
     # We set the permissions:list variable so that we are able to batch
     # remove all permissions related keys from memcache
     cached_keys_set.add(key)
     cache.set('permissions:list', cached_keys_set, PERMISSION_CACHE_TIMEOUT)
-    return cache, None
+    return None
 
-  return cache, memcache.blob_get(cache, key, namespace=PERMISSION_NAMESPACE)
+  return memcache.blob_get(cache, key)
 
 
 def load_default_permissions(permissions):
@@ -309,7 +312,7 @@ def load_personal_context(user, permissions):
       .append(personal_context.id)
 
 
-def _get_acl_filter(acl_model):
+def _get_acl_filter(acl_model_alias):
   """Get filter for acl entries.
 
   This creates a filter to select only acl entries for objects that were
@@ -324,9 +327,7 @@ def _get_acl_filter(acl_model):
   stubs = getattr(flask.g, "referenced_object_stubs", None)
   if stubs is None:
     logger.warning("Using full permissions query")
-    return [
-        acl_model.object_type != all_models.Relationship.__name__,
-    ]
+    return "AND {}.object_type != 'Relationship'".format(acl_model_alias)
 
   roleable_models = {m.__name__ for m in all_models.all_models
                      if issubclass(m, Roleable)}
@@ -337,42 +338,37 @@ def _get_acl_filter(acl_model):
       if type_ in roleable_models
   ]
   if not keys:
-    return [
-        sa.false()
-    ]
-  return [
-      sa.tuple_(
-          acl_model.object_type,
-          acl_model.object_id,
-      ).in_(
-          keys,
-      )
-  ]
+    return "AND 0 = 1"
+  return """AND ({0}.object_type, {0}.object_id) IN ({1})
+         """.format(acl_model_alias,
+                    ",".join("('%s', %s)" % pair for pair in keys))
 
 
 def load_access_control_list(user, permissions):
-  """Load permissions from access_control_list"""
-  acl_base = db.aliased(all_models.AccessControlList, name="acl_base")
-  acl_propagated = db.aliased(all_models.AccessControlList,
-                              name="acl_propagated")
-  acr = all_models.AccessControlRole
-  acp = all_models.AccessControlPerson
-  additional_filters = _get_acl_filter(acl_propagated)
-  access_control_list = db.session.query(
-      acl_propagated.object_type,
-      acl_propagated.object_id,
-      acr.read,
-      acr.update,
-      acr.delete,
-  ).filter(
-      sa.and_(
-          acp.person_id == user.id,
-          acp.ac_list_id == acl_base.id,
-          acl_base.id == acl_propagated.base_id,
-          acl_propagated.ac_role_id == acr.id,
-          *additional_filters
-      )
-  )
+  """Load permissions from access_control_list.
+
+  This is rewritten with raw SQL because SQLAlchemy
+  objects consume too much memory when lots of objects
+  are loaded.
+  """
+  access_control_list = db.session.execute(sa.text("""
+      SELECT
+          acl_propagated.object_type AS acl_propagated_object_type,
+          acl_propagated.object_id AS acl_propagated_object_id,
+          access_control_roles.`read` AS access_control_roles_read,
+          access_control_roles.`update` AS access_control_roles_update,
+          access_control_roles.`delete` AS access_control_roles_delete
+      FROM
+          access_control_list AS acl_propagated,
+          access_control_roles,
+          access_control_people,
+          access_control_list AS acl_base
+      WHERE
+          access_control_people.person_id = :user_id
+              AND access_control_people.ac_list_id = acl_base.id
+              AND acl_base.id = acl_propagated.base_id
+              AND acl_propagated.ac_role_id = access_control_roles.id {}
+  """.format(_get_acl_filter("acl_propagated"))), {"user_id": user.id})
 
   for object_type, object_id, read, update, delete in access_control_list:
     actions = (("read", read), ("update", update), ("delete", delete))
@@ -388,6 +384,8 @@ def load_access_control_list(user, permissions):
 def store_results_into_memcache(permissions, cache, key):
   """Load personal context for user
 
+  This function must only be called if memcahe is enabled
+
   Args:
       permissions (dict): dict where the permissions will be stored
       cache (cache_manager): Cache manager that should be used for storing
@@ -396,8 +394,6 @@ def store_results_into_memcache(permissions, cache, key):
   Returns:
       None
   """
-  if cache is None:
-    return
 
   cached_keys_set = cache.get('permissions:list') or set()
   if key in cached_keys_set and \
@@ -406,9 +402,34 @@ def store_results_into_memcache(permissions, cache, key):
          key,
          permissions,
          exp_time=PERMISSION_CACHE_TIMEOUT,
-         namespace=PERMISSION_NAMESPACE,
      ):
     logger.error("Failed to set permissions data into memcache")
+
+
+def _load_permissions_from_database(user):
+  """Calculate permissions based on DB queries"""
+
+  permissions = {}
+
+  with benchmark("load_permissions > load default permissions"):
+    load_default_permissions(permissions)
+
+  with benchmark("load_permissions > load bootstrap admins"):
+    load_bootstrap_admin(user, permissions)
+
+  with benchmark("load_permissions > load external app permissions"):
+    load_external_app_permissions(permissions)
+
+  with benchmark("load_permissions > load user roles"):
+    load_user_roles(user, permissions)
+
+  with benchmark("load_permissions > load personal context"):
+    load_personal_context(user, permissions)
+
+  with benchmark("load_permissions > load access control list"):
+    load_access_control_list(user, permissions)
+
+  return permissions
 
 
 def load_permissions_for(user):
@@ -429,38 +450,27 @@ def load_permissions_for(user):
   'condition' is the string name of a conditional operator, such as 'contains'.
   'terms' are the arguments to the 'condition'.
   """
-  permissions = {}
   key = 'permissions:{}'.format(user.id)
 
+  # try to get cached permissions from memcahe
   with benchmark("load_permissions > query memcache"):
-    cache, result = query_memcache(key)
-    if result:
-      return result
+    cache = _get_memcache_client()
+    if cache:
+      result = query_memcache(cache, key)
+      if result:
+        return result
 
-  with benchmark("load_permissions > load default permissions"):
-    load_default_permissions(permissions)
+  # no permissions were stored in memcache for this user. Use DB to get perms
+  permissions = _load_permissions_from_database(user)
 
-  with benchmark("load_permissions > load bootstrap admins"):
-    load_bootstrap_admin(user, permissions)
-
-  with benchmark("load_permissions > load external app permissions"):
-    load_external_app_permissions(permissions)
-
-  with benchmark("load_permissions > load user roles"):
-    load_user_roles(user, permissions)
-
-  with benchmark("load_permissions > load personal context"):
-    load_personal_context(user, permissions)
-
-  with benchmark("load_permissions > load access control list"):
-    load_access_control_list(user, permissions)
-
+  # store calculated permissions into memcahe
   if not hasattr(flask.g, "referenced_object_stubs"):
     # In some cases for optimization we only load a small chunk of permissions
     # and in that case we can not cache the value because it might not contain
     # the permissions information for any subsequent request.
     with benchmark("load_permissions > store results into memcache"):
-      store_results_into_memcache(permissions, cache, key)
+      if cache:
+        store_results_into_memcache(permissions, cache, key)
 
   return permissions
 

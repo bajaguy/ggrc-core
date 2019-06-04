@@ -1,16 +1,17 @@
 /*
- Copyright (C) 2018 Google Inc.
+ Copyright (C) 2019 Google Inc.
  Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
  */
 
 import './related-objects';
 import '../add-issue-button/add-issue-button';
-import template from './related-issues.mustache';
+import template from './related-issues.stache';
 
 export default can.Component.extend({
   tag: 'related-issues',
-  template,
-  viewModel: {
+  view: can.stache(template),
+  leakScope: true,
+  viewModel: can.Map.extend({
     define: {
       orderBy: {
         type: 'string',
@@ -44,5 +45,5 @@ export default can.Component.extend({
       },
     },
     baseInstance: null,
-  },
+  }),
 });

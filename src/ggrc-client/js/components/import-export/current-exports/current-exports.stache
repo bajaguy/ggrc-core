@@ -1,0 +1,57 @@
+{{!
+  Copyright (C) 2019 Google Inc.
+  Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
+}}
+
+<h2>Exporting</h2>
+
+<div class="current-exports">
+  <div class="current-exports__instruction">
+    {{#if inProgress}}
+      Your export request has been submitted. You may close this page or continue
+      your work. We will send you an email notification when it completes.
+    {{else}}
+      Please click button below to download csv or open spreadsheet with exported data.
+      Be aware that export results will be removed once you download them.
+    {{/if}}
+  </div>
+  {{#each exports}}
+    <div class="flex-box flex-col current-exports__item {{#isDisabled id}}disabled{{/isDisabled}}">
+      {{#is(status, "Failed")}}
+        <span class="status-failed">
+          Export failed due to server error. Please try again or contact our support team.
+        </span>
+      {{/is}}
+      <h4>
+        {{firstnonempty title 'export_objects.csv'}}
+        {{#canRemove status}}
+          <i class="fa fa-trash-o" on:el:click="remove(id)"></i>
+        {{/canRemove}}
+      </h4>
+      <div class="current-exports__actions">
+        {{#switch status}}
+          {{#case 'In Progress'}}
+            <div>Export in Progress: <spinner-component toggle:from="true"></spinner-component> </div>
+            <button type="button" class="btn btn-white btn-small margin-top-20" on:el:click="stop(id)">
+              Cancel
+            </button>
+          {{/case}}
+          {{#case 'Stopped'}}
+            Export Stopped
+          {{/case}}
+          {{#case 'Finished'}}
+            <button type="button" class="btn btn-small btn-white" on:el:click="downloadCSV(id, title)">
+              Download CSV
+            </button>
+            <button type="button" class="btn btn-small btn-white" on:el:click="openSheet(id)">
+              Write to Sheet
+            </button>
+            {{#isDisabled id}}
+              <spinner-component toggle:from="true"></spinner-component>
+            {{/isDisabled}}
+          {{/case}}
+        {{/switch}}
+      </div>
+    </div>
+  {{/each}}
+</div>

@@ -1,4 +1,4 @@
-# Copyright (C) 2018 Google Inc.
+# Copyright (C) 2019 Google Inc.
 # Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 
 """Snapshot RBAC Factory."""
@@ -90,3 +90,8 @@ class SnapshotRBACFactory(base.BaseRBACFactory):
     self._update_orig_obj()
     snapshot = all_models.Snapshot.query.get(self.snapshot_id)
     return self.api.put(snapshot, {"update_revision": "latest"})
+
+  def delete(self):
+    """Delete Snapshot object."""
+    snapshot = all_models.Snapshot.query.get(self.snapshot_id)
+    return self.api.delete(snapshot)

@@ -1,4 +1,4 @@
-# Copyright (C) 2018 Google Inc.
+# Copyright (C) 2019 Google Inc.
 # Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 
 """Module for integration tests for Relationship."""
@@ -8,13 +8,12 @@ import json
 import ddt
 
 from ggrc.models import all_models
-from ggrc.models.inflector import get_model
-from ggrc.models.mixins import ScopeObject
 from ggrc.models.exceptions import ValidationError
 
-from integration.ggrc import TestCase
+from integration.ggrc import TestCase, READONLY_MAPPING_PAIRS
 from integration.ggrc import api_helper
 from integration.ggrc.models import factories
+from integration.ggrc.generator import ObjectGenerator
 from integration.ggrc_basic_permissions.models \
     import factories as rbac_factories
 
@@ -39,15 +38,31 @@ class TestRelationship(TestCase):
   REL_URL = "/api/relationships"
 
   @staticmethod
-  def build_relationship_json(source, destination):
+  def build_relationship_json(source, destination, is_external=False):
     """Builds relationship create request json."""
     return json.dumps([{
         "relationship": {
             "source": {"id": source.id, "type": source.type},
             "destination": {"id": destination.id, "type": destination.type},
             "context": {"id": None},
+            "is_external": is_external
         }
     }])
+
+  def test_local_user_create_external_relationship(self):
+    """Test that local user can't create external relationships"""
+    with factories.single_commit():
+      program = factories.ProgramFactory()
+      comment = factories.CommentFactory()
+
+    response = self.api.client.post(
+        self.REL_URL,
+        data=self.build_relationship_json(program, comment, is_external=True),
+        headers=self.HEADERS)
+    rel = all_models.Relationship.query.first()
+
+    self.assert400(response)
+    self.assertIsNone(rel)
 
   def test_changing_log_on_doc_change(self):
     """Changing object documents should generate new object revision."""
@@ -112,6 +127,17 @@ class TestRelationship(TestCase):
     with self.assertRaises(ValidationError):
       factories.RelationshipFactory(source=snapshot, destination=snapshottable)
 
+  def test_relationship_validation(self):
+    """Test validator that forbid creation of Relationship with the same object
+    as source and destination"""
+    response = self.client.post(
+        self.REL_URL,
+        data=self.build_relationship_json(self.assessment, self.assessment),
+        headers=self.HEADERS)
+    self.assert400(response)
+    self.assertEqual(response.json[0][1],
+                     "The mapping of object on itself is not possible")
+
 
 @ddt.ddt
 class TestExternalRelationship(TestCase):
@@ -121,14 +147,17 @@ class TestExternalRelationship(TestCase):
   def setUp(self):
     """Init API helper"""
     super(TestExternalRelationship, self).setUp()
+    self.object_generator = ObjectGenerator()
     self.api = api_helper.Api()
     with factories.single_commit():
       editor_role = all_models.Role.query.filter(
           all_models.Role.name == "Editor").first()
       self.person_ext = factories.PersonFactory(
           email="external_app@example.com")
+      self.person_ext_id = self.person_ext.id
       self.person = factories.PersonFactory(
           email="regular_user@example.com")
+      self.person_id = self.person.id
       rbac_factories.UserRoleFactory(
           role=editor_role, person=self.person)
 
@@ -139,14 +168,9 @@ class TestExternalRelationship(TestCase):
       "X-appengine-inbound-appid": "test_external_app",
   }
   REL_URL = "/api/relationships"
-  SCOPING_MODELS_NAMES = [m.__name__ for m in all_models.all_models
-                          if issubclass(m, ScopeObject) and
-                          not issubclass(m, all_models.SystemOrProcess)]
-  SCOPING_OBJECT_FACTORIES = [
-      factories.get_model_factory(name) for name in SCOPING_MODELS_NAMES]
 
   @staticmethod
-  def build_relationship_json(source, destination, is_external):
+  def build_relationship_json(source, destination, is_external=True):
     """Builds relationship create request json."""
     return json.dumps([{
         "relationship": {
@@ -204,7 +228,9 @@ class TestExternalRelationship(TestCase):
     self.assert400(response)
     self.assertEqual(
         response.json[0],
-        [400, "External application can create only external relationships."])
+        [400,
+         "You do not have the necessary permissions to "
+         "create regular relationships.", ])
 
   def test_update_ext_user_ext_relationship(self):
     """Validation external app user updates external relationship."""
@@ -214,7 +240,6 @@ class TestExternalRelationship(TestCase):
       system = factories.SystemFactory()
 
     self.create_relationship(product, system, True, self.person_ext)
-
     response = self.api.client.post(
         self.REL_URL,
         data=self.build_relationship_json(product, system, True),
@@ -234,22 +259,24 @@ class TestExternalRelationship(TestCase):
     self.assertIsNone(relationship.context_id)
 
   def test_update_ext_user_reg_relationship(self):
-    """Validation external app user updates regular relationship."""
-    self.api.set_user(self.person_ext)
+    """External app user can update regular relationship."""
     with factories.single_commit():
       product = factories.ProductFactory()
       system = factories.SystemFactory()
+      self.create_relationship(product, system, False, self.person)
+      product_id = product.id
+      system_id = system.id
 
-    self.create_relationship(product, system, False, self.person_ext)
-
+    self.api.set_user(self.person_ext)
+    product = all_models.Product.query.get(product_id)
+    system = all_models.System.query.get(system_id)
     response = self.api.client.post(
         self.REL_URL,
         data=self.build_relationship_json(product, system, True),
         headers=self.HEADERS)
-    self.assert400(response)
+    self.assert200(response)
     self.assertEqual(
-        response.json[0],
-        [400, "External application can create only external relationships."])
+        response.json[0][1]["relationship"]["is_external"], True)
 
   def test_delete_ext_user_ext_relationship(self):
     """Validation external app user deletes external relationship."""
@@ -257,8 +284,7 @@ class TestExternalRelationship(TestCase):
     with factories.single_commit():
       product = factories.ProductFactory()
       system = factories.SystemFactory()
-
-    rel = self.create_relationship(product, system, True, self.person_ext)
+      rel = self.create_relationship(product, system, True, self.person_ext)
 
     response = self.api.delete(rel)
     self.assert200(response)
@@ -266,7 +292,7 @@ class TestExternalRelationship(TestCase):
     self.assertIsNone(relationship)
 
   def test_delete_ext_user_reg_relationship(self):
-    """Validation external app user deletes regular relationship."""
+    """External app user can delete regular relationship."""
     self.api.set_user(self.person_ext)
     with factories.single_commit():
       product = factories.ProductFactory()
@@ -274,24 +300,20 @@ class TestExternalRelationship(TestCase):
 
     rel = self.create_relationship(product, system, False, self.person_ext)
     response = self.api.delete(rel)
-    self.assert400(response)
-    self.assertEqual(
-        response.json,
-        {
-            'message': 'External application can delete only external '
-                       'relationships.',
-            'code': 400
-        })
+    self.assert200(response)
 
   def test_update_reg_user_ext_relationship(self):
     """Validation regular app user updates external relationship."""
-    self.api.set_user(self.person)
     with factories.single_commit():
       product = factories.ProductFactory()
       system = factories.SystemFactory()
+      self.create_relationship(product, system, True, self.person_ext)
+      product_id = product.id
+      system_id = system.id
 
-    self.create_relationship(product, system, True, self.person)
-
+    self.api.set_user(self.person)
+    product = all_models.Product.query.get(product_id)
+    system = all_models.System.query.get(system_id)
     response = self.api.client.post(
         self.REL_URL,
         data=self.build_relationship_json(product, system, False),
@@ -300,95 +322,74 @@ class TestExternalRelationship(TestCase):
 
   def test_delete_reg_user_ext_relationship(self):
     """Validation regular user deletes external relationship."""
-    self.api.set_user(self.person)
     with factories.single_commit():
       product = factories.ProductFactory()
       system = factories.SystemFactory()
+      self.create_relationship(product, system, True, self.person_ext)
 
-    rel = self.create_relationship(product, system, True, self.person)
-
+    self.api.set_user(self.person)
+    rel = all_models.Relationship.query.first()
     response = self.api.delete(rel)
     self.assert200(response)
     relationship = all_models.Relationship.query.get(rel.id)
     self.assertIsNone(relationship)
 
-  SCOPING_MAPPINGS = [(scoping_factory, directive_factory)
-                      for scoping_factory in SCOPING_OBJECT_FACTORIES
-                      for directive_factory in (factories.StandardFactory,
-                                                factories.RegulationFactory)]
-
-  @ddt.data(*SCOPING_MAPPINGS)
+  @ddt.data(*READONLY_MAPPING_PAIRS)
   @ddt.unpack
-  def text_local_delete_relationship_scoping_directive(
-      self, scoping_factory, directive_factory
-  ):
-    """Test that deleteion of relationship disabled for local users."""
+  def test_local_delete_relationship_scoping_directive(self, model1, model2):
+    """Test deletion of relationship between {0.__name__} and {1.__name__}"""
+
     # Set up relationships
-    self.api.set_user(self.person_ext)
-    with factories.single_commit():
-      scoping_object = scoping_factory()
-      directive = directive_factory()
-    mappings = [(scoping_object, directive), (directive, scoping_object)]
-    relationship_ids = []
-    for source, destination in mappings:
-      rel = self.create_relationship(source, destination,
-                                     True, self.person_ext)
-      relationship_ids.append(rel.id)
+    with self.object_generator.api.as_external():
+      _, obj1 = self.object_generator.generate_object(model1)
+      _, obj2 = self.object_generator.generate_object(model2)
 
-    self.api.set_user(self.person)
-    for rel_id in relationship_ids:
-      relationship = all_models.Relationship.query.get(rel_id)
-      response = self.api.delete(relationship)
-      self.assert400(response)
+      _, rel = self.object_generator.generate_relationship(
+          obj1, obj2, is_external=True)
 
-      # relationship allowed to be deleted when source or
-      # destination objects are deleted
-      directive_model = get_model(relationship.destination_type)
-      directive = directive_model.query.get(relationship.destination_id)
-      self.assertIsNone(directive)
-      response = self.api.delete(directive)
-      self.assert200(response)
-      relationship = all_models.Relationship.query.get(rel.id)
-      self.assertIsNone(relationship)
+    # check that relationship cannot be deleted by regular user
+    self.api.set_user(all_models.Person.query.get(self.person_id))
+    relationship = all_models.Relationship.query.get(rel.id)
+    response = self.api.delete(relationship)
+    self.assert400(response)
 
-  @ddt.data(*SCOPING_MAPPINGS)
+  @ddt.data(*READONLY_MAPPING_PAIRS)
   @ddt.unpack
-  def text_local_create_relationship_scoping_directive(
-      self, scoping_factory, directive_factory
-  ):
-    """Test that creation of relationship disabled for local users."""
-    self.api.set_user(self.person)
-    with factories.single_commit():
-      scoping_object = scoping_factory()
-      directive = directive_factory()
-    mappings = [(scoping_object, directive), (directive, scoping_object)]
-    for source, destination in mappings:
-      with self.assertRaises(ValidationError):
-        self.api.set_user(self.person)
-        factories.RelationshipFactory(source=source,
-                                      destination=destination)
+  def test_local_create_relationship_scoping_directive(self, model1, model2):
+    """Test creation of relationship between {0.__name__} and {1.__name__}"""
+    # Set up relationships
+    with self.object_generator.api.as_external():
+      _, obj1 = self.object_generator.generate_object(model1)
+      _, obj2 = self.object_generator.generate_object(model2)
 
-  @ddt.data(*SCOPING_MAPPINGS)
+    self.object_generator.api.set_user(
+        all_models.Person.query.get(self.person_id))
+
+    response, _ = self.object_generator.generate_relationship(
+        obj1, obj2, is_external=True)
+
+    self.assert400(response)
+
+  @ddt.data(*READONLY_MAPPING_PAIRS)
   @ddt.unpack
   def test_ext_create_delete_relationship_scoping_directive(
-      self, scoping_factory, directive_factory
+      self, model1, model2
   ):
-    """Test that creation and deletion of relationship allowed
-       for external users."""
-    self.api.set_user(self.person_ext)
-    with factories.single_commit():
-      scoping_object = scoping_factory()
-      directive = directive_factory()
-    mappings = [(scoping_object, directive), (directive, scoping_object)]
-    for source, destination in mappings:
-      response = self.api.client.post(
-          self.REL_URL,
-          data=self.build_relationship_json(source, destination, True),
-          headers=self.HEADERS)
-      self.assert200(response)
-      rel = all_models.Relationship.query.get(
-          response.json[0][-1]["relationship"]["id"])
-      response = self.api.delete(rel)
-      self.assert200(response)
-      relationship = all_models.Relationship.query.get(rel.id)
-      self.assertIsNone(relationship)
+    """Test ext user and relationship between {0.__name__} and {1.__name__}"""
+
+    # Set up relationships
+    with self.object_generator.api.as_external():
+      _, obj1 = self.object_generator.generate_object(model1)
+      _, obj2 = self.object_generator.generate_object(model2)
+
+      _, rel = self.object_generator.generate_relationship(
+          obj1, obj2, is_external=True)
+
+      self.assertIsNotNone(rel)
+
+    # check that external relationship can be deleted by external user
+    self.api.set_user(all_models.Person.query.get(self.person_ext_id))
+    relationship = all_models.Relationship.query.get(rel.id)
+    response = self.api.delete(relationship)
+    print response.json
+    self.assert200(response)

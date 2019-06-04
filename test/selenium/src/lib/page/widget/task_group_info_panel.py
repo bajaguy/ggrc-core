@@ -1,4 +1,4 @@
-# Copyright (C) 2018 Google Inc.
+# Copyright (C) 2019 Google Inc.
 # Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 """Task Group info panel."""
 from lib import base
@@ -25,6 +25,7 @@ class TaskGroupInfoPanel(base.WithBrowser):
     """Wait for panel to be initialized."""
     self._create_task_button.wait_until(lambda e: e.present)
     ui_utils.wait_for_spinner_to_disappear()
+    self._create_task_button.wait_until(lambda e: e.enabled)
 
   @property
   def _three_bbs(self):

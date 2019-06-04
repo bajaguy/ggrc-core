@@ -1,5 +1,5 @@
 /*
-    Copyright (C) 2018 Google Inc.
+    Copyright (C) 2019 Google Inc.
     Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 */
 
@@ -10,7 +10,7 @@ import Cacheable from '../cacheable';
  *
  * @class
  */
-export default Cacheable('CMS.Models.AccessControlRole', {
+export default Cacheable.extend({
   root_object: 'access_control_role',
   root_collection: 'access_control_roles',
   category: 'access_control_roles',
@@ -25,12 +25,13 @@ export default Cacheable('CMS.Models.AccessControlRole', {
     update: true,
     'delete': true,
   },
-  init: function () {
-    this.validateNonBlank('name');
-    this._super(...arguments);
-  },
 }, {
-  init: function () {
-    this._super(...arguments);
+  define: {
+    name: {
+      value: '',
+      validate: {
+        required: true,
+      },
+    },
   },
 });

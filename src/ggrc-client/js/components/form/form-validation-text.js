@@ -1,9 +1,7 @@
 /*
- Copyright (C) 2018 Google Inc.
+ Copyright (C) 2019 Google Inc.
  Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
  */
-
-const tag = 'form-validation-text';
 
 const textMap = {
   input: 'This field is required.',
@@ -15,9 +13,10 @@ const textMap = {
  * Form validation text component
  */
 export default can.Component.extend({
-  tag,
-  template: '<p class="required">{{text}}</p>',
-  viewModel: {
+  tag: 'form-validation-text',
+  view: can.stache('<p class="required">{{text}}</p>'),
+  leakScope: true,
+  viewModel: can.Map.extend({
     define: {
       text: {
         type: String,
@@ -45,7 +44,7 @@ export default can.Component.extend({
       },
     },
     validation: {},
-    highlightInvalidFields: '@',
+    highlightInvalidFields: '',
     type: 'input',
-  },
+  }),
 });

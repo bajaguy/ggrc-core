@@ -1,8 +1,10 @@
-# Copyright (C) 2018 Google Inc.
+# Copyright (C) 2019 Google Inc.
 # Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 
 
 """A module containing the implementation of the assessment template entity."""
+from collections import OrderedDict
+
 from sqlalchemy import orm
 from sqlalchemy.orm import validates
 from werkzeug.exceptions import Forbidden
@@ -70,18 +72,17 @@ class AssessmentTemplate(assessment.AuditRelationship,
   audit_id = db.Column(db.Integer, db.ForeignKey('audits.id'), nullable=False)
 
   # labels to show to the user in the UI for various default people values
-  DEFAULT_PEOPLE_LABELS = {
-      "Admin": "Object Admins",
-      "Audit Lead": "Audit Captain",
-      "Auditors": "Auditors",
-      "Principal Assignees": "Principal Assignees",
-      "Secondary Assignees": "Secondary Assignees",
-      "Primary Contacts": "Primary Contacts",
-      "Secondary Contacts": "Secondary Contacts",
-      "Control Owners": "Control Owners",
-      "Control Operators": "Control Operators",
-      "Other Contacts": "Other Contacts",
-  }
+  DEFAULT_PEOPLE_LABELS = OrderedDict([
+      ("Admin", "Object Admins"),
+      ("Audit Lead", "Audit Captain"),
+      ("Auditors", "Auditors"),
+      ("Principal Assignees", "Principal Assignees"),
+      ("Secondary Assignees", "Secondary Assignees"),
+      ("Control Operators", "Control Operators"),
+      ("Control Owners", "Control Owners"),
+      ("Risk Owners", "Risk Owners"),
+      ("Other Contacts", "Other Contacts"),
+  ])
 
   _title_uniqueness = False
 
@@ -122,14 +123,20 @@ class AssessmentTemplate(assessment.AuditRelationship,
           "display_name": "Default Assignees",
           "mandatory": True,
           "filter_by": "_nop_filter",
+          "description": "Options are:\n{}\nuser@example.com".format(
+              '\n'.join(DEFAULT_PEOPLE_LABELS.values())
+          ),
       },
       "default_verifier": {
           "display_name": "Default Verifiers",
           "mandatory": False,
           "filter_by": "_nop_filter",
+          "description": "Options are:\n{}\nuser@example.com".format(
+              '\n'.join(DEFAULT_PEOPLE_LABELS.values())
+          ),
       },
       "default_test_plan": {
-          "display_name": "Default Test Plan",
+          "display_name": "Default Assessment Procedure",
           "filter_by": "_nop_filter",
       },
       "test_plan_procedure": {
@@ -156,7 +163,7 @@ class AssessmentTemplate(assessment.AuditRelationship,
               "<attribute type>, <attribute name>, [<attribute value1>, "
               "<attribute value2>, ...]\n\n"
               "Valid attribute types: Text, Rich Text, Date, Checkbox, Person,"
-              "Dropdown.\n"
+              "Multiselect, Dropdown.\n"
               "attribute name: Any single line string without commas. Leading "
               "and trailing spaces are ignored.\n"
               "list of attribute values: Comma separated list, only used if "
@@ -170,8 +177,8 @@ class AssessmentTemplate(assessment.AuditRelationship,
   }
 
   @classmethod
-  def eager_query(cls):
-    query = super(AssessmentTemplate, cls).eager_query()
+  def eager_query(cls, **kwargs):
+    query = super(AssessmentTemplate, cls).eager_query(**kwargs)
     return query.options(
         orm.Load(cls).joinedload("audit").undefer_group("Audit_complete"),
         orm.Load(cls).joinedload("audit").joinedload(

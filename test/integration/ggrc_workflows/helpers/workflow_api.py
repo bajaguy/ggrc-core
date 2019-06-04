@@ -1,4 +1,4 @@
-# Copyright (C) 2018 Google Inc.
+# Copyright (C) 2019 Google Inc.
 # Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 """Package contains Workflow related helper functions for REST API calls."""
 
@@ -52,24 +52,6 @@ def get_task_group_post_dict(workflow, contact):
   }
 
 
-def get_task_group_object_post_dict(task_group, obj_map):
-  """Get TaskGroupObject JSON representation for POST API call.
-
-  Args:
-      task_group: TaskGroup instance which TaskGroupObject should belong to.
-      obj_map: Object which should be mapped to TaskGroup.
-  Returns:
-      TaskGroupObject object dict representation for using in POST request.
-  """
-  return {
-      "task_group_object": {
-          "context": utils.create_stub(task_group.context),
-          "task_group": utils.create_stub(task_group),
-          "object": utils.create_stub(obj_map),
-      }
-  }
-
-
 def get_task_post_dict(task_group, people_roles, start_date, end_date):
   """Get TaskGroupTask JSON representation for POST API call.
 
@@ -115,31 +97,11 @@ def get_cycle_post_dict(workflow):
   """
   return {
       "cycle": {
+          "title": factories.random_str(prefix="cycle - "),
           "context": utils.create_stub(workflow.context),
           "workflow": utils.create_stub(workflow),
           "autogenerate": True,
           "isOverdue": False
-      }
-  }
-
-
-def get_cycle_task_entry_post_dict(cycle_task):
-  """Get CycleTaskEntry JSON representation for POST API call.
-
-  Args:
-      cycle_task: CycleTaskGroupObjectTask instance which CycleTaskEntry
-          should belong to.
-  Returns:
-      CycleTaskEntry object dict representation for using in POST request.
-  """
-  return {
-      "cycle_task_entry": {
-          "custom_attributes": {},
-          "cycle_task_group_object_task": utils.create_stub(cycle_task),
-          "cycle": utils.create_stub(cycle_task.cycle),
-          "context": utils.create_stub(cycle_task.context),
-          "is_declining_review": "",
-          "description": factories.random_str(length=64),
       }
   }
 
@@ -159,6 +121,7 @@ def get_task_group_clone_dict(source_task_group, clone_objects=False,
   return {
       "task_group": {
           "clone": source_task_group.id,
+          "title": source_task_group.title,  # workaround for title validation
           "context": None,
           "clone_objects": clone_objects,
           "clone_tasks": clone_tasks,

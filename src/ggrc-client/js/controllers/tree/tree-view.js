@@ -1,52 +1,38 @@
 /*
- Copyright (C) 2018 Google Inc.
+ Copyright (C) 2019 Google Inc.
  Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
  */
 
 import * as StateUtils from '../../plugins/utils/state-utils';
-import {
-  getCounts,
-} from '../../plugins/utils/widgets-utils';
+import {getCounts} from '../../plugins/utils/widgets-utils';
 import TreeLoader from './tree-loader';
 import TreeViewNode from './tree-view-node';
 import TreeViewOptions from './tree-view-options';
-import Mappings from '../../models/mappers/mappings';
+import CustomAttributeDefinition from '../../models/custom-attributes/custom-attribute-definition';
+import AccessControlRole from '../../models/custom-roles/access-control-role';
 
-export default TreeLoader({
+const TreeViewControl = TreeLoader.extend({
   // static properties
-  pluginName: 'cms_controllers_tree_view',
   defaults: {
     model: null,
     show_view: null,
     show_header: false,
     add_item_view: null,
     parent: null,
-    list: null,
-    filteredList: [],
-    single_object: false,
     find_params: {},
     fields: [],
     filter_states: [],
     sortable: true,
-    start_expanded: false, // true
-    find_function: null,
     options_property: 'tree_view_options',
     child_options: [], // this is how we can make nested configs. if you want to use an existing
     // example child option:
     // { property: "controls", model: Control, }
     // { parent_find_param: "system_id" ... }
-    scroll_page_count: 1, // pages above and below viewport
-    is_subtree: false,
-    subTreeElementsLimit: 20,
-    limitDeepOfTree: 2,
   },
   do_not_propagate: [
     'header_view',
     'add_item_view',
-    'list',
     'original_list',
-    'single_object',
-    'find_function',
     'find_all_deferred',
   ],
 }, {
@@ -69,7 +55,8 @@ export default TreeLoader({
   },
 
   init: function (el, opts) {
-    let states = StateUtils.getStatesForModel(this.options.model.shortName);
+    let states = StateUtils
+      .getStatesForModel(this.options.model.model_singular);
 
     let filterStates = states.map(function (state) {
       return {value: state};
@@ -77,20 +64,16 @@ export default TreeLoader({
 
     this.options.attr('filter_states', filterStates);
 
-    this.element.closest('.widget')
-      .on('widget_hidden', this.widget_hidden.bind(this));
-    this.element.closest('.widget')
-      .on('widget_shown', this.widget_shown.bind(this));
+    const widget = this.element.closest('.widget');
+
+    if (widget && !widget.hasClass('tree-view-control-attached')) {
+      widget.on('widget_hidden', this.widget_hidden.bind(this));
+      widget.on('widget_shown', this.widget_shown.bind(this));
+
+      widget.addClass('tree-view-control-attached');
+    }
 
     this.element.uniqueId();
-
-    this.options.attr('is_subtree',
-      this.element && this.element.closest('.inner-tree').length > 0);
-
-    this.options.update_count =
-      _.isBoolean(this.element.data('update-count')) ?
-        this.element.data('update-count') :
-        true;
 
     if (!this.options.scroll_element) {
       this.options.attr('scroll_element', $('.object-area'));
@@ -119,64 +102,37 @@ export default TreeLoader({
       this.options.attr('parent_instance', this.options.parent_instance());
     }
   },
-
   ' inserted': function () { // eslint-disable-line quote-props
     this._attached_deferred.resolve();
   },
-
   init_view: function () {
-    let self = this;
     let dfds = [];
-    let optionsDfd;
-    let statusControl;
-
     if (this.options.header_view && this.options.show_header) {
-      optionsDfd = $.when(this.options);
       dfds.push(
-        can.view(this.options.header_view, optionsDfd).then(
-          this._ifNotRemoved(function (frag) {
+        $.when(this.options, $.ajax({
+          url: this.options.header_view,
+          dataType: 'text',
+        })).then((ctx, view) => {
+          return can.stache(view[0])(ctx);
+        }).then(
+          this._ifNotRemoved((frag) => {
             this.element.before(frag);
-
-            statusControl = this.element.parent()
-              .find('.tree-filter__status-wrap');
-            // set state filter (checkboxes)
-            can.bind.call(statusControl.ready(function () {
-              let selectStateList = self.options.attr('selectStateList');
-
-              self.options.attr('filter_states').forEach(function (item) {
-                if (selectStateList.indexOf(item.value) > -1) {
-                  item.attr('checked', true);
-                }
-              });
-            }));
-          }.bind(this))));
+          })
+        )
+      );
     }
 
     this.init_count();
 
-    this._init_view_deferred = $.when.apply($.when, dfds);
-    return this._init_view_deferred;
+    return $.when.apply($.when, dfds);
   },
 
   init_count: function () {
     let self = this;
     let options = this.options;
-    let counts;
-    let countsName = options.countsName || options.model.shortName;
+    let countsName = options.countsName || options.model.model_singular;
 
-    if (this.options.parent_instance && this.options.mapping) {
-      counts = getCounts();
-
-      if (self.element) {
-        can.trigger(self.element, 'updateCount',
-          [counts.attr(countsName), self.options.update_count]);
-      }
-
-      counts.on(countsName, function (ev, newVal, oldVal) {
-        can.trigger(self.element, 'updateCount',
-          [newVal, self.options.update_count]);
-      });
-    } else if (this.options.list_loader) {
+    if (this.options.list_loader) {
       this.options.list_loader(this.options.parent_instance)
         .then(function (list) {
           return can.compute(function () {
@@ -185,12 +141,10 @@ export default TreeLoader({
         })
         .then(function (count) {
           if (self.element) {
-            can.trigger(self.element, 'updateCount', [count(),
-              self.options.update_count]);
+            getCounts().attr(countsName, count());
           }
           count.bind('change', self._ifNotRemoved(function () {
-            can.trigger(self.element, 'updateCount', [count(),
-              self.options.update_count]);
+            getCounts().attr(countsName, count());
           }));
         });
     }
@@ -207,17 +161,36 @@ export default TreeLoader({
           this.options.parent_instance.id : undefined);
     }
 
-    if (this.options.mapping) {
-      if (this.options.parent_instance === undefined) {
+    const {
+      mapping,
+      parent_instance: instance,
+    } = this.options;
+    // TODO Handle Add new GCA button - need to refresh list of GCA (the same for roles)
+    if (mapping) {
+      if (instance === undefined) {
         // TODO investigate why is this method sometimes called twice
         return undefined; // not ready, will try again
       }
-      this.find_all_deferred = Mappings.get_list_loader(
-        this.options.mapping,
-        this.options.parent_instance);
+
+      let dfd;
+      switch (mapping) {
+        case 'access_control_roles':
+          dfd = AccessControlRole.findAll({
+            object_type: instance.model_singular,
+            internal: false,
+          });
+          break;
+        case 'custom_attribute_definitions':
+          dfd = CustomAttributeDefinition.findAll({
+            definition_type: instance.root_object,
+            definition_id: null,
+          });
+          break;
+      }
+
+      this.find_all_deferred = dfd;
     } else if (this.options.list_loader) {
-      this.find_all_deferred =
-        this.options.list_loader(this.options.parent_instance);
+      this.find_all_deferred = this.options.list_loader(instance);
     } else {
       console.warn(`Unexpected code path ${this}`);
     }
@@ -225,24 +198,7 @@ export default TreeLoader({
     return this.find_all_deferred;
   },
 
-  /*
-    * Removes items from the list by ids
-    * @param  {can.List}      list             list of items
-    * @param  {Array{Number}} removedItemsIds  array of item ids
-    */
-  removeFromList: function (list, removedItemsIds) {
-    // Since list items have slightly different format,
-    // we are lookig for instance property in possible places
-    let itemsToKeep = list.filter((item) => {
-      let inst = item && item.options && item.options.attr('instance') ||
-        item.attr('instance');
-
-      return !_.includes(removedItemsIds, inst.attr('id'));
-    });
-    list.replace(itemsToKeep);
-  },
-
-  prepare_child_options: function (v, forceReload) {
+  prepare_child_options: function (v) {
     //  v may be any of:
     //    <model_instance>
     //    { instance: <model instance>, mappings: [...] }
@@ -250,7 +206,7 @@ export default TreeLoader({
     let tmp;
     let that = this;
     let original = v;
-    if (v._child_options_prepared && !forceReload) {
+    if (v._child_options_prepared) {
       return v._child_options_prepared;
     }
     if (!(v instanceof TreeViewOptions)) {
@@ -272,68 +228,14 @@ export default TreeLoader({
         v.attr('instance', this.options.model.model(v.instance));
       }
     }
-    v.attr('child_count', can.compute(function () {
-      let totalChildren = 0;
-      if (v.attr('child_options')) {
-        _.forEach(v.attr('child_options'), function (childCptions) {
-          let list = childCptions.attr('list');
-          if (list) {
-            totalChildren += list.attr('length');
-          }
-        });
-      }
-      return totalChildren;
-    }));
     original._child_options_prepared = v;
     return v;
   },
 
-  '{original_list} remove': function (list, ev, removedItems, index) {
-    let removedItemsIds = removedItems.map((remItem) => {
-      return remItem.attr('id');
-    });
-
-    this.removeFromList(this.options.list, removedItemsIds);
-    this.removeFromList(this.options.filteredList, removedItemsIds);
-
-    // NB: since row element are not rendered with mustache and binded element
-    // not always reflected in the filteredList ( for newly created items )
-    // we are just removeing the items from the lists and removing the DOM
-    // elements by ids
-    removedItemsIds.forEach((id) => {
-      this.element
-        .find(`.cms_controllers_tree_view_node[data-object-id="${id}"]`)
-        .remove();
-    });
-  },
-
-  '{original_list} add': function (list, ev, newVals, index) {
-    let that = this;
-    let realAdd = [];
-
-    _.forEach(newVals, function (newVal) {
-      if (that.element) {
-        realAdd.push(newVal);
-      }
-    });
-    this.enqueue_items(realAdd);
-  },
-
-  '.tree-structure subtree_loaded': function (el, ev) {
-    let instanceId;
-    let parent;
-    ev.stopPropagation();
-    instanceId = el.closest('.tree-item').data('object-id');
-    parent = _.reduce(this.options.list, function (a, b) {
-      switch (true) {
-        case !!a: return a;
-        case b.instance.id === instanceId: return b;
-        default: return null;
-      }
-    }, null);
-    if (parent && !parent.children_drawn) {
-      parent.attr('children_drawn', true);
-    }
+  removeListItem(item) {
+    this.element
+      .find(`.tree-view-node[data-object-id="${item.attr('id')}"]`)
+      .remove();
   },
   // add child options to every item (TreeViewOptions instance) in the drawing list at this level of the tree.
   add_child_lists: function (list) {
@@ -355,8 +257,6 @@ export default TreeLoader({
     if (listWindow.length > 0) {
       queue.push(listWindow);
     }
-    this.options.attr('filter_shown', 0);
-    this.options.attr('filteredList', []);
     finalDfd = _.reduce(queue, function (dfd, listWindow) {
       return dfd.then(function () {
         let res = $.Deferred();
@@ -383,25 +283,12 @@ export default TreeLoader({
       });
     }, $.Deferred().resolve());
 
-    finalDfd.done(this._ifNotRemoved(function () {
-      let shown = this.element[0].children.length;
-      let count = this.options.list.length;
-      // We need to hide `of` in case the numbers are same
-      if (shown === count && shown > 0) {
-        shown = false;
-      } else {
-        shown = shown.toString();
-      }
-      this.options.attr('filter_shown', shown);
-      this.options.attr('filter_count', count.toString());
-    }.bind(this)));
     return finalDfd;
   },
   draw_items: function (optionsList) {
     let items;
     let $footer = this.element.children('.tree-item-add').first();
     let drawItemsDfds = [];
-    let filteredItems = this.options.attr('filteredList') || [];
     let res;
 
     items = can.makeArray(optionsList);
@@ -410,7 +297,6 @@ export default TreeLoader({
       let elem = document.createElement('li');
       let control = new TreeViewNode(elem, options);
       drawItemsDfds.push(control._draw_node_deferred);
-      filteredItems.push(control);
       return control.element[0];
     });
 
@@ -422,7 +308,7 @@ export default TreeLoader({
     if (this.options.sortable) {
       $(this.element).sortable({element: 'li.tree-item', handle: '.drag'});
     }
-    this.options.attr('filteredList', filteredItems);
+
     res = $.when(...drawItemsDfds);
     return res;
   },
@@ -445,20 +331,10 @@ export default TreeLoader({
     return false;
   },
 
-  '.edit-object modal:success': function (el, ev, data) {
-    let model = el.closest('[data-model]').data('model');
-    model.attr(data[model.constructor.root_object] || data);
-    ev.stopPropagation();
-  },
-
-  reload_list: function (forceReload) {
-    if (this.options.list === undefined || this.options.list === null) {
-      return;
-    }
+  reload_list() {
     this._draw_list_deferred = false;
     this.find_all_deferred = false;
-    this.options.list.replace([]);
-    this.draw_list(this.options.original_list, forceReload);
+    this.draw_list(this.options.original_list);
     this.init_count();
   },
 
@@ -466,3 +342,5 @@ export default TreeLoader({
     this.element.children('.tree-item').remove();
   },
 });
+
+export default TreeViewControl;

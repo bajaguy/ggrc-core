@@ -1,10 +1,10 @@
 /*
-    Copyright (C) 2018 Google Inc.
+    Copyright (C) 2019 Google Inc.
     Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 */
 
 let viewModel = can.Map.extend({
-  toState: '@',
+  toState: '',
   changeState: function (newState) {
     this.dispatch({
       type: 'onStateChange',
@@ -23,6 +23,7 @@ let events = {
 
 export default can.Component.extend({
   tag: 'object-change-state',
+  leakScope: true,
   viewModel,
   events,
 });

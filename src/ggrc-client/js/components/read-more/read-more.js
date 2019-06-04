@@ -1,18 +1,22 @@
 /*
- Copyright (C) 2018 Google Inc.
+ Copyright (C) 2019 Google Inc.
  Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
  */
 
-import template from './read-more.mustache';
+import template from './read-more.stache';
+import {convertMarkdownToHtml} from '../../plugins/utils/markdown-utils';
 
 const readMore = 'Read More';
 const readLess = 'Read Less';
 const classPrefix = 'ellipsis-truncation-';
-const viewModel = {
+const viewModel = can.Map.extend({
   define: {
     text: {
       type: 'string',
       value: '',
+      set(val) {
+        return this.attr('handleMarkdown') ? convertMarkdownToHtml(val) : val;
+      },
     },
     maxLinesNumber: {
       type: 'number',
@@ -27,6 +31,7 @@ const viewModel = {
       },
     },
   },
+  handleMarkdown: false,
   expanded: false,
   overflowing: false,
   btnText() {
@@ -61,11 +66,12 @@ const viewModel = {
     clonedReadMoreWrap.remove();
     this.attr('overflowing', extendedHeight > truncatedHeight);
   },
-};
+});
 
 export default can.Component.extend({
   tag: 'read-more',
-  template,
+  view: can.stache(template),
+  leakScope: true,
   viewModel,
   init() {
     const observedElement = $(arguments[0]).children()[0];

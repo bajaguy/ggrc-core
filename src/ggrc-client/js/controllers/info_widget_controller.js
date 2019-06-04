@@ -1,10 +1,9 @@
 /*
-    Copyright (C) 2018 Google Inc.
+    Copyright (C) 2019 Google Inc.
     Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 */
 
 import '../components/comment/comments-section';
-import '../components/proposal/create-proposal-button';
 import '../components/related-objects/proposals/related-proposals';
 import '../components/related-objects/proposals/related-proposals-item';
 import '../components/related-objects/revisions/related-revisions';
@@ -14,20 +13,20 @@ import {
   getPageModel,
 } from '../plugins/utils/current-page-utils';
 import * as businessModels from '../models/business-models';
+import {getCreateObjectUrl} from '../plugins/utils/ggrcq-utils';
 
-export default can.Control({
-  pluginName: 'ggrc_controllers_info_widget',
+export default can.Control.extend({
   defaults: {
     model: getPageModel(),
     instance: getPageInstance(),
-    widget_view: GGRC.mustache_path + '/base_objects/info.mustache',
+    widget_view: GGRC.templates_path + '/base_objects/info.stache',
   },
 }, {
   init: function () {
     this.init_menu();
 
     if (this.element.data('widget-view')) {
-      this.options.widget_view = GGRC.mustache_path +
+      this.options.widget_view = GGRC.templates_path +
         this.element.data('widget-view');
     }
     if (this.options.instance.info_pane_preload) {
@@ -44,10 +43,13 @@ export default can.Control({
     });
     import(/* webpackChunkName: "modalsCtrls" */'./modals')
       .then(() => {
-        can.view(this.get_widget_view(this.element),
-          this.options.context, function (frag) {
-            this.element.html(frag);
-          }.bind(this));
+        $.ajax({
+          url: this.get_widget_view(this.element),
+          dataType: 'text',
+        }).then((view) => {
+          let frag = can.stache(view)(this.options.context);
+          this.element.html(frag);
+        });
       });
   },
 
@@ -55,7 +57,7 @@ export default can.Control({
     let widgetView = $(el)
       .closest('[data-widget-view]').attr('data-widget-view');
     if (widgetView && widgetView.length > 0) {
-      return GGRC.mustache_path + widgetView;
+      return GGRC.templates_path + widgetView;
     }
     return this.options.widget_view;
   },
@@ -64,11 +66,15 @@ export default can.Control({
     displayPrefix = displayPrefix || '';
     return _.filter(_.map(itemNames, function (name) {
       if (name in businessModels) {
+        let model = businessModels[name];
         return {
-          model_name: businessModels[name].model_singular,
-          model_lowercase: businessModels[name].table_singular,
-          model_plural: businessModels[name].table_plural,
-          display_name: displayPrefix + businessModels[name].title_singular,
+          model_name: model.model_singular,
+          model_lowercase: model.table_singular,
+          model_plural: model.table_plural,
+          display_name: displayPrefix + model.title_singular,
+          isChangeableExternally: model.isChangeableExternally,
+          externalLink:
+            model.isChangeableExternally && getCreateObjectUrl(model),
         };
       }
     }));
@@ -87,11 +93,13 @@ export default can.Control({
     if (!this.options.object_menu) {
       names = [
         'AccessGroup',
+        'AccountBalance',
         'Contract',
         'Control',
         'DataAsset',
         'Facility',
         'Issue',
+        'KeyReport',
         'Market',
         'Metric',
         'Objective',

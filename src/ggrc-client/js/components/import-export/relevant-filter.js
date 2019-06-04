@@ -1,17 +1,18 @@
 /*
-    Copyright (C) 2018 Google Inc.
+    Copyright (C) 2019 Google Inc.
     Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 */
 
-import template from './templates/relevant-filter.mustache';
+import template from './templates/relevant-filter.stache';
 import * as businessModels from '../../models/business-models';
 import TreeViewConfig from '../../apps/base_widgets';
 
 export default can.Component.extend({
   tag: 'relevant-filter',
-  template,
-  viewModel: {
-    relevant_menu_item: '@',
+  view: can.stache(template),
+  leakScope: true,
+  viewModel: can.Map.extend({
+    relevant_menu_item: '',
     operators: [{title: 'AND', value: 'AND'}, {title: 'OR', value: 'OR'}],
     addFilter: function () {
       let menu = this.menu();
@@ -35,7 +36,8 @@ export default can.Component.extend({
       });
     },
     menu() {
-      const workflowRelatedTypes = ['TaskGroup', 'Workflow'];
+      const workflowRelatedTypes = ['Cycle', 'CycleTaskGroup',
+        'CycleTaskGroupObjectTask', 'TaskGroup', 'Workflow'];
       const baseWidgetsTypes = can.Map.keys(
         TreeViewConfig.attr('base_widgets_by_type')
       );
@@ -57,7 +59,7 @@ export default can.Component.extend({
     removeFilter(el, index) {
       this.attr('relevant').splice(index, 1);
     },
-  },
+  }),
   events: {
     init: function () {
       this.setRelevant();
@@ -74,7 +76,7 @@ export default can.Component.extend({
           filter: model,
           textValue: '',
           menu: this.viewModel.attr('menu'),
-          model_name: model.constructor.shortName,
+          model_name: model.constructor.model_singular,
         });
       }, this);
     },
@@ -87,7 +89,7 @@ export default can.Component.extend({
       panel.attr('value', true);
       panel.attr('textValue', textValue);
     },
-    '.ui-autocomplete-input input': function (el, ev, data) {
+    '.ui-autocomplete-input input': function (el) {
       let index = el.data('index');
       let panel = this.viewModel.attr('relevant')[index];
 

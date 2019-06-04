@@ -1,5 +1,5 @@
 /*
-    Copyright (C) 2018 Google Inc.
+    Copyright (C) 2019 Google Inc.
     Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 */
 
@@ -11,7 +11,9 @@ gapiClient.loadGapiClient();
 
 RouterConfig.setupRoutes([]);
 
-$('#csv_export')
-  .html(can.view.mustache('<csv-export filename="Export Objects"/>'));
-$('#page-header').html(can.view.mustache('<page-header/>'));
+const csvExportTemplate = can.stache(
+  '<csv-export filename:from="\'Export Objects\'"/>'
+);
+$('#csv_export').html(csvExportTemplate);
+$('#page-header').html(can.stache('<page-header/>'));
 initWidgets();

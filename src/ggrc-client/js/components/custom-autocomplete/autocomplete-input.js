@@ -1,14 +1,14 @@
 /*
-    Copyright (C) 2018 Google Inc.
+    Copyright (C) 2019 Google Inc.
     Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 */
 
 // The component for 'custom-autocomplete'. Handles user input and propagates it
 // to 'autocomplete-wrapper'.
 
-import template from './templates/autocomplete-input.mustache';
+import template from './templates/autocomplete-input.stache';
 
-export const keyMap = {
+export const KEY_MAP = {
   ENTER: 13,
   ESCAPE: 27,
   ARROW_LEFT: 37,
@@ -19,8 +19,9 @@ export const keyMap = {
 
 export default can.Component.extend({
   tag: 'autocomplete-input',
-  template: template,
-  viewModel: {
+  view: can.stache(template),
+  leakScope: true,
+  viewModel: can.Map.extend({
     define: {
       // flag for showing 'autocomplete-result'
       showResults: {
@@ -35,10 +36,10 @@ export default can.Component.extend({
     value: '',
     // flag for input latency
     isPending: false,
-    excludedKeys: Object.values(keyMap),
+    excludedKeys: Object.values(KEY_MAP),
     makeServiceAction: function (keyCode) {
       switch (keyCode) {
-        case keyMap.ESCAPE:
+        case KEY_MAP.ESCAPE:
           this.escape();
           break;
         default:
@@ -64,7 +65,7 @@ export default can.Component.extend({
         this.attr('isPending', false);
       }, 500);
     },
-  },
+  }),
   events: {
     'input.autocomplete-input keyup': function (element, event) {
       let viewModel = this.viewModel;

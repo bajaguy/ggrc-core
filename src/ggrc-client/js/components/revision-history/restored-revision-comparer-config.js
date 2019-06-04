@@ -1,19 +1,18 @@
 /*
- Copyright (C) 2018 Google Inc., authors, and contributors
+ Copyright (C) 2019 Google Inc., authors, and contributors
  Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
  */
 
-const tag = 'restored-revision-comparer-config';
-
 export default can.Component.extend({
-  tag,
-  viewModel: {
+  tag: 'restored-revision-comparer-config',
+  leakScope: true,
+  viewModel: can.Map.extend({
     instance: {},
     rightRevision: {},
-    leftRevisionId: '@',
+    leftRevisionId: '',
     modalTitle: 'Restore Version: Compare to Current',
-    buttonView: `${GGRC.mustache_path}/modals/restore_revision.mustache`,
+    buttonView: `${GGRC.templates_path}/modals/restore_revision.stache`,
     leftRevisionDescription: 'Current version:',
     rightRevisionDescription: 'Revision:',
-  },
+  }),
 });

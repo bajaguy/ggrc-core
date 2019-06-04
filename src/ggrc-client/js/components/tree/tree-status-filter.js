@@ -1,5 +1,5 @@
 /*
- Copyright (C) 2018 Google Inc.
+ Copyright (C) 2019 Google Inc.
  Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
  */
 
@@ -99,6 +99,7 @@ let viewModel = can.Map.extend({
 
 export default can.Component.extend({
   tag: 'tree-status-filter',
+  leakScope: true,
   viewModel: viewModel,
   events: {
     inserted() {
@@ -134,7 +135,7 @@ export default can.Component.extend({
         this.viewModel.setStatesRoute(defaultStates);
       }
     },
-    '{viewModel.router} state'(router, event, newStatuses) {
+    '{viewModel.router} state'([router], event, newStatuses) {
       let isCurrent = this.viewModel.attr('widgetId') === router.attr('widget');
       let isEnabled = !this.viewModel.attr('disabled');
 
@@ -150,7 +151,7 @@ export default can.Component.extend({
         this.viewModel.dispatch('filter');
       }
     },
-    '{viewModel.router} widget'(router) {
+    '{viewModel.router} widget'([router]) {
       let isCurrent = this.viewModel.attr('widgetId') === router.attr('widget');
       let isEnabled = !this.viewModel.attr('disabled');
       let routeStatuses = router.attr('state');

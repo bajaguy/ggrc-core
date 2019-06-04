@@ -1,4 +1,4 @@
-# Copyright (C) 2018 Google Inc.
+# Copyright (C) 2019 Google Inc.
 # Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 
 """Test for indexing of snapshotted objects"""
@@ -52,9 +52,6 @@ class TestSnapshotIndexing(SnapshotterBaseTestCase):
 
     self._check_csv_response(self._import_file("snapshotter_create.csv"), {})
 
-    control = db.session.query(models.Control).filter(
-        models.Control.slug == "control-3"
-    ).one()
     access_group = db.session.query(models.AccessGroup).filter(
         models.AccessGroup.slug == "ag-2"
     ).one()
@@ -66,11 +63,6 @@ class TestSnapshotIndexing(SnapshotterBaseTestCase):
     ).one()
     custom_attribute_defs = self.create_custom_attribute_definitions()
     custom_attribute_values = [
-        {
-            "custom_attribute": custom_attribute_defs["control"],
-            "attributable": control,
-            "attribute_value": "control value 1",
-        },
         {
             "custom_attribute": custom_attribute_defs["objective"],
             "attributable": objective,
@@ -122,9 +114,6 @@ class TestSnapshotIndexing(SnapshotterBaseTestCase):
 
     # At this point all objects are no longer in the session and we have to
     # manually refresh them from the database
-    control = db.session.query(models.Control).filter(
-        models.Control.slug == "control-3"
-    ).one()
     access_group = db.session.query(models.AccessGroup).filter(
         models.AccessGroup.slug == "ag-2"
     ).one()
@@ -136,7 +125,6 @@ class TestSnapshotIndexing(SnapshotterBaseTestCase):
     ).one()
 
     custom_attributes = [
-        (control, "control text field 1", "control value 1"),
         (objective, "objective rich field 1", "objective value 1"),
         (process, "process date field 1", "07/12/2016"),
         (access_group, "access group text field 2",
@@ -633,15 +621,15 @@ class TestSnapshotIndexing(SnapshotterBaseTestCase):
     without 'title' attribute.
     """
     with factories.single_commit():
-      control = factories.ControlFactory()
+      product = factories.ProductFactory()
       audit = factories.AuditFactory()
       option = factories.OptionFactory()
       audit_id = audit.id
-      control_id = control.id
+      product_id = product.id
       option_title = option.title
     revision = all_models.Revision.query.filter(
-        all_models.Revision.resource_id == control.id,
-        all_models.Revision.resource_type == control.type
+        all_models.Revision.resource_id == product.id,
+        all_models.Revision.resource_type == product.type
     ).one()
     revision_content = revision.content
     revision_content["kind"] = {
@@ -653,13 +641,13 @@ class TestSnapshotIndexing(SnapshotterBaseTestCase):
     revision.content = revision_content
     db.session.add(revision)
     db.session.commit()
-    self._create_snapshots(audit, [control])
+    self._create_snapshots(audit, [product])
     self.client.post("/admin/reindex_snapshots")
     snapshot = all_models.Snapshot.query.filter(
         all_models.Snapshot.parent_id == audit_id,
         all_models.Snapshot.parent_type == "Audit",
-        all_models.Snapshot.child_id == control_id,
-        all_models.Snapshot.child_type == "Control",
+        all_models.Snapshot.child_id == product_id,
+        all_models.Snapshot.child_type == "Product",
     ).one()
     self.assert_indexed_fields(snapshot, "kind", {
         "": option_title

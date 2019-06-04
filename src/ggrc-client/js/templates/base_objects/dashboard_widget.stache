@@ -1,0 +1,21 @@
+{{!
+    Copyright (C) 2019 Google Inc.
+    Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
+}}
+
+<section class="dashboard-widget info">
+  {{#showDashboardList}}
+    <ul class="dashboard-list">
+      {{#dashboards}}
+        <li
+          {{#is(url, activeDashboard.url)}}class="active"{{/is}}
+          on:el:click="selectDashboard(%context)">
+          {{name}}
+        </li>
+      {{/dashboards}}
+    </ul>
+  {{/showDashboardList}}
+  <iframe src="{{activeDashboard.url}}"
+          frameborder="0"
+  ></iframe>
+</section>

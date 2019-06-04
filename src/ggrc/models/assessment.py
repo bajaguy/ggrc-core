@@ -1,4 +1,4 @@
-# Copyright (C) 2018 Google Inc.
+# Copyright (C) 2019 Google Inc.
 # Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 
 """Module for Assessment object"""
@@ -157,8 +157,8 @@ class Assessment(Assignable, statusable.Statusable, AuditRelationship,
     )
 
   @classmethod
-  def eager_query(cls):
-    return cls._populate_query(super(Assessment, cls).eager_query())
+  def eager_query(cls, **kwargs):
+    return cls._populate_query(super(Assessment, cls).eager_query(**kwargs))
 
   @classmethod
   def indexed_query(cls):

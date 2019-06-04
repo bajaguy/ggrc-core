@@ -1,12 +1,12 @@
 /*
- Copyright (C) 2018 Google Inc.
+ Copyright (C) 2019 Google Inc.
  Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
  */
 
 import {getPageInstance} from '../../plugins/utils/current-page-utils';
 import Cacheable from '../cacheable';
 
-export default Cacheable('CMS.Models.Comment', {
+export default Cacheable.extend({
   root_object: 'comment',
   root_collection: 'comments',
   findOne: 'GET /api/comments/{id}',
@@ -14,13 +14,15 @@ export default Cacheable('CMS.Models.Comment', {
   update: 'PUT /api/comments/{id}',
   destroy: 'DELETE /api/comments/{id}',
   create: 'POST /api/comments',
-  init: function () {
-    this.validatePresenceOf('description');
-    if (this._super) {
-      this._super(...arguments);
-    }
-  },
 }, {
+  define: {
+    description: {
+      value: '',
+      validate: {
+        required: true,
+      },
+    },
+  },
   form_preload: function () {
     let pageInstance = getPageInstance();
     this.attr('comment', pageInstance);

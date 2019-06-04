@@ -1,4 +1,4 @@
--# Copyright (C) 2018 Google Inc.
+-# Copyright (C) 2019 Google Inc.
 -# Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 
 -extends 'layouts/base.haml'
@@ -13,19 +13,20 @@
   GGRC.page_object = { "person": ={ full_user_json()|safe } };
   GGRC.pageType = "MY_ASSESSMENTS"
 
+-block title
+  My Assessments
+
 -block page_scripts
   %script{ type:'text/javascript', src:'{{config.get("COMMON_JS_PATH")}}' }
   %script{ type:'text/javascript', src:'{{config.get("DASHBOARD_JS_PATH")}}' }
 
 -block body
-  .area.flex-box.flex-col.area--distraction-free{ 'class': '={ model_display_class }' }
+  #pageContent.page-content.flex-box.flex-col.page-content--distraction-free{ 'class': '={ model_display_class }' }
     #page-header
       -block header
 
     -block nav
-      .top-inner-nav
-        .object-nav
-          %ul.nav{ 'class': "internav" }
+      #inner-nav.top-inner-nav
 
     %section.content.flex-size-1
       .flash
@@ -35,7 +36,7 @@
               %div{ 'class': "{{category}}" }
                 %p
                   {{message}}
-                %a.close{'href': "#", 'data-dismiss': "alert" }
+                %a.close{'href': "javascript:void(0)", 'data-dismiss': "alert" }
                   %i.fa.fa-times
       -block main
         .object-area.row-fluid.full-width
@@ -52,4 +53,4 @@
         ={config.get('GOOGLE_ANALYTICS_SCRIPT') | safe}
 
   #lhn
-    #lhs.lhs.accordion{ 'data-template': '/dashboard/lhn.mustache' }
+    #lhs.lhs.accordion{ 'data-template': 'dashboard/lhn' }

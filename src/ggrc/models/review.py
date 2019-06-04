@@ -1,10 +1,13 @@
-# Copyright (C) 2018 Google Inc.
+# Copyright (C) 2019 Google Inc.
 # Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 
 """Review model."""
+
 import datetime
 
 import sqlalchemy as sa
+from sqlalchemy import inspect
+from sqlalchemy.orm import validates
 
 from ggrc import db
 from ggrc import builder
@@ -12,16 +15,19 @@ from ggrc import utils
 from ggrc.access_control import role
 from ggrc.access_control import roleable
 from ggrc.login import get_current_user
-from ggrc.models import mixins, exceptions
+from ggrc.models import mixins
+from ggrc.models import exceptions
+from ggrc.models import comment
+from ggrc.models import inflector
 from ggrc.models import utils as model_utils
 from ggrc.models import reflection
+from ggrc.models import relationship
 from ggrc.models.mixins import issue_tracker
 from ggrc.models.mixins import rest_handable
 from ggrc.models.mixins import with_proposal_handable
 from ggrc.models.mixins import with_mappimg_via_import_handable
-
-from ggrc.models.relationship import Relatable
-
+from ggrc.models.mixins import synchronizable
+from ggrc.models.mixins import with_comment_created
 from ggrc.notifications import add_notification
 
 
@@ -59,7 +65,7 @@ class Reviewable(rest_handable.WithPutHandable,
   def reviewers(self):
     """Return list of reviewer persons"""
     if self.review:
-      return self.review.get_persons_for_rolename('Reviewer')
+      return self.review.get_persons_for_rolename('Reviewers')
     return []
 
   @builder.simple_property
@@ -90,8 +96,8 @@ class Reviewable(rest_handable.WithPutHandable,
     )
 
   @classmethod
-  def eager_query(cls):
-    return super(Reviewable, cls).eager_query().options(
+  def eager_query(cls, **kwargs):
+    return super(Reviewable, cls).eager_query(**kwargs).options(
         sa.orm.joinedload("review")
     )
 
@@ -132,9 +138,8 @@ class Reviewable(rest_handable.WithPutHandable,
 
   def _update_status_on_attr(self):
     """Update review status when reviewable attrs are changed"""
-    from ggrc.models import all_models
     if (self.review and
-            self.review.status != all_models.Review.STATES.UNREVIEWED):
+            self.review.status != Review.STATES.UNREVIEWED):
       changed = {a.key for a in db.inspect(self).attrs
                  if a.history.has_changes()}
 
@@ -162,6 +167,10 @@ class Reviewable(rest_handable.WithPutHandable,
 
   def add_email_notification(self):
     """Add email notification of type STATUS_UNREVIEWED"""
+    if isinstance(self, synchronizable.Synchronizable):
+      # External objects should not be notified.
+      return
+
     review_notif_type = self.review.notification_type
     if review_notif_type == Review.NotificationTypes.EMAIL_TYPE:
       add_notification(self.review,
@@ -169,16 +178,14 @@ class Reviewable(rest_handable.WithPutHandable,
 
   def _update_status_on_mapping(self, counterparty):
     """Update review status on mapping to reviewable"""
-    from ggrc.models import all_models
-    if self.review_status != all_models.Review.STATES.UNREVIEWED:
+    if self.review_status != Review.STATES.UNREVIEWED:
       if self._is_counterparty_snapshottable(counterparty):
         self._set_review_status_unreviewed()
 
   def _set_review_status_unreviewed(self):
     """Set review status -> unreviewed"""
-    from ggrc.models import all_models
     if self.review:
-      self.review.status = all_models.Review.STATES.UNREVIEWED
+      self.review.status = Review.STATES.UNREVIEWED
       self.add_email_notification()
 
   @staticmethod
@@ -212,9 +219,13 @@ class Review(mixins.person_relation_factory("last_reviewed_by"),
              mixins.Stateful,
              rest_handable.WithPostHandable,
              rest_handable.WithPutHandable,
+             rest_handable.WithPostAfterCommitHandable,
+             rest_handable.WithPutAfterCommitHandable,
+             with_comment_created.WithCommentCreated,
+             comment.CommentInitiator,
              roleable.Roleable,
              issue_tracker.IssueTracked,
-             Relatable,
+             relationship.Relatable,
              mixins.base.ContextRBAC,
              mixins.Base,
              db.Model):
@@ -281,41 +292,95 @@ class Review(mixins.person_relation_factory("last_reviewed_by"),
           ",".join(missed_mandatory_roles))
       )
 
+  def _add_comment_about(self, text):
+    """Create comment about proposal for reason with required text."""
+    if not isinstance(self.reviewable, comment.Commentable):
+      return
+
+    text = self.clear_text(text)
+
+    # pylint: disable=not-an-iterable
+    existing_people = set(acp.person.email
+                          for acl in self._access_control_list
+                          for acp in acl.access_control_people)
+    comment_text = (
+        u"<p>Review requested from</p><p>{people}</p>"
+        u"<p>with a comment: {text}</p>"
+    ).format(
+        people=', '.join(existing_people),
+        text=text,
+    )
+    self.add_comment(
+        comment_text,
+        source=self.reviewable,
+        initiator_object=self
+    )
+
   def handle_post(self):
+    """Handle POST request."""
+    if self.email_message:
+      self._add_comment_about(self.email_message)
     self._create_relationship()
     self._update_new_reviewed_by()
     if (self.notification_type == Review.NotificationTypes.EMAIL_TYPE and
-            self.status == Review.STATES.UNREVIEWED):
+        self.status == Review.STATES.UNREVIEWED and
+            not isinstance(self.reviewable, synchronizable.Synchronizable)):
       add_notification(self, Review.NotificationObjectTypes.REVIEW_CREATED)
 
+  def is_status_changed(self):
+    """Checks whether the status has changed."""
+    return inspect(self).attrs.status.history.has_changes()
+
   def handle_put(self):
+    """Handle PUT request."""
+    if not self.is_status_changed() and self.email_message:
+      self._add_comment_about(self.email_message)
     self._update_reviewed_by()
+
+  def handle_posted_after_commit(self, event):
+    """Handle POST after commit."""
+    self.apply_mentions_comment(obj=self.reviewable, event=event)
+
+  def handle_put_after_commit(self, event):
+    """Handle PUT after commit."""
+    self.apply_mentions_comment(obj=self.reviewable, event=event)
 
   def _create_relationship(self):
     """Create relationship for newly created review (used for ACL)"""
-    from ggrc.models import all_models
     if self in db.session.new:
       db.session.add(
-          all_models.Relationship(source=self.reviewable, destination=self)
+          relationship.Relationship(source=self.reviewable, destination=self)
       )
 
   def _update_new_reviewed_by(self):
     """When create new review with state REVIEWED set last_reviewed_by"""
     # pylint: disable=attribute-defined-outside-init
-    from ggrc.models import all_models
-    if self.status == all_models.Review.STATES.REVIEWED:
+    if self.status == Review.STATES.REVIEWED:
       self.last_reviewed_by = get_current_user()
       self.last_reviewed_at = datetime.datetime.utcnow()
 
   def _update_reviewed_by(self):
     """Update last_reviewed_by, last_reviewed_at"""
     # pylint: disable=attribute-defined-outside-init
-    from ggrc.models import all_models
     if not db.inspect(self).attrs["status"].history.has_changes():
       return
 
     self.reviewable.updated_at = datetime.datetime.utcnow()
 
-    if self.status == all_models.Review.STATES.REVIEWED:
+    if self.status == Review.STATES.REVIEWED:
       self.last_reviewed_by = self.modified_by
       self.last_reviewed_at = datetime.datetime.utcnow()
+
+  # pylint: disable=no-self-use
+  @validates("reviewable_type")
+  def validate_reviewable_type(self, _, reviewable_type):
+    """Validate reviewable_type attribute.
+
+    We preventing creation of reviews for external models.
+    """
+    reviewable_class = inflector.get_model(reviewable_type)
+
+    if issubclass(reviewable_class, synchronizable.Synchronizable):
+      raise ValueError("Trying to create review for external model.")
+
+    return reviewable_type

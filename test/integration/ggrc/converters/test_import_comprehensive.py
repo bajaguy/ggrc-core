@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-# Copyright (C) 2018 Google Inc.
+# Copyright (C) 2019 Google Inc.
 # Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 """Comprehensive import tests.
 
@@ -40,13 +40,6 @@ class TestComprehensiveSheets(TestCase):
     indexed = {r["name"]: r for r in response}
 
     expected = {
-        "Control": {
-            "created": 14,
-            "ignored": 2,
-            "row_errors": 2,
-            "row_warnings": 3,
-            "rows": 16,
-        },
         "Objective": {
             "created": 8,
             "ignored": 7,
@@ -217,7 +210,7 @@ class TestComprehensiveSheets(TestCase):
     self.assertEqual(prog.description, "test")
 
     custom_vals = [v.attribute_value for v in prog.custom_attribute_values]
-    expected_custom_vals = ['0', 'a', '2015-12-12', 'test1']
+    expected_custom_vals = ['0', 'a', '2015-12-12', 'test1', u'']
     self.assertEqual(set(custom_vals), set(expected_custom_vals))
 
   @unittest.skip("unskip when import/export fixed for workflows")
@@ -247,10 +240,46 @@ class TestComprehensiveSheets(TestCase):
     response = self.import_file("import_with_all_warnings_and_errors.csv",
                                 safe=False)
     expected_errors = {
-        "Control": {
+        "Risk": {
             "block_errors": {
                 errors.DUPLICATE_COLUMN.format(
-                    line=1, duplicates="title, assessment procedure, notes"),
+                    line=1, duplicates="risk type, description, title"),
+            },
+            "block_warnings": {
+                errors.UNKNOWN_COLUMN.format(
+                    line=54, column_name="assertions"),
+                errors.UNKNOWN_COLUMN.format(
+                    line=54, column_name="categories")
+            },
+            "row_errors": {
+                errors.DUPLICATE_VALUE_IN_CSV.format(
+                    line=57, column_name="Code",
+                    value="risk-2", processed_line=56),
+                errors.DUPLICATE_VALUE_IN_CSV.format(
+                    line=57, column_name="Title",
+                    value="risk-2", processed_line=56),
+                errors.DUPLICATE_VALUE_IN_CSV.format(
+                    line=58, column_name="Code",
+                    value="risk-2", processed_line=56),
+                errors.DUPLICATE_VALUE_IN_CSV.format(
+                    line=58, column_name="Title",
+                    value="risk-2", processed_line=56),
+                errors.EXTERNAL_MODEL_IMPORT_RESTRICTION.format(
+                    line=55,
+                    external_model_name="Risk"
+                ),
+                errors.EXTERNAL_MODEL_IMPORT_RESTRICTION.format(
+                    line=56,
+                    external_model_name="Risk"
+                ),
+                errors.EXTERNAL_MODEL_IMPORT_RESTRICTION.format(
+                    line=57,
+                    external_model_name="Risk"
+                ),
+                errors.EXTERNAL_MODEL_IMPORT_RESTRICTION.format(
+                    line=58,
+                    external_model_name="Risk"
+                ),
             },
             "row_warnings": {
                 errors.EXPORT_ONLY_WARNING.format(
@@ -264,6 +293,14 @@ class TestComprehensiveSheets(TestCase):
             },
         },
         "Program": {
+            "block_warnings": {
+                errors.UNSUPPORTED_MAPPING.format(
+                    line=6,
+                    obj_a="Program",
+                    obj_b="program",
+                    column_name="map:program"
+                ),
+            },
             "row_warnings": {
                 errors.OWNER_MISSING.format(
                     line=7, column_name="Program Managers"),
@@ -309,19 +346,21 @@ class TestComprehensiveSheets(TestCase):
   def create_custom_attributes(self):
     """Generate custom attributes needed for comprehensive sheet."""
     gen = self.generator.generate_custom_attribute
-    gen("control", title="my custom text", mandatory=True)
+    gen("risk", title="my custom text", mandatory=True)
     gen("program", title="my_text", mandatory=True)
     gen("program", title="my_date", attribute_type="Date")
     gen("program", title="my_checkbox", attribute_type="Checkbox")
     gen("program", title="my_dropdown", attribute_type="Dropdown",
         options="a,b,c,d")
+    gen("program", title="my_multiselect", attribute_type="Multiselect",
+        options="yes,no")
     # gen("program", title="my_description", attribute_type="Rich Text")
 
   def test_case_sensitive_slugs(self):
     """Test that mapping with case sensitive slugs work."""
     response = self.import_file("case_sensitive_slugs.csv", safe=False)
     expected_errors = {
-        "Control": {
+        "Program": {
             "row_errors": {
                 errors.DUPLICATE_VALUE_IN_CSV.format(
                     line="4",
@@ -373,23 +412,6 @@ class TestComprehensiveSheets(TestCase):
                 errors.WRONG_VALUE_ERROR.format(
                     line="7",
                     column_name="End",
-                ),
-            },
-        },
-    }
-    self._check_csv_response(response, expected_errors)
-
-  def test_missing_rich_text_field(self):
-    """MISSING_VALUE_ERROR is returned on empty mandatory description."""
-    response = self.import_file("risk_missing_mandatory_description.csv",
-                                safe=False)
-
-    expected_errors = {
-        "Risk": {
-            "row_errors": {
-                errors.MISSING_VALUE_ERROR.format(
-                    line="3",
-                    column_name="Description",
                 ),
             },
         },

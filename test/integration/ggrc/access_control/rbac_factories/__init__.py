@@ -1,4 +1,4 @@
-# Copyright (C) 2018 Google Inc.
+# Copyright (C) 2019 Google Inc.
 # Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 
 """RBAC Factories for ggrc models."""
@@ -13,7 +13,6 @@ from integration.ggrc.access_control.rbac_factories import (audit, assessment,
                                                             cycle,
                                                             cycle_task_group,
                                                             cycle_task,
-                                                            cycle_task_entry,
                                                             evidence,
                                                             universal_factory)
 
@@ -34,6 +33,5 @@ TEST_FACTORIES_MAPPING = {
     "Cycle": cycle.CycleRBACFactory,
     "CycleTaskGroup": cycle_task_group.CycleTaskGroupRBACFactory,
     "CycleTask": cycle_task.CycleTaskRBACFactory,
-    "CycleTaskEntry": cycle_task_entry.CycleTaskEntryRBACFactory,
     "Universal": universal_factory.UniversalRBACFactory
 }

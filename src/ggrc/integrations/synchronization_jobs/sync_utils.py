@@ -1,4 +1,4 @@
-# Copyright (C) 2018 Google Inc.
+# Copyright (C) 2019 Google Inc.
 # Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 
 """Module provides various utils for Issue tracker integration service."""
@@ -131,7 +131,7 @@ def update_issue(cli, issue_id, params):
     except integrations_errors.HttpError as error:
       last_error = error
       if error.status == 429:
-        logger.warning(
+        logger.info(
             'The request updating ticket ID=%s was '
             'rate limited and will be re-tried: %s', issue_id, error)
         time.sleep(constants.REQUEST_TIMEOUT)

@@ -1,5 +1,5 @@
 /*
- Copyright (C) 2018 Google Inc.
+ Copyright (C) 2019 Google Inc.
  Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
  */
 
@@ -8,7 +8,8 @@ import Relationship from '../../models/service-models/relationship';
 
 export default can.Component.extend({
   tag: 'unmap-button',
-  viewModel: {
+  leakScope: true,
+  viewModel: can.Map.extend({
     destination: {},
     source: {},
     isUnmapping: false,
@@ -48,7 +49,7 @@ export default can.Component.extend({
       return Relationship.findRelationship(
         this.source, this.destination);
     },
-  },
+  }),
   events: {
     click: function () {
       if (this.viewModel.attr('preventClick')) {

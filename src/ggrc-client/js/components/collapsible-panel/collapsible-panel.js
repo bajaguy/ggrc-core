@@ -1,17 +1,16 @@
 /*
- Copyright (C) 2018 Google Inc.
+ Copyright (C) 2019 Google Inc.
  Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
  */
 
 import './collapsible-panel-header';
 import './collapsible-panel-body';
-import template from './collapsible-panel.mustache';
+import template from './collapsible-panel.stache';
 
-const tag = 'collapsible-panel';
 let viewModel = can.Map.extend({
-  titleText: '@',
-  titleIcon: '@',
-  extraCssClass: '@',
+  titleText: '',
+  titleIcon: '',
+  extraCssClass: '',
   softMode: false,
   define: {
     /**
@@ -29,7 +28,8 @@ let viewModel = can.Map.extend({
  * Collapsible Panel component to add expand/collapse behavior
  */
 export default can.Component.extend({
-  tag,
-  template,
+  tag: 'collapsible-panel',
+  view: can.stache(template),
+  leakScope: false,
   viewModel,
 });

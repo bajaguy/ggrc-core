@@ -1,18 +1,21 @@
-# Copyright (C) 2018 Google Inc.
+# Copyright (C) 2019 Google Inc.
 # Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 """My Work page smoke tests."""
 # pylint: disable=no-self-use
 # pylint: disable=invalid-name
+# pylint: disable=protected-access
 # pylint: disable=too-few-public-methods
 # pylint: disable=unused-argument
 import re
 
 import pytest  # pylint: disable=import-error
 
-from lib import base, url, users
-from lib.constants import objects, element
+from lib import base, url
+from lib.constants import objects
 from lib.page import dashboard, lhn
-from lib.page.widget import generic_widget
+from lib.page.widget import generic_widget, object_modal
+from lib.service import webui_facade
+from lib.ui import ui_facade
 from lib.utils import selenium_utils
 
 
@@ -20,22 +23,23 @@ class TestMyWorkPage(base.Test):
   """Tests My Work page, part of smoke tests, section 2."""
 
   @pytest.mark.smoke_tests
-  def test_destructive_horizontal_nav_bar_tabs(self, new_controls_rest,
-                                               my_work_dashboard, selenium):
+  def test_destructive_horizontal_nav_bar_tabs(
+      self, objectives_mapped_to_program, my_work_dashboard, selenium
+  ):
     """Tests that several objects in widget can be deleted sequentially.
     Preconditions:
     - Controls created via REST API.
     """
-    controls_tab = my_work_dashboard.select_controls()
-    for _ in xrange(controls_tab.member_count):
-      counter = controls_tab.get_items_count()
-      (controls_tab.select_member_by_num(0).
+    objectives_tab = my_work_dashboard.select_objectives()
+    for _ in xrange(objectives_tab.member_count):
+      counter = objectives_tab.get_items_count()
+      (objectives_tab.select_member_by_num(0).
        three_bbs.select_delete().confirm_delete())
-      controls_tab.wait_member_deleted(counter)
-    controls_generic_widget = generic_widget.Controls(
-        selenium, objects.CONTROLS)
+      objectives_tab.wait_member_deleted(counter)
+    objectives_generic_widget = generic_widget.Objectives(
+        selenium, objects.OBJECTIVES)
     expected_widget_members = []
-    actual_widget_members = controls_generic_widget.members_listed
+    actual_widget_members = objectives_generic_widget.members_listed
     assert expected_widget_members == actual_widget_members
 
   @pytest.mark.smoke_tests
@@ -98,131 +102,78 @@ class TestMyWorkPage(base.Test):
     """Tests LHN menu objects.
     Check LHN contains the list of the objects with number in brackets."""
     lhn_menu = header_dashboard.open_lhn_menu().select_all_objects()
-    for item in element.Lhn.BASE_OBJS:
-      lhn_item = getattr(lhn_menu, 'toggle_' + item)
-      assert lhn_item.text == \
-          item.upper() + ' (' + str(lhn_item.members_count) + ')'
-    for item in element.Lhn.SUB_OBJS:
-      assert getattr(lhn_menu, 'toggle_' + item).text == item.replace(
-          '_or_', '/').upper()
-      lhn_item = getattr(lhn_menu, 'select_' + item)()
-      lhn_item.update_members()
-      for item_sub in getattr(element.Lhn, item.upper() + '_MEMBERS'):
-        lhn_item_sub = getattr(lhn_item, 'toggle_' + item_sub)
-        assert lhn_item_sub.text == \
-            item_sub.replace('_', ' ').title() + \
-            ' (' + str(lhn_item_sub.members_count) + ')'
+    webui_facade.check_base_objects_have_numbers(lhn_menu)
+    webui_facade.check_objects_have_numbers(lhn_menu)
 
   @pytest.mark.smoke_tests
   def test_lhn_objects_expand_collapse(self, header_dashboard):
     """Tests LHN menu objects.
     Check expand/collapse objects"""
     lhn_menu = header_dashboard.open_lhn_menu().select_all_objects()
-    for item in element.Lhn.BASE_OBJS:
-      assert hasattr(lhn_menu, 'select_' + item) is True
-      getattr(lhn_menu, 'select_' + item)()
-    for item in element.Lhn.SUB_OBJS:
-      assert hasattr(lhn_menu, 'select_' + item) is True
-      lhn_item = getattr(lhn_menu, 'select_' + item)()
-      for item_sub in getattr(element.Lhn, item.upper() + '_MEMBERS'):
-        assert hasattr(lhn_item, 'select_' + item_sub) is True
-        getattr(lhn_item, 'select_' + item_sub)()
+    webui_facade.can_base_objects_expand(lhn_menu)
+    webui_facade.can_objects_expand(lhn_menu)
 
   @pytest.mark.smoke_tests
   def test_user_menu_buttons(self, header_dashboard):
-    """Tests user menu buttons and their icons (styles for icons)
-    """
-    USER_MENU_BUTTONS = ('logout', 'data_export', 'admin_dashboard', 'help')
+    """Tests user menu buttons and their icons (styles for icons)."""
     user_menu = header_dashboard.open_user_list()
-    for btn_name in USER_MENU_BUTTONS:
-      assert user_menu.get_button_icon(btn_name) != ''
-    assert getattr(user_menu, 'email').text == users.current_user().name
+    webui_facade.check_user_menu_has_icons(user_menu)
 
   @pytest.mark.smoke_tests
-  def test_lhn_info_popup(self, header_dashboard, new_program_rest):
-    """Tests LHN item info popup
-    """
-    header_dashboard.button_dashboard.click()
-    programs = header_dashboard.\
-        open_lhn_menu().\
-        select_all_objects().\
-        select_programs()
+  def test_lhn_info_popup(self, program, header_dashboard):
+    """Tests LHN item info popup."""
+    programs = (header_dashboard.open_lhn_menu().select_all_objects().
+                select_programs())
     program_title = programs.members_loaded[0].text
-    assert program_title == \
-        programs.\
-        hover_over_visible_member(program_title).\
-        title.text
+    assert program_title == programs.hover_over_visible_member(
+        program_title).title.text
 
   @pytest.mark.smoke_tests
-  def test_info_panel_close_button(self, my_work_dashboard, new_program_rest):
-    """Tests My Work Info panel close button
-    """
-    my_work_dashboard.button_dashboard.click()
-    btn_close = my_work_dashboard.select_programs().\
-        tree_view.\
-        select_member_by_title(new_program_rest.title).\
-        panel.button_close
-    assert btn_close.exists is True
-    btn_close.js_click()
-    btn_close.wait_until_not(lambda e: e.exists)
+  def test_info_panel_close_button(self, program, my_work_dashboard):
+    """Tests My Work Info panel close button."""
+    info_panel = (my_work_dashboard.select_programs().tree_view.
+                  select_member_by_title(program.title).panel)
+    info_panel.button_close.js_click()
+    selenium_utils.wait_for_doc_is_ready(my_work_dashboard._driver)
+    assert info_panel.is_opened is False
 
   @pytest.mark.smoke_tests
-  def test_info_panel_minimize_button(self, my_work_dashboard,
-                                      new_program_rest):
-    """Tests My Work Info panel minimize button
-    """
-    my_work_dashboard.button_dashboard.click()
-    program_info_panel = my_work_dashboard.select_programs().\
-        tree_view.\
-        select_member_by_title(new_program_rest.title).\
-        panel
+  def test_info_panel_minimize_button(self, program, my_work_dashboard):
+    """Tests My Work Info panel minimize button."""
+    program_info_panel = (my_work_dashboard.select_programs().tree_view.
+                          select_member_by_title(program.title).panel)
     btn_minimize = program_info_panel.button_minimize
-    assert btn_minimize.exists is True
     btn_minimize.js_click()
     assert program_info_panel.is_minimized is True
 
   @pytest.mark.smoke_tests
-  def test_info_panel_maximize_button(self, my_work_dashboard,
-                                      new_program_rest):
-    """Tests My Work Info panel maximize button
-    """
-    my_work_dashboard.button_dashboard.click()
-    program_info_panel = my_work_dashboard.select_programs().\
-        tree_view.\
-        select_member_by_title(new_program_rest.title).\
-        panel
+  def test_info_panel_maximize_button(self, program, my_work_dashboard):
+    """Tests My Work Info panel maximize button."""
+    program_info_panel = (my_work_dashboard.select_programs().tree_view.
+                          select_member_by_title(program.title).panel)
     program_info_panel.button_minimize.js_click()
     btn_maximize = program_info_panel.button_maximize
-    assert btn_maximize.exists is True
     btn_maximize.js_click()
     assert program_info_panel.is_maximized is True
 
   @pytest.mark.smoke_tests
-  def test_info_panel_content(self, my_work_dashboard, new_program_rest):
-    """Tests My Work Info panel content
-    """
-    my_work_dashboard.button_dashboard.click()
-    assert new_program_rest.title == my_work_dashboard.select_programs().\
-        tree_view.\
-        select_member_by_title(new_program_rest.title).\
-        panel.title
+  def test_info_panel_content(self, program, my_work_dashboard):
+    """Tests My Work Info panel content."""
+    assert program.title == (
+        my_work_dashboard.select_programs().tree_view.
+        select_member_by_title(program.title).panel.title)
 
   @pytest.mark.smoke_tests
-  def test_info_panel_3bbs(self, my_work_dashboard, new_program_rest):
-    """Tests My Work Info panel
-    """
-    my_work_dashboard.button_dashboard.click()
-    panel_three_bbs = my_work_dashboard.select_programs().\
-        tree_view.\
-        select_member_by_title(new_program_rest.title).three_bbs
+  def test_info_panel_3bbs(self, program, my_work_dashboard):
+    """Tests My Work Info panel."""
+    panel_three_bbs = (my_work_dashboard.select_programs().tree_view.
+                       select_member_by_title(program.title).
+                       three_bbs)
     assert panel_three_bbs.exists is True
 
   @pytest.mark.smoke_tests
   def test_navbar_tabs(self, my_work_dashboard):
-    """Tests Nav bar on My Work page
-    """
-    my_work_dashboard.button_dashboard.click()
-    my_work_dashboard.wait_to_be_init()
+    """Tests Nav bar on My Work page."""
     tabs = my_work_dashboard.get_visible_tabs
     # At least Info tab should be present
     assert tabs
@@ -234,28 +185,29 @@ class TestMyWorkPage(base.Test):
 
   @pytest.mark.smoke_tests
   def test_navbar_add_tab(self, my_work_dashboard):
-    """Tests Nav bar Add tab doesn't exist on My Work page
-    """
-    my_work_dashboard.button_dashboard.click()
+    """Tests Nav bar Add tab doesn't exist on My Work page."""
     my_work_dashboard.wait_to_be_init()
     assert my_work_dashboard.is_add_tab_present is False
 
   @pytest.mark.smoke_tests
   def test_all_objects(self, my_work_dashboard):
-    """Tests number of objects in LHN and in All Objects
-    """
-    lhn_objects = my_work_dashboard.\
-        open_lhn_menu().\
-        select_all_objects().\
-        get_all_lhn_objects_as_set
-    all_objects_objects = \
-        set([tab.name for tab in my_work_dashboard.
-            select_all_objects().get_visible_tabs])
-    if all_objects_objects.issubset(lhn_objects) is False:
+    """Tests number of objects in LHN and in All Objects."""
+    lhn_objects = (my_work_dashboard.open_lhn_menu().select_all_objects().
+                   get_all_lhn_objects_as_set)
+    hnb_objects = set(
+        [tab.name for tab in my_work_dashboard.
+         select_all_objects().get_visible_tabs])
+    if hnb_objects.issubset(lhn_objects) is False:
       pytest.xfail(
           reason="\nGGRC-2756 Numbers in brackets in LHN are not correspond "
                  "with numbers in tabs on on All objects page:\n" +
                  str(lhn_objects) + "\n" +
-                 str(all_objects_objects)
+                 str(hnb_objects)
       )
-    assert all_objects_objects.issubset(lhn_objects) is True
+    assert hnb_objects.issubset(lhn_objects) is True
+
+  def test_user_cannot_create_control_from_lhn(self, lhn_menu):
+    """Tests that `New Control` modal object cannot be opened from lhn."""
+    lhn_menu.select_controls_or_objectives().select_controls().create_new()
+    ui_facade.verify_modal_obj_not_present_in_all_windows(
+        object_modal.ControlModal())

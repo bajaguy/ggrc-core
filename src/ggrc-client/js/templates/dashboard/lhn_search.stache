@@ -1,0 +1,26 @@
+{{!
+  Copyright (C) 2019 Google Inc.
+  Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
+}}
+
+<li class="{{li_class}} accordion-group"
+    data-tooltip-view="{{firstnonempty tooltip_view ''}}"
+    data-template="{{firstnonempty template_view ''}}"
+    data-model-name="{{type}}"
+    data-actions="{{firstnonempty actions ''}}"
+    {{#is(type, "Workflow")}}
+      data-model-extra="Workflow_All,Workflow_Active,Workflow_Draft,Workflow_Inactive"
+      data-count="Workflow_All"
+    {{/is}}>
+  <a class="{{li_class}} list-toggle" href="javascript://" 
+     data-object-singular="{{type}}" data-parent=".top-level">
+    <span class="lhs-item lhs-item-long">
+      <i class="fa fa-caret-right"></i>{{title_plural}}
+      <small>(<span class="item-count"></span>)</small>
+    </span>
+  </a>
+  <div class="content">
+    <ul class="sub-level {{#is(type, "Workflow")}}with-filters{{/is}}"></ul>
+    <ul class="sub-actions"></ul>
+  </div>
+</li>

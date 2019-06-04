@@ -1,4 +1,4 @@
-# Copyright (C) 2018 Google Inc.
+# Copyright (C) 2019 Google Inc.
 # Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 
 """Test for proposal api."""
@@ -34,27 +34,25 @@ class TestCommentsForProposals(TestCase):
   @ddt.unpack
   def test_create(self, agenda, comment):
     """Test case create proposal with agenda {agenda}."""
-    control = factories.ControlFactory(title="1")
-    new_title = "2"
-    control_id = control.id
-    control.title = new_title
-    self.assertEqual(0, len(control.comments))
+    program = factories.ProgramFactory()
+    program_id = program.id
+    self.assertEqual(0, len(program.comments))
     resp = self.api.post(
         all_models.Proposal,
         {"proposal": {
             "instance": {
-                "id": control.id,
-                "type": control.type,
+                "id": program.id,
+                "type": program.type,
             },
             # "content": {"123": 123},
-            "full_instance_content": control.log_json(),
+            "full_instance_content": program.log_json(),
             "agenda": agenda,
             "context": None,
         }})
     self.assertEqual(201, resp.status_code)
-    control = all_models.Control.query.get(control_id)
-    self.assertEqual(1, len(control.comments))
-    self.assertEqual(comment, control.comments[0].description)
+    program = all_models.Program.query.get(program_id)
+    self.assertEqual(1, len(program.comments))
+    self.assertEqual(comment, program.comments[0].description)
 
   @ddt.data({"agenda": "",
              "comment_agenda": "",
@@ -97,15 +95,15 @@ class TestCommentsForProposals(TestCase):
     """Test comment proposal status move to {status} with agenda {agenda}."""
     test_email = "foo@example.com"
     with factories.single_commit():
-      control = factories.ControlFactory()
+      program = factories.ProgramFactory()
       proposer = factories.PersonFactory(email=test_email)
     with factories.single_commit():
       proposal = factories.ProposalFactory(
-          instance=control,
+          instance=program,
           content={"field": "a"},
           agenda="agenda content",
           proposed_by=proposer)
-    control_id = control.id
+    program_id = program.id
     if status == all_models.Proposal.STATES.APPLIED:
       resp = self.api.put(
           proposal, {"proposal": {"status": status, "apply_reason": agenda}})
@@ -113,7 +111,7 @@ class TestCommentsForProposals(TestCase):
       resp = self.api.put(
           proposal, {"proposal": {"status": status, "decline_reason": agenda}})
     self.assertEqual(200, resp.status_code)
-    control = all_models.Control.query.get(control_id)
-    self.assertEqual(1, len(control.comments))
+    program = all_models.Program.query.get(program_id)
+    self.assertEqual(1, len(program.comments))
     comment = tmpl.format(user=test_email, text=comment_agenda)
-    self.assertEqual(comment, control.comments[0].description)
+    self.assertEqual(comment, program.comments[0].description)

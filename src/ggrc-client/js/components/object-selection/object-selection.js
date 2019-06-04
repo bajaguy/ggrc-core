@@ -1,15 +1,15 @@
 /*
- Copyright (C) 2018 Google Inc.
+ Copyright (C) 2019 Google Inc.
  Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
  */
 
-const tag = 'object-selection';
 /**
  * Object Selection component
  */
 export default can.Component.extend({
-  tag,
-  viewModel: {
+  tag: 'object-selection',
+  leakScope: true,
+  viewModel: can.Map.extend({
     selectedItems: [],
     items: [],
     // This is an array by default replace with deferred on actual load
@@ -99,9 +99,9 @@ export default can.Component.extend({
           this.clearSelection();
         }.bind(this));
     },
-  },
+  }),
   events: {
-    '{viewModel} refreshSelection': function (scope, ev, refreshSelection) {
+    '{viewModel} refreshSelection': function ([scope], ev, refreshSelection) {
       if (refreshSelection) {
         this.viewModel.emptySelection();
       }
@@ -115,7 +115,7 @@ export default can.Component.extend({
     'object-selection-item deselectItem': function (el, ev, item) {
       this.viewModel.deselect(item);
     },
-    '{viewModel} selectAllCheckboxValue': function (scope, ev, value) {
+    '{viewModel} selectAllCheckboxValue': function ([scope], ev, value) {
       if (value) {
         this.viewModel.selectAll();
       } else {

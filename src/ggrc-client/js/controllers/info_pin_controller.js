@@ -1,12 +1,12 @@
 /*
-    Copyright (C) 2018 Google Inc.
+    Copyright (C) 2019 Google Inc.
     Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 */
 
 import '../components/info-pin-buttons/info-pin-buttons';
 import '../components/questions-link/questions-link';
 import '../components/info-pane/info-pane-footer';
-import '../components/assessment/info-pane/info-pane';
+import '../components/assessment/info-pane/assessment-info-pane';
 import '../components/folder-attachments-list/folder-attachments-list';
 import '../components/issue-tracker/info-issue-tracker-fields';
 import '../components/issue-tracker/generate-issues-in-bulk-button';
@@ -14,17 +14,19 @@ import '../components/comment/comments-section';
 import '../components/object-list-item/document-object-list-item';
 import '../components/object-list-item/editable-document-object-list-item';
 import '../components/show-related-assessments-button/show-related-assessments-button';
-import '../components/proposal/create-proposal-button';
 import '../components/related-objects/proposals/related-proposals';
 import '../components/related-objects/proposals/related-proposals-item';
 import '../components/related-objects/revisions/related-revisions';
 import '../components/snapshotter/revisions-comparer';
 import '../components/snapshotter/snapshot-comparer-config';
 import '../components/revision-history/restore-revision';
-import '../components/unarchive_link';
-import '../components/sort/sort-by';
+import '../components/unarchive-link';
+import '../components/sort-component/sort-component';
 import '../components/object-review/object-review';
 import '../components/review-state/review-state';
+import '../components/redirects/proposable-control/proposable-control';
+import '../components/redirects/proposable-attribute/proposable-attribute';
+import '../components/general-page-header/general-page-header';
 import * as TreeViewUtils from '../plugins/utils/tree-view-utils';
 import {confirm} from '../plugins/utils/modals';
 import {getInstanceView} from '../plugins/utils/object-history-utils';
@@ -34,10 +36,9 @@ export const pinContentHiddenClass = 'pin-content--hidden';
 export const pinContentMaximizedClass = 'pin-content--maximized';
 export const pinContentMinimizedClass = 'pin-content--minimized';
 
-export default can.Control({
-  pluginName: 'cms_controllers_info_pin',
+export default can.Control.extend({
   defaults: {
-    view: GGRC.mustache_path + '/base_objects/info.mustache',
+    view: GGRC.templates_path + '/base_objects/info.stache',
   },
 }, {
   init: function (el, options) {
@@ -47,15 +48,7 @@ export default can.Control({
     return !this.element.hasClass(pinContentHiddenClass);
   },
   findOptions: function (el) {
-    let options;
-    let treeNode = el.closest('.cms_controllers_tree_view_node');
-
-    if (treeNode.length) {
-      options = treeNode.control().options;
-    } else {
-      options = el.closest('.tree-item-element').viewModel();
-    }
-    return options;
+    return el.closest('.tree-item-element').viewModel();
   },
   hideInstance: function () {
     this.unsetInstance();
@@ -73,7 +66,7 @@ export default can.Control({
     let self = this;
     import(/* webpackChunkName: "modalsCtrls" */'./modals')
       .then(() => {
-        this.element.html(can.view(view, {
+        let context = {
           instance: instance,
           isSnapshot: !!instance.snapshot || instance.isRevision,
           parentInstance: parentInstance,
@@ -90,7 +83,15 @@ export default can.Control({
           onClose: function () {
             return self.close.bind(self);
           },
-        }));
+        };
+
+        $.ajax({
+          url: view,
+          dataType: 'text',
+        }).then((view) => {
+          let frag = can.stache(view)(context);
+          this.element.html(frag);
+        });
       });
   },
   prepareView: function (opts, el, maximizedState) {
@@ -157,12 +158,12 @@ export default can.Control({
   },
   confirmEdit: function (instance, modalDetails) {
     let confirmDfd = $.Deferred();
-    let renderer = can.view.mustache(modalDetails.description);
+    let renderer = can.stache(modalDetails.description);
     confirm({
       modal_description: renderer(instance).textContent,
       modal_confirm: modalDetails.button,
       modal_title: modalDetails.title,
-      button_view: GGRC.mustache_path + '/quick_form/confirm_buttons.mustache',
+      button_view: GGRC.templates_path + '/quick_form/confirm_buttons.stache',
     }, confirmDfd.resolve);
     return confirmDfd;
   },

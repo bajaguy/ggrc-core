@@ -1,5 +1,5 @@
 /*
- Copyright (C) 2018 Google Inc.
+ Copyright (C) 2019 Google Inc.
  Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
  */
 
@@ -80,10 +80,11 @@ describe('tasks-counter component', function () {
       });
 
       it('update hasOverdue and tasksAmount properties', function () {
-        viewModel.loadTasks();
-        expect(Person.findInCacheById).toHaveBeenCalled();
-        expect(viewModel.attr('tasksAmount')).toBe(5);
-        expect(viewModel.attr('hasOverdue')).toBe(true);
+        viewModel.loadTasks().then(() => {
+          expect(Person.findInCacheById).toHaveBeenCalled();
+          expect(viewModel.attr('tasksAmount')).toBe(5);
+          expect(viewModel.attr('hasOverdue')).toBe(true);
+        });
       });
     });
   });

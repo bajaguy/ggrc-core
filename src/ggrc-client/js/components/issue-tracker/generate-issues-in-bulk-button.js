@@ -1,9 +1,9 @@
 /*
- Copyright (C) 2018 Google Inc.
+ Copyright (C) 2019 Google Inc.
  Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
  */
 
-import template from './templates/generate-issues-in-bulk-button.mustache';
+import template from './templates/generate-issues-in-bulk-button.stache';
 import Permission from '../../permission';
 import {notifier} from '../../plugins/utils/notifiers-utils';
 import Stub from '../../models/stub';
@@ -14,8 +14,9 @@ const MAX_TIMEOUT = 60000;
 
 export default can.Component.extend({
   tag: 'generate-issues-in-bulk-button',
-  template,
-  viewModel: {
+  view: can.stache(template),
+  leakScope: true,
+  viewModel: can.Map.extend({
     define: {
       isAllowedToGenerate: {
         get() {
@@ -136,7 +137,7 @@ export default can.Component.extend({
           this.attr('isGettingInitialStatus', false);
         });
     },
-  },
+  }),
   events: {
     inserted() {
       if (this.viewModel.attr('isAllowedToGenerate')) {

@@ -1,0 +1,65 @@
+
+{{!
+    Copyright (C) 2019 Google Inc.
+    Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
+}}
+
+<div class="flex-box">
+  <related-people-access-control
+    class="width-100"
+    on:saveCustomRole="save(scope.event)"
+    conflictRoles:from="conflictRoles"
+    orderOfRoles:from="orderOfRoles"
+    includeRoles:from="includeRoles"
+    excludeRoles:from="excludeRoles"
+    updatableGroupId:from="updatableGroupId"
+    infoPaneMode:from="infoPaneMode"
+    isNewInstance:from="isNewInstance"
+    readOnly:from="isReadonly"
+    instance:from="instance">
+      <div class="people-groups">
+        {{#groups}}
+          <related-people-access-control-group
+            class="people-group"
+            on:updateRoles="updateRoles(scope.event)"
+            required:from="required"
+            groupId:from="groupId"
+            title:from="title"
+            people:from="people"
+            instance:from="instance"
+            readOnly:from="readOnly"
+            updatableGroupId:from="updatableGroupId"
+            singleUserRole:from="singleUserRole">
+              <div>
+                  <editable-people-group
+                    required:from="required"
+                    on:unmap="removePerson(scope.event)"
+                    on:changeEditableMode="changeEditableGroup(scope.event)"
+                    on:saveChanges="saveChanges()"
+                    on:personSelected="personSelected(scope.event)"
+                    canUnmap:from="canEdit"
+                    canEdit:from="canEdit"
+                    isLoading:from="isLoading"
+                    groupId:from="groupId"
+                    instance:from="instance"
+                    title:from="title"
+                    people:from="people"
+                    updatableGroupId:from="updatableGroupId">
+                      <editable-people-group-header
+                        editableMode:from="editableMode"
+                        redirectionEnabled:from="redirectionEnabled"
+                        isLoading:from="isLoading"
+                        canEdit:from="canEdit"
+                        title:from="title"
+                        required:from="required"
+                        people:from="people"
+                        singleUserRole:from="singleUserRole"
+                        on:editPeopleGroup="changeEditableMode(true)">
+                      </editable-people-group-header>
+                  </editable-people-group>
+              </div>
+          </related-people-access-control-group>
+        {{/groups}}
+      </div>
+  </related-people-access-control>
+</div>

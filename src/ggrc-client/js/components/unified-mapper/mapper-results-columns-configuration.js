@@ -1,18 +1,19 @@
 /*
- Copyright (C) 2018 Google Inc.
+ Copyright (C) 2019 Google Inc.
  Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
  */
 
 import '../tree/tree-header-selector';
 import '../tree/tree-visible-column-checkbox';
-import tmpl from './templates/mapper-results-columns-configuration.mustache';
+import template from './templates/mapper-results-columns-configuration.stache';
 import * as TreeViewUtils from '../../plugins/utils/tree-view-utils';
 import * as businessModels from '../../models/business-models';
 
 export default can.Component.extend({
   tag: 'mapper-results-columns-configuration',
-  template: tmpl,
-  viewModel: {
+  view: can.stache(template),
+  leakScope: true,
+  viewModel: can.Map.extend({
     define: {
       selectedColumns: {
         set(newValue, setValue) {
@@ -24,6 +25,11 @@ export default can.Component.extend({
         set(newValue, setValue) {
           setValue(newValue);
           this.initializeColumns();
+        },
+      },
+      serviceColumns: {
+        set(newValue, setValue) {
+          setValue(TreeViewUtils.getVisibleColumnsConfig(newValue, newValue));
         },
       },
     },
@@ -62,5 +68,5 @@ export default can.Component.extend({
     stopPropagation(context, el, ev) {
       ev.stopPropagation();
     },
-  },
+  }),
 });

@@ -1,4 +1,4 @@
-# Copyright (C) 2018 Google Inc.
+# Copyright (C) 2019 Google Inc.
 # Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 
 """Integration test for Clonable mixin"""
@@ -145,6 +145,13 @@ class TestClonable(SnapshotterBaseTestCase):
         {
             "definition_type": "assessment_template",
             "definition_id": assessment_template_1.id,
+            "title": "test multiselect",
+            "attribute_type": "Multiselect",
+            "multi_choice_options": "test multiselect label"
+        },
+        {
+            "definition_type": "assessment_template",
+            "definition_id": assessment_template_1.id,
             "title": "test checkbox",
             "attribute_type": "Checkbox",
             "multi_choice_options": "test checkbox label"
@@ -211,14 +218,19 @@ class TestClonable(SnapshotterBaseTestCase):
           destination=assessment_template
       )
       for cad_type in [
-          "Text", "Rich Text", "Checkbox", "Date", "Dropdown", "Map:Person"
+          "Text", "Rich Text", "Checkbox", "Multiselect", "Date", "Dropdown",
+          "Map:Person"
       ]:
+        if cad_type in ("Dropdown", "Multiselect"):
+          multi_choice_options = "a,b,c"
+        else:
+          multi_choice_options = ""
         factories.CustomAttributeDefinitionFactory(
             definition_type="assessment_template",
             definition_id=assessment_template.id,
             title="Test {}".format(cad_type),
             attribute_type=cad_type,
-            multi_choice_options="a,b,c" if cad_type == "Dropdown" else "",
+            multi_choice_options=multi_choice_options,
         )
 
     self.clone_asmnt_templates([assessment_template.id], audit2)
@@ -291,14 +303,19 @@ class TestClonable(SnapshotterBaseTestCase):
             destination=assessment_template)
 
         for cad_type in [
-            "Text", "Rich Text", "Checkbox", "Date", "Dropdown", "Map:Person"
+            "Text", "Rich Text", "Checkbox", "Date", "Dropdown", "Map:Person",
+            "Multiselect"
         ]:
+          if cad_type in ("Dropdown", "Multiselect"):
+            multi_choice_options = "a,b,c"
+          else:
+            multi_choice_options = ""
           factories.CustomAttributeDefinitionFactory(
               definition_type="assessment_template",
               definition_id=assessment_template.id,
               title="Test {}".format(cad_type),
               attribute_type=cad_type,
-              multi_choice_options="a,b,c" if cad_type == "Dropdown" else "",
+              multi_choice_options=multi_choice_options,
           )
     self.clone_asmnt_templates(template_ids, audit2)
     template_copies = models.AssessmentTemplate.query.filter(
@@ -606,7 +623,7 @@ class TestClonable(SnapshotterBaseTestCase):
         models.Snapshot.parent_id == audit.id,
     )
 
-    self.assertEqual(snapshots.count(), len(Types.all) * 3)
+    self.assertEqual(snapshots.count(), len(Types.all - Types.external) * 3)
 
     self._check_csv_response(self._import_file("snapshotter_update.csv"), {})
 
@@ -630,7 +647,8 @@ class TestClonable(SnapshotterBaseTestCase):
         models.Snapshot.parent_id == audit_copy.id,
     )
 
-    self.assertEqual(clones_snapshots.count(), len(Types.all) * 3)
+    self.assertEqual(clones_snapshots.count(),
+                     len(Types.all - Types.external) * 3)
 
     original_revisions = {
         (snapshot.child_type, snapshot.child_id): snapshot.revision_id

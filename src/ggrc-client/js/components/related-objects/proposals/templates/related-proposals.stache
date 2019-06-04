@@ -1,0 +1,48 @@
+{{!
+  Copyright (C) 2019 Google Inc.
+  Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
+}}
+
+{{#baseInstance}}
+<model-loader path:from="'service-models/proposal'">
+  <related-objects class="object-history"
+                   initialOrderBy:from="'status,created_at'"
+                   predefinedFilter:from="predefinedFilter"
+                   baseInstance:from="baseInstance"
+                   relatedObjects:bind="proposals"
+                   modelConstructor:from="loadedModel"
+                   relatedItemsType:from="'Proposal'">
+
+    <div class="grid-data__toolbar flex-box">
+      <tree-pagination paging:from="paging" class="grid-data__toolbar-item"></tree-pagination>
+    </div>
+    <div class="object-history__header flex-row flex-box">
+      <div class="flex-size-1">
+        Proposal
+      </div>
+      <div class="flex-size-1">
+        Attribute
+      </div>
+      <div class="flex-size-1">
+        Current Value
+      </div>
+      <div class="flex-size-1">
+        Proposed Value
+      </div>
+      <div class="flex-size-1">
+        Comment
+      </div>
+      <div class="flex-size-1">
+      </div>
+    </div>
+    <div class="object-history__body {{#isLoading}}loading{{/isLoading}}">
+      <object-list items:from="relatedObjects" isLoading:from="isLoading" listType:from="'GRID'">
+        <related-proposals-item class="object-history__row flex-box"
+                                instance:from="baseInstance"
+                                proposal:from="instance">
+        </related-proposals-item>
+      </object-list>
+    </div>
+  </related-objects>
+</model-loader>
+{{/baseInstance}}

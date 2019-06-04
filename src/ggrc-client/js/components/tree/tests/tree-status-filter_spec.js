@@ -1,5 +1,5 @@
 /*
-    Copyright (C) 2018 Google Inc.
+    Copyright (C) 2019 Google Inc.
     Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 */
 
@@ -158,7 +158,7 @@ describe('tree-status-filter component', () => {
 
     describe('launches search', () => {
       afterEach(() => {
-        handler(router, null, newStatuses);
+        handler([router], null, newStatuses);
         expect(viewModel.buildSearchQuery).toHaveBeenCalledWith(newStatuses);
         expect(viewModel.setStatesDropdown).toHaveBeenCalledWith(newStatuses);
         expect(viewModel.dispatch).toHaveBeenCalledWith('filter');
@@ -179,7 +179,7 @@ describe('tree-status-filter component', () => {
 
     describe('does not launch search', () => {
       afterEach(() => {
-        handler(router, null, newStatuses);
+        handler([router], null, newStatuses);
         expect(viewModel.buildSearchQuery).not.toHaveBeenCalled();
         expect(viewModel.setStatesDropdown).not.toHaveBeenCalled();
         expect(viewModel.dispatch).not.toHaveBeenCalled();
@@ -271,7 +271,7 @@ describe('tree-status-filter component', () => {
 
     describe('sets current states to route', () => {
       afterEach(() => {
-        handler(router);
+        handler([router]);
         expect(viewModel.setStatesRoute.calls.argsFor(0)[0].attr())
           .toEqual(['A', 'B']);
       });

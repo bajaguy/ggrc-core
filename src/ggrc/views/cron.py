@@ -1,4 +1,4 @@
-# Copyright (C) 2018 Google Inc.
+# Copyright (C) 2019 Google Inc.
 # Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 
 """ Cron job endpoints initialization and running stuff """
@@ -24,9 +24,9 @@ def send_error_notification(message):
 
 
 def run_job(job):
-  """Call sent job.
+  """Execute the provided job.
 
-  Failuare on job will just logged and don't stop runner.
+     Failure on job will just logged and don't stop runner.
   """
   try:
     job()
@@ -46,12 +46,12 @@ def job_runner(name):
 
 
 def nightly_cron_endpoint():
-  """Endpoint running nightly jobs from all modules"""
+  """Endpoint running nightly jobs from all modules."""
   return job_runner("NIGHTLY_CRON_JOBS")
 
 
 def hourly_issue_tracker_sync_endpoint():
-  """Endpoint running hourly jobs from all modules"""
+  """Endpoint running hourly jobs from all modules."""
   return job_runner("HOURLY_CRON_JOBS")
 
 

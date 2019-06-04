@@ -1,4 +1,4 @@
-# Copyright (C) 2018 Google Inc.
+# Copyright (C) 2019 Google Inc.
 # Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 
 """Test api helper.
@@ -11,15 +11,22 @@ test client is not yet ready.
 This api helper also helps with delete and put requests where it fetches the
 latest etag needed for such requests.
 """
+import datetime
 import logging
+from contextlib import contextmanager
+from email import utils as email_utils
+import json
+from urllib import urlencode
 
 import flask
 
 from ggrc import db
 from ggrc import builder
 from ggrc import utils
+from ggrc import settings
 from ggrc.app import app
 from ggrc.services.common import Resource
+from integration.ggrc.models import factories
 
 
 def wrap_client_calls(client):
@@ -78,8 +85,37 @@ class Api(object):
     db.session.commit()
     db.session.flush()
 
+  def login_as_external(self, external_user=None):
+    """Login API client as external app user."""
+    _, user_email = email_utils.parseaddr(settings.EXTERNAL_APP_USER)
+    self.user_headers = {
+        "X-GGRC-user": "{\"email\": \"%s\"}" % user_email
+    }
+
+    if external_user:
+      self.user_headers["X-EXTERNAL-USER"] = json.dumps(external_user)
+
+    self.client.get("/logout")
+    self.client.get("/login", headers=self.user_headers)
+
+  def login_as_normal(self):
+    """Login API client as internal user."""
+    if "X-GGRC-user" in self.user_headers:
+      del self.user_headers["X-GGRC-user"]
+
+    self.client.get("/logout")
+    self.client.get("/login")
+
+  @contextmanager
+  def as_external(self):
+    """Context manager that login client as external user."""
+    self.login_as_external()
+    yield
+    self.login_as_normal()
+
   @staticmethod
   def api_link(obj, obj_id=None):
+    """return API link to the object with ID"""
     obj_id = "" if obj_id is None else "/" + str(obj_id)
     return "/api/%s%s" % (obj._inflector.table_plural, obj_id)
 
@@ -106,7 +142,7 @@ class Api(object):
     headers.update(self.user_headers)
 
     json_data = self.resource.as_json(data)
-    logging.info("request json" + json_data)
+    logging.info("request json: %s", json_data)
     response = request(api_link, data=json_data, headers=headers.items())
     if response.status_code == 401:
       self.set_user()
@@ -208,9 +244,137 @@ class Api(object):
       api_link = "{}?{}".format(api_link, args_str)
     return self.client.delete(api_link, headers=headers)
 
-  def search(self, types, query="", counts=False, relevant_objects=None):
+  def search(self, types, query="", counts=False, relevant_objects=None,
+             extra_params=None, extra_columns=None):
     """Api search call."""
-    link = '/search?q={}&types={}&counts_only={}'.format(query, types, counts)
+
+    params = {
+        'q': query,
+        'types': types,
+        'counts_only': str(counts)
+    }
+
+    if extra_params is not None:
+      params['extra_params'] = extra_params
+
+    if extra_columns is not None:
+      params['extra_columns'] = extra_columns
+
     if relevant_objects is not None:
-      link += '&relevant_objects=' + relevant_objects
-    return (self.client.get(link), self.headers)
+      params['relevant_objects'] = relevant_objects
+
+    link = "/search?{}".format(urlencode(params))
+
+    return self.client.get(link), self.headers
+
+  def run_import_job(self, user, object_type, data):
+    """Run import job.
+
+    This endpoint emulate import process in similar way as UI do.
+    It convert data into csv format, create ImportExport job in Not Started
+    state and run import with PUT on '/api/people/{}/imports/{}/start'.
+
+    Args:
+        user: Person object to be used in import
+        object_type: Type of objects that should be imported
+        data([collection.OrderedDict]): List of dicts with values for import.
+    """
+    content = ["Object type"]
+    content.append(",".join([object_type] + data[0].keys()))
+    for row in data:
+      content.append(",".join([""] + row.values()))
+
+    imp_exp = factories.ImportExportFactory(
+        job_type="Import",
+        status="Not Started",
+        created_by=user,
+        created_at=datetime.datetime.now(),
+        content="\n".join(content),
+    )
+    self.headers.update(self.user_headers)
+    return self.client.put(
+        "/api/people/{}/imports/{}/start".format(
+            user.id,
+            imp_exp.id
+        ),
+        headers=self.headers,
+    )
+
+
+class ExternalApi(object):
+  """Simple API client that add headers to make requests as external user."""
+
+  def __init__(self):
+    self.client = app.test_client()
+    wrap_client_calls(self.client)
+    self.headers = {
+        "Content-Type": "application/json",
+        "X-Requested-By": "GGRC",
+        "X-GGRC-User": json.dumps({
+            "email": "external_app@example.com",
+            "name": "External app"
+        }),
+        "X-External-User": json.dumps({
+            "email": "external_user@example.com",
+            "name": "External user"
+        })
+    }
+
+  def make_request(self, request, url, data=None, custom_headers=None):
+    """Main method that add user headers to request."""
+    headers = self.headers.copy()
+
+    if custom_headers:
+      headers.update(custom_headers)
+
+    response = request(url, data=data, headers=headers)
+
+    return self.data_to_json(response)
+
+  @staticmethod
+  def data_to_json(response):
+    """Add decoded json to response object """
+    try:
+      response.json = flask.json.loads(response.data)
+    except StandardError:
+      response.json = None
+    return response
+
+  @staticmethod
+  def api_link(model, id_=None):
+    """Generate api link for provided model."""
+    url = "/api/%s" % model._inflector.table_plural
+    return "%s/%s" % (url, id_) if id_ else url
+
+  def get(self, url, headers=None):
+    """Make GET request to provided url."""
+    return self.make_request(self.client.get, url, custom_headers=headers)
+
+  def post(self, url, data, headers=None):
+    """Make POST request to provided url."""
+    return self.make_request(self.client.post, url,
+                             data=utils.as_json(data), custom_headers=headers)
+
+  def put(self, url, data, headers=None):
+    """Make PUT request to provided url."""
+    return self.make_request(self.client.put, url,
+                             data=utils.as_json(data), custom_headers=headers)
+
+  def delete(self, url, headers=None):
+    """Make DELETE request to provided url."""
+    return self.make_request(self.client.delete, url, custom_headers=headers)
+
+  @staticmethod
+  def extract_etag_headers(headers):
+    """Helper method that extract ETAG headers from dict."""
+    return {
+        "If-Match": headers.get("Etag"),
+        "If-Unmodified-Since": headers.get("Last-Modified")
+    }
+
+  def get_etag_headers(self, obj):
+    """Helper method that get ETAG headers for provided object."""
+    url = self.api_link(obj, obj.id)
+    response = self.get(url)
+
+    return self.extract_etag_headers(response.headers)

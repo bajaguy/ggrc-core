@@ -1,12 +1,10 @@
 /*
- Copyright (C) 2018 Google Inc.
+ Copyright (C) 2019 Google Inc.
  Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
  */
 
 import Cacheable from '../cacheable';
 import {getPageInstance} from '../../plugins/utils/current-page-utils';
-import inScopeObjects from '../mixins/in-scope-objects';
-import inScopeObjectsPreload from '../mixins/in-scope-objects-preload';
 import refetchHash from '../mixins/refetch-hash';
 import assessmentIssueTracker from '../mixins/assessment-issue-tracker';
 import Stub from '../stub';
@@ -18,7 +16,7 @@ import Stub from '../stub';
  * AssessmentTemplate helps avoiding repeatedly defining the same set of
  * Assessment object properties for each new instance.
  */
-export default Cacheable('CMS.Models.AssessmentTemplate', {
+export default Cacheable.extend({
   root_object: 'assessment_template',
   root_collection: 'assessment_templates',
   model_singular: 'AssessmentTemplate',
@@ -28,8 +26,6 @@ export default Cacheable('CMS.Models.AssessmentTemplate', {
   table_singular: 'assessment_template',
   table_plural: 'assessment_templates',
   mixins: [
-    inScopeObjects,
-    inScopeObjectsPreload,
     refetchHash,
     assessmentIssueTracker,
   ],
@@ -74,43 +70,32 @@ export default Cacheable('CMS.Models.AssessmentTemplate', {
       attr_name: 'modified_by',
       order: 71,
     }],
-    add_item_view: GGRC.mustache_path +
-              '/assessment_templates/tree_add_item.mustache',
-  },
-
-  /**
-   * Initialize the newly created object instance. Validate that its title is
-   * non-blank and its default assignees / verifiers lists are set if
-   * applicable.
-   */
-  init: function () {
-    this._super(...arguments);
-    this.validateNonBlank('title');
-
-    this.validateListNonBlank(
-      'default_people.assignees',
-      function () {
-        return this.attr('default_people.assignees') instanceof can.List;
-      }
-    );
-    this.validateListNonBlank(
-      'default_people.verifiers',
-      function () {
-        return this.attr('default_people.verifiers') instanceof can.List;
-      }
-    );
-    this.validate(
-      'issue_tracker_component_id',
-      function () {
-        if (this.attr('can_use_issue_tracker') &&
-          this.attr('issue_tracker.enabled') &&
-          !this.attr('issue_tracker.component_id')) {
-          return 'cannot be blank';
-        }
-      }
-    );
+    add_item_view: 'assessment_templates/tree_add_item',
   },
 }, {
+  define: {
+    title: {
+      value: '',
+      validate: {
+        required: true,
+      },
+    },
+    default_people: {
+      validate: {
+        validateDefaultAssignees: true,
+        validateDefaultVerifiers: true,
+      },
+    },
+    issue_tracker: {
+      value: {},
+      validate: {
+        validateAssessmentIssueTracker: true,
+      },
+    },
+    can_use_issue_tracker: {
+      value: false,
+    },
+  },
   /**
    * An event handler when the add/edit form is about to be displayed.
    *

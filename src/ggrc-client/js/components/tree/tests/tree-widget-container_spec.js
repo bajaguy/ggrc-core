@@ -1,5 +1,5 @@
 /*
- Copyright (C) 2018 Google Inc.
+ Copyright (C) 2019 Google Inc.
  Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
  */
 
@@ -12,7 +12,7 @@ import tracker from '../../../tracker';
 import {getComponentVM} from '../../../../js_specs/spec_helpers';
 import Component from '../tree-widget-container';
 import Relationship from '../../../models/service-models/relationship';
-import exportMessage from '../templates/export-message.mustache';
+import exportMessage from '../templates/export-message.stache';
 import QueryParser from '../../../generated/ggrc_filter_query_parser';
 
 describe('tree-widget-container component', function () {
@@ -49,17 +49,19 @@ describe('tree-widget-container component', function () {
     });
 
     it('sets refreshLoaded flag in false after resolve loaded field',
-      function () {
+      function (done) {
         display(true);
-        dfd.resolve();
-        expect(vm.attr('refreshLoaded')).toBe(false);
+        dfd.resolve().then(() => {
+          expect(vm.attr('refreshLoaded')).toBe(false);
+          done();
+        });
       });
 
     it('returns value of loaded field', function () {
       let result;
       vm.attr('loaded', dfd);
       result = display();
-      expect(result).toBe(dfd);
+      expect(result.serialize()).toEqual(dfd);
     });
   });
 
@@ -93,7 +95,7 @@ describe('tree-widget-container component', function () {
 
     beforeEach(function () {
       vm.attr({
-        model: {shortName: 'modelName'},
+        model: {model_singular: 'modelName'},
         options: {
           parent_instance: {},
         },
@@ -263,7 +265,7 @@ describe('tree-widget-container component', function () {
       beforeEach(function () {
         vm.attr({
           model: {
-            shortName: modelName,
+            model_singular: modelName,
           },
           modelName: modelName,
         });
@@ -537,7 +539,7 @@ describe('tree-widget-container component', function () {
   describe('setSortingConfiguration() method', () => {
     beforeEach(() => {
       vm.attr('model', {
-        shortName: 'shortModelName',
+        model_singular: 'shortModelName',
       });
     });
 
@@ -561,7 +563,7 @@ describe('tree-widget-container component', function () {
 
     beforeEach(() => {
       vm.attr('model', {
-        shortName: 'shortModelName',
+        model_singular: 'shortModelName',
       });
       method = Component.prototype.init.bind({viewModel: vm});
       spyOn(vm, 'setSortingConfiguration');
@@ -737,6 +739,7 @@ describe('tree-widget-container component', function () {
     let filter;
     let request;
     let loadSnapshots;
+    const operation = null;
 
     beforeEach(() => {
       spyOn(TreeViewUtils, 'startExport');
@@ -748,7 +751,7 @@ describe('tree-widget-container component', function () {
       request = new can.List([{testRequest: true}]);
 
       vm.attr('model', {
-        shortName: modelName,
+        model_singular: modelName,
       });
       vm.attr('options', {
         parent_instance: parent,
@@ -763,7 +766,7 @@ describe('tree-widget-container component', function () {
       vm.export();
 
       expect(TreeViewUtils.startExport).toHaveBeenCalledWith(
-        modelName, parent, filter, request, loadSnapshots);
+        modelName, parent, filter, request, loadSnapshots, operation);
     });
 
     it('shows info message', () => {

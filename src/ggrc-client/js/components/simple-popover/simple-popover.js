@@ -1,19 +1,20 @@
 /*
- Copyright (C) 2018 Google Inc.
+ Copyright (C) 2019 Google Inc.
  Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
  */
 
-import template from './simple-popover.mustache';
+import template from './simple-popover.stache';
 
 export default can.Component.extend({
   tag: 'simple-popover',
-  template: template,
+  view: can.stache(template),
   init: function (el) {
     this.viewModel.attr('element', el);
   },
+  leakScope: true,
   viewModel: can.Map.extend({
-    extraCssClass: '@',
-    placement: '@',
+    extraCssClass: '',
+    placement: '',
     buttonText: '',
     open: false,
     show: function () {

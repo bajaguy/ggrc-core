@@ -1,4 +1,4 @@
-# Copyright (C) 2018 Google Inc.
+# Copyright (C) 2019 Google Inc.
 # Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 """3bbs element for info widget."""
 from lib.element import three_bbs
@@ -16,6 +16,11 @@ class InfoWidgetThreeBbbs(object):
   def edit_option(self):
     """Returns `Edit <Object>` option."""
     return self._three_bbs.option_by_icon_cls("fa-pencil-square-o")
+
+  @property
+  def delete_option(self):
+    """Returns `Delete <Object>` option."""
+    return self._three_bbs.option_by_text("Delete")
 
   def select_edit(self):
     """Selects `Edit <Object>` option."""
@@ -39,8 +44,8 @@ class InfoWidgetThreeBbbs(object):
     """Selects `Delete` option.
     Return: modal.delete_object.DeleteObjectModal
     """
-    self._three_bbs.option_by_text("Delete").click()
-    return delete_object.DeleteObjectModal(self._root.browser.driver)
+    self.delete_option.click()
+    return delete_object.DeleteObjectModal()
 
   @property
   def exists(self):

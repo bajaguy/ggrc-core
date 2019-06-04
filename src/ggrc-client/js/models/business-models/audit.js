@@ -1,5 +1,5 @@
 /*
- Copyright (C) 2018 Google Inc.
+ Copyright (C) 2019 Google Inc.
  Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
  */
 
@@ -11,8 +11,11 @@ import caUpdate from '../mixins/ca-update';
 import timeboxed from '../mixins/timeboxed';
 import issueTracker from '../mixins/issue-tracker';
 import Stub from '../stub';
+import Program from './program';
+import Search from '../service-models/search';
+import {reify} from '../../plugins/utils/reify-utils';
 
-export default Cacheable('CMS.Models.Audit', {
+export default Cacheable.extend({
   root_object: 'audit',
   root_collection: 'audits',
   category: 'programs',
@@ -46,11 +49,11 @@ export default Cacheable('CMS.Models.Audit', {
     'Ready for External Review', 'Completed', 'Deprecated'],
   obj_nav_options: {
     show_all_tabs: false,
-    force_show_list: ['In Scope Controls', 'Assessment Templates',
+    force_show_list: ['Assessment Templates',
       'Issues', 'Assessments', 'Evidence'],
   },
   tree_view_options: {
-    add_item_view: GGRC.mustache_path + '/audits/tree_add_item.mustache',
+    add_item_view: 'audits/tree_add_item',
     attr_list: [{
       attr_title: 'Title',
       attr_name: 'title',
@@ -106,23 +109,6 @@ export default Cacheable('CMS.Models.Audit', {
   sub_tree_view_options: {
     default_filter: ['Product'],
   },
-  init: function () {
-    if (this._super) {
-      this._super(...arguments);
-    }
-    this.validatePresenceOf('program');
-    this.validateNonBlank('title');
-
-    this.validate(
-      'issue_tracker_component_id',
-      function () {
-        if (this.attr('issue_tracker.enabled') &&
-          !this.attr('issue_tracker.component_id')) {
-          return 'cannot be blank';
-        }
-      }
-    );
-  },
   buildIssueTrackerConfig() {
     return {
       hotlist_id: '766459',
@@ -131,9 +117,37 @@ export default Cacheable('CMS.Models.Audit', {
       issue_priority: 'P2',
       issue_type: 'PROCESS',
       enabled: false,
+      people_sync_enabled: true,
     };
   },
 }, {
+  define: {
+    title: {
+      value: '',
+      validate: {
+        required: true,
+        validateUniqueTitle: true,
+      },
+    },
+    _transient_title: {
+      value: '',
+      validate: {
+        validateUniqueTitle: true,
+      },
+    },
+    program: {
+      value: null,
+      validate: {
+        required: true,
+      },
+    },
+    issue_tracker: {
+      value: {},
+      validate: {
+        validateIssueTracker: true,
+      },
+    },
+  },
   clone: function (options) {
     let cloneModel = new this.constructor({
       operation: 'clone',
@@ -151,10 +165,11 @@ export default Cacheable('CMS.Models.Audit', {
     let _super = this._super;
     let args = arguments;
     if (!this.context || !this.context.id) {
-      return this.program.reify().refresh().then(function (program) {
-        this.attr('context', program.context);
-        return _super.apply(this, args);
-      }.bind(this));
+      return Program.findInCacheById(this.program.id).refresh().
+        then(function (program) {
+          this.attr('context', program.context);
+          return _super.apply(this, args);
+        }.bind(this));
     }
     return _super.apply(this, args);
   },
@@ -164,5 +179,19 @@ export default Cacheable('CMS.Models.Audit', {
     return new can.List(this.access_control_list.filter((item) => {
       return item.ac_role_id === auditRole.id;
     }));
+  },
+  initTitle: async function () {
+    if (!this.program) return;
+    const program = reify(this.program);
+
+    const currentYear = (new Date()).getFullYear();
+    let title = `${currentYear}: ${program.title} - Audit`;
+
+    const result = await Search.counts_for_types(title, ['Audit']);
+    // Next audit index should be bigger by one than previous, we have unique name policy
+    const newAuditId = result.getCountFor('Audit') + 1;
+    if (!this.title) {
+      this.attr('title', `${title} ${newAuditId}`);
+    }
   },
 });

@@ -1,4 +1,4 @@
-# Copyright (C) 2018 Google Inc.
+# Copyright (C) 2019 Google Inc.
 # Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 
 """Test Access Control roles Primary Contacts propagation"""
@@ -147,6 +147,26 @@ class TestPrimaryContactsPropagation(base.TestACLPropagation):
               "create_and_map_document_comment": True,
               "read_document_comment": True,
           },
+          "Universal KeyReport": {
+              "create_and_map_document": True,
+              "read_document": True,
+              "update_document": True,
+              "delete_document": False,
+              "create_and_map_comment": True,
+              "read_comment": True,
+              "create_and_map_document_comment": True,
+              "read_document_comment": True,
+          },
+          "Universal AccountBalance": {
+              "create_and_map_document": True,
+              "read_document": True,
+              "update_document": True,
+              "delete_document": False,
+              "create_and_map_comment": True,
+              "read_comment": True,
+              "create_and_map_document_comment": True,
+              "read_document_comment": True,
+          },
           "MappedReview Program": {
               "create_review": True,
               "read_review": True,
@@ -172,12 +192,6 @@ class TestPrimaryContactsPropagation(base.TestACLPropagation):
               "delete_review": False,
           },
           "MappedReview Policy": {
-              "create_review": True,
-              "read_review": True,
-              "update_review": True,
-              "delete_review": False,
-          },
-          "MappedReview Risk": {
               "create_review": True,
               "read_review": True,
               "update_review": True,
@@ -333,6 +347,26 @@ class TestPrimaryContactsPropagation(base.TestACLPropagation):
               "create_and_map_document_comment": True,
               "read_document_comment": True,
           },
+          "Universal KeyReport": {
+              "create_and_map_document": True,
+              "read_document": True,
+              "update_document": True,
+              "delete_document": False,
+              "create_and_map_comment": True,
+              "read_comment": True,
+              "create_and_map_document_comment": True,
+              "read_document_comment": True,
+          },
+          "Universal AccountBalance": {
+              "create_and_map_document": True,
+              "read_document": True,
+              "update_document": True,
+              "delete_document": False,
+              "create_and_map_comment": True,
+              "read_comment": True,
+              "create_and_map_document_comment": True,
+              "read_document_comment": True,
+          },
       },
       "Editor": {
           "Universal AccessGroup": {
@@ -456,6 +490,26 @@ class TestPrimaryContactsPropagation(base.TestACLPropagation):
               "read_document_comment": True,
           },
           "Universal Vendor": {
+              "create_and_map_document": True,
+              "read_document": True,
+              "update_document": True,
+              "delete_document": False,
+              "create_and_map_comment": True,
+              "read_comment": True,
+              "create_and_map_document_comment": True,
+              "read_document_comment": True,
+          },
+          "Universal KeyReport": {
+              "create_and_map_document": True,
+              "read_document": True,
+              "update_document": True,
+              "delete_document": False,
+              "create_and_map_comment": True,
+              "read_comment": True,
+              "create_and_map_document_comment": True,
+              "read_document_comment": True,
+          },
+          "Universal AccountBalance": {
               "create_and_map_document": True,
               "read_document": True,
               "update_document": True,

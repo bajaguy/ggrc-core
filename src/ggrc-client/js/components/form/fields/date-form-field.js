@@ -1,15 +1,16 @@
 /*
- Copyright (C) 2018 Google Inc.
+ Copyright (C) 2019 Google Inc.
  Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
  */
 
-import '../../datepicker/datepicker';
-import template from './date-form-field.mustache';
+import '../../datepicker/datepicker-component';
+import template from './date-form-field.stache';
 
 export default can.Component.extend({
   tag: 'date-form-field',
-  template,
-  viewModel: {
+  view: can.stache(template),
+  leakScope: true,
+  viewModel: can.Map.extend({
     define: {
       inputValue: {
         set(newValue) {
@@ -45,5 +46,5 @@ export default can.Component.extend({
         value: newValue,
       });
     },
-  },
+  }),
 });

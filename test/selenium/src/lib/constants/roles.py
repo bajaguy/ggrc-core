@@ -1,4 +1,4 @@
-# Copyright (C) 2018 Google Inc.
+# Copyright (C) 2019 Google Inc.
 # Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 """Constants for roles."""
 from lib import url
@@ -92,6 +92,14 @@ class ACLRolesIDsMetaClass(type):
         break
     return role_id
 
+  def object_roles(cls, object_type):
+    """Get role ids by `object_type`."""
+    roles = []
+    for role in cls.roles():
+      if role["object_type"] == object_type:
+        roles.append(role)
+    return roles
+
   def id_of_role(cls, object_type, name):
     """Get id of the role by `object_type` and `name`."""
     role_id = cls._role_id_from_list(cls.standard_roles, object_type, name)
@@ -145,6 +153,14 @@ class ACLRolesIDsMetaClass(type):
   @property
   def PROGRAM_MANAGERS(cls):
     return cls.id_of_role(object_type="Program", name="Program Managers")
+
+  @property
+  def PRODUCT_MANAGERS(cls):
+    return cls.id_of_role(object_type="Product", name="Product Managers")
+
+  @property
+  def REVIEWERS(cls):
+    return cls.id_of_role(object_type="Review", name="Reviewers")
 
 
 class ACLRolesIDs(object):

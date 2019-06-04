@@ -1,5 +1,5 @@
 /*
- Copyright (C) 2018 Google Inc.
+ Copyright (C) 2019 Google Inc.
  Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
  */
 
@@ -15,17 +15,22 @@ import {
 } from './snapshot-utils';
 import {
   isObjectVersion,
-  getWidgetConfigs,
+  getObjectVersionConfig,
 } from './object-versions-utils';
-import Person from '../../models/business-models/person';
+import {
+  isMegaObjectRelated,
+  getMegaObjectConfig,
+} from './mega-object-utils';
 import WidgetList from '../../modules/widget_list';
 import {
   getPageType,
   getPageInstance,
 } from './current-page-utils';
 import QueryParser from '../../generated/ggrc_filter_query_parser';
+import Person from '../../models/business-models/person';
 
 let widgetsCounts = new can.Map({});
+let cachedObjects = {};
 
 let CUSTOM_COUNTERS = {
   MY_WORK: () => _getCurrentUser().getWidgetCountForMyWorkPage(),
@@ -81,11 +86,7 @@ function getWidgetModels(modelName, path) {
   const defaults = getDefaultWidgets(widgetList, path);
 
   return defaults
-    .filter((name) => widgetList[name].widgetType === 'treeview')
-    .map((widgetName) => {
-      return isObjectVersion(widgetName) ? widgetName :
-        widgetList[widgetName].content_controller_options.model.shortName;
-    });
+    .filter((name) => widgetList[name].widgetType === 'treeview');
 }
 
 function getDefaultWidgets(widgetList, path) {
@@ -112,16 +113,18 @@ function getCounts() {
 function initWidgetCounts(widgets, type, id) {
   let resultsArray = [];
 
+  let widgetConfigs = getWidgetConfigs(can.makeArray(widgets));
+
   // custom endpoint we use only in order to initialize counts for all tabs.
   // In order to update counter for individual tab need to use Query API
   if (widgets.length !== 1 && CUSTOM_COUNTERS[getPageType()]) {
     resultsArray.push(CUSTOM_COUNTERS[getPageType()](type, id));
   } else {
-    resultsArray.push(_initWidgetCounts(widgets, type, id));
+    resultsArray.push(_initWidgetCounts(widgetConfigs, type, id));
   }
 
   if (isSnapshotRelatedType(type)) {
-    resultsArray.push(getSnapshotsCounts(getPageInstance()));
+    resultsArray.push(getSnapshotsCounts(widgetConfigs, getPageInstance()));
   }
 
   let baseCounts = widgets.reduce((result, val) => ({...result, [val]: 0}), {});
@@ -152,28 +155,31 @@ function initWidgetCounts(widgets, type, id) {
 function _initWidgetCounts(widgets, type, id) {
   // Request params generation logic should be moved in
   // a separate place
-  let widgetsObject = getWidgetConfigs(can.makeArray(widgets));
+
+  // exclude snapshot related widgets
+  let widgetsObject = widgets.filter((widget) => {
+    return !isSnapshotRelated(type, widget.name) &&
+      !widget.isObjectVersion;
+  });
 
   let params = [];
   _.each(widgetsObject, function (widgetObject) {
-    let param;
-    let expression = TreeViewUtils
-      .makeRelevantExpression(widgetObject.name, type, id);
+    let expression = TreeViewUtils.makeRelevantExpression(
+      widgetObject.name,
+      type,
+      id,
+      widgetObject.relation,
+    );
 
-    let snapshotRelatedOrVersion = isSnapshotRelated(type, widgetObject.name) ||
-                            widgetObject.isObjectVersion;
+    let param = buildParam(widgetObject.name,
+      {}, expression, null,
+      widgetObject.additionalFilter ?
+        QueryParser.parse(widgetObject.additionalFilter) :
+        null
+    );
 
-    if (!snapshotRelatedOrVersion) {
-      param = buildParam(widgetObject.name,
-        {}, expression, null,
-        widgetObject.additionalFilter ?
-          QueryParser.parse(widgetObject.additionalFilter) :
-          null
-      );
-
-      param.type = 'count';
-      params.push(batchRequests(param));
-    }
+    param.type = 'count';
+    params.push(batchRequests(param));
   });
 
   // Perform requests only if params are defined
@@ -184,11 +190,9 @@ function _initWidgetCounts(widgets, type, id) {
   return $.when(...params).then((...data) => {
     let countsMap = {};
     data.forEach(function (info, i) {
-      let name = Object.keys(info)[0];
-      let widget = _.find(widgetsObject, (widgetObj) => {
-        return widgetObj.name === name;
-      });
-      let countsName = widget.countsName || widget.name;
+      let widget = widgetsObject[i];
+      let name = widget.name;
+      let countsName = widget.countsName || name;
 
       countsMap[countsName] = info[name].total;
     });
@@ -205,9 +209,56 @@ function refreshCounts() {
     return $.Deferred().resolve();
   }
 
-  widgets = getWidgetModels(pageInstance.constructor.shortName, location);
+  widgets = getWidgetModels(pageInstance.constructor.model_singular, location);
 
   return initWidgetCounts(widgets, pageInstance.type, pageInstance.id);
+}
+
+function getWidgetConfigs(modelNames) {
+  let configs = modelNames.map(function (modelName) {
+    return getWidgetConfig(modelName);
+  });
+  return configs;
+}
+
+function getWidgetConfig(modelName) {
+  let config = {};
+  let originalModelName;
+  let configObject;
+  let objectVersion;
+
+  // Workflow approach
+  if (_.isObject(modelName)) {
+    modelName.widgetName = modelName.name;
+    modelName.widgetId = modelName.name;
+    return modelName;
+  }
+
+  if (cachedObjects[modelName]) {
+    return cachedObjects[modelName];
+  }
+
+  if (isObjectVersion(modelName)) {
+    config = getObjectVersionConfig(modelName);
+  } else if (isMegaObjectRelated(modelName)) {
+    config = getMegaObjectConfig(modelName);
+  }
+
+  objectVersion = config.isObjectVersion;
+  originalModelName = config.originalModelName || modelName;
+
+  configObject = {
+    name: originalModelName,
+    widgetId: config.widgetId || modelName,
+    widgetName: config.widgetName || modelName,
+    countsName: modelName,
+    isObjectVersion: objectVersion,
+    relation: config.relation,
+    isMegaObject: config.isMegaObject,
+  };
+
+  cachedObjects[modelName] = configObject;
+  return configObject;
 }
 
 export {
@@ -219,4 +270,6 @@ export {
   refreshCounts,
   widgetModules,
   initWidgets,
+  getWidgetConfig,
+  getWidgetConfigs,
 };

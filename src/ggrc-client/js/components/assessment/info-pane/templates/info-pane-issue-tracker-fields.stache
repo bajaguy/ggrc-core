@@ -1,0 +1,183 @@
+{{!
+  Copyright (C) 2019 Google Inc.
+  Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
+}}
+
+<div class="ggrc-form-item">
+  <div class="ggrc-form-item__multiple-row">
+    <issue-tracker-switcher
+      setIssueTitle:from="true"
+      on:issueTrackerSwitcherChanged="saveInlineForm(scope.event)"
+      instance:from="instance">
+      <ticket-id-checker
+        instance:from="instance"
+        issueTrackerEnabled:from="instance.issue_tracker.enabled"
+        on:valueChange="inlineDropdownValueChange(scope.event)">
+        <inline-edit-control
+          on:inlineSave="checkTicketId(scope.event)"
+          isEditIconDenied:from="isEditDenied"
+          dropdownOptions:from="instance.class.issue_tracker_enable_options"
+          instance:from="instance"
+          value:from="issueTrackerEnabled"
+          type:from="'dropdown'">
+            <base-inline-control-title
+              class="inline__header"
+              editMode:from="editMode"
+              isEditIconDenied:from="isEditIconDenied"
+              on:setEditModeInline="setEditModeInline(scope.event)">
+                <div class="ticket-info-header">
+                  <span class="ggrc-form__title">
+                    Ticket Tracker
+                    {{#if instance.issue_tracker.enabled}}
+                      {{^if instance.audit.issue_tracker.people_sync_enabled}}
+                        <span class="people-sync-state"
+                          rel="tooltip"
+                          data-placement="top"
+                          data-original-title="You can enable People Sync in Audit Issue Tracker"
+                        >People sync: Disabled</span>
+                      {{/if}}
+                    {{/if}}
+                  </span>
+                  {{#if instance.issueCreated}}
+                      <a href="{{instance.issue_tracker.issue_url}}" target="_blank">
+                          Open Ticket
+                      </a>
+                  {{/if}}
+                    <div class="ggrc-form-item__small-text">
+                      <small>
+                        <em>Turns on Ticket Tracker integration.</em>
+                      </small>
+                    </div>
+                </div>
+            </base-inline-control-title>
+        </inline-edit-control>
+      </ticket-id-checker>
+    </issue-tracker-switcher>
+  </div>
+</div>
+
+{{#if instance.issue_tracker.enabled}}
+<div class="ggrc-form-item">
+  <div class="ggrc-form-item__multiple-row--double">
+    <assessment-inline-item
+      type:from="'number'"
+      propName:from="'issue_tracker.issue_id'"
+      isConfirmationNeeded:from="false"
+      setInProgress:from="@setInProgressState"
+      onStateChangeDfd:from="onStateChangeDfd"
+      isEditIconDenied:from="isEditDenied"
+      value:from="instance.issue_tracker.issue_id"
+      mandatory:from="isTicketIdMandatory"
+      instance:from="instance">
+        <div>
+          <div class="ggrc-form__title">
+            Ticket ID
+            {{#if isTicketIdMandatory}}
+              <i class="fa fa-asterisk"></i>
+            {{/if}}
+          </div>
+          <div class="ggrc-form-item__small-text">
+            <small>
+              {{#if isTicketIdMandatory}} 
+                <em>You are not allowed to generate new ticket for Issues at statuses &quot;In Review&quot;, &quot;Completed (no verification)&quot;, &quot;Completed and Verified&quot; and &quot;Deprecated&quot;, only manual linking is allowed to perform. If you would like to keep the existing ticket linked to this issue do not edit this attribute. If you would like to link to a different ticket provide an existing ticket number.</em>
+              {{else}}
+                <em>Please leave this empty for a new ticket to be generated and linked to this assessment. If you would like to link to an existing ticket please provide the ticket number.</em>
+              {{/if}}
+            </small>
+          </div>
+        </div>
+    </assessment-inline-item>
+  </div>
+</div>
+<div class="ggrc-form-item">
+  <div class="ggrc-form-item__multiple-row">
+    <assessment-inline-item
+      type:from="'number'"
+      propName:from="'issue_tracker.hotlist_id'"
+      isConfirmationNeeded:from="false"
+      setInProgress:from="@setInProgressState"
+      onStateChangeDfd:from="onStateChangeDfd"
+      isEditIconDenied:from="isEditDenied"
+      value:from="instance.issue_tracker.hotlist_id"
+      instance:from="instance">
+        <div class="ggrc-form__title">Hotlist ID</div>
+    </assessment-inline-item>
+  </div>
+  <div class="ggrc-form-item__multiple-row">
+    <assessment-inline-item
+      type:from="'number'"
+      propName:from="'issue_tracker.component_id'"
+      mandatory:from="true"
+      isConfirmationNeeded:from="false"
+      setInProgress:from="@setInProgressState"
+      onStateChangeDfd:from="onStateChangeDfd"
+      isEditIconDenied:from="isEditDenied"
+      value:from="instance.issue_tracker.component_id"
+      instance:from="instance">
+        <div class="ggrc-form__title form-label form-label__extended">
+            Component ID
+          <i class="fa fa-asterisk"></i>
+        </div>
+    </assessment-inline-item>
+  </div>
+  <div class="ggrc-form-item__multiple-row">
+    <!-- use "inline-edit-control" to save styles... -->
+    <inline-edit-control value:from="instance.issue_tracker.issue_type">
+      <div class="inline">
+        <base-inline-control-title class="inline__header"
+                                   isEditIconDenied:from="true">
+            <div class="ggrc-form__title">Ticket Type</div>
+        </base-inline-control-title>
+      </div>
+    </inline-edit-control>
+  </div>
+</div>
+<div class="ggrc-form-item">
+  <div class="ggrc-form-item__multiple-row">
+    <assessment-inline-item
+      type:from="'dropdown'"
+      propName:from="'issue_tracker.issue_priority'"
+      isConfirmationNeeded:from="false"
+      setInProgress:from="@setInProgressState"
+      onStateChangeDfd:from="onStateChangeDfd"
+      dropdownOptions:from="instance.class.issue_tracker_priorities"
+      isEditIconDenied:from="isEditDenied"
+      value:from="instance.issue_tracker.issue_priority"
+      instance:from="instance">
+        <div class="ggrc-form__title">Ticket Priority</div>
+    </assessment-inline-item>
+  </div>
+  <div class="ggrc-form-item__multiple-row">
+    <assessment-inline-item
+      type:from="'dropdown'"
+      propName:from="'issue_tracker.issue_severity'"
+      isConfirmationNeeded:from="false"
+      setInProgress:from="@setInProgressState"
+      onStateChangeDfd:from="onStateChangeDfd"
+      dropdownOptions:from="instance.class.issue_tracker_severities"
+      isEditIconDenied:from="isEditDenied"
+      value:from="instance.issue_tracker.issue_severity"
+      instance:from="instance">
+        <div class="ggrc-form__title">Ticket Severity</div>
+    </assessment-inline-item>
+  </div>
+  <div class="ggrc-form-item__multiple-row">
+    <assessment-inline-item
+      type:from="'input'"
+      propName:from="'issue_tracker.title'"
+      mandatory:from="true"
+      withReadMore:from="true"
+      isConfirmationNeeded:from="false"
+      setInProgress:from="@setInProgressState"
+      onStateChangeDfd:from="onStateChangeDfd"
+      isEditIconDenied:from="isEditDenied"
+      value:from="instance.issue_tracker.title"
+      instance:from="instance">
+        <div class="ggrc-form__title form-label form-label__extended">
+          Ticket Title
+          <i class="fa fa-asterisk"></i>
+        </div>
+    </assessment-inline-item>
+  </div>
+</div>
+{{/if}}

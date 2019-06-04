@@ -1,4 +1,4 @@
-# Copyright (C) 2018 Google Inc.
+# Copyright (C) 2019 Google Inc.
 # Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 
 """ggrc.views
@@ -27,12 +27,14 @@ from ggrc.models.hooks.issue_tracker import integration_utils
 from ggrc.notifications import common
 from ggrc.query import views as query_views
 from ggrc.rbac import permissions
-from ggrc.services import common as services_common
+from ggrc.services import common as services_common, signals
 from ggrc.snapshotter import rules, indexer as snapshot_indexer
 from ggrc.utils import benchmark, helpers, log_event, revisions
+from ggrc.utils import empty_revisions
+from ggrc.utils.contributed_objects import CONTRIBUTED_OBJECTS
+from ggrc.views import saved_searches  # noqa: F401
 from ggrc.views import converters, cron, filters, notifications, registry, \
-    utils
-
+    utils, serializers, folder
 
 logger = logging.getLogger(__name__)
 REINDEX_CHUNK_SIZE = 100
@@ -52,6 +54,14 @@ def propagate_acl(_):
 def create_missing_revisions(_):
   """Web hook to create revisions for new objects."""
   revisions.do_missing_revisions()
+  return app.make_response(("success", 200, [("Content-Type", "text/html")]))
+
+
+@app.route("/_background_tasks/find_empty_revisions", methods=["POST"])
+@background_task.queued_task
+def find_empty_revisions(_):
+  """Web hook to find empty revisions."""
+  empty_revisions.find_empty_revisions()
   return app.make_response(("success", 200, [("Content-Type", "text/html")]))
 
 
@@ -269,6 +279,7 @@ def _merge_errors(create_errors, update_errors):
 
 @app.route("/_background_tasks/update_cad_related_objects", methods=["POST"])
 @background_task.queued_task
+@helpers.without_sqlalchemy_cache
 def update_cad_related_objects(task):
   """Update CAD related objects"""
   event_id = task.parameters.get("event_id")
@@ -331,7 +342,7 @@ def start_compute_attributes(revision_ids=None, event_id=None):
 
 def start_update_audit_issues(audit_id, message):
   """Start a background task to update IssueTracker issues related to Audit."""
-  bg_task = background_task.create_task(
+  background_task.create_task(
       name='update_audit_issues',
       url=flask.url_for(update_audit_issues.__name__),
       parameters={
@@ -342,7 +353,6 @@ def start_update_audit_issues(audit_id, message):
       queued_callback=update_audit_issues,
   )
   db.session.commit()
-  bg_task.start()
 
 
 @app.route("/_background_tasks/generate_wf_tasks_notifications",
@@ -354,8 +364,24 @@ def generate_wf_tasks_notifications(_):
   return app.make_response(("success", 200, [("Content-Type", "text/html")]))
 
 
+def _remove_dead_reindex_objects(indexed_models):
+  """Remove fulltext record entries for deleted objects.
+
+  This function cleans up orphan records for objects that have been deleted
+  but that have not removed their records for some reason.
+  """
+  record = fulltext.mysql.MysqlRecordProperty
+  with benchmark("Removing dead index records"):
+    for model_name, model in sorted(indexed_models.items()):
+      logger.info("Removing dead records for: %s", model_name)
+      record.query.filter(
+          record.type == model_name,
+          ~record.key.in_(db.session.query(model.id))
+      ).delete(synchronize_session='fetch')
+
+
 @helpers.without_sqlalchemy_cache
-def do_reindex(with_reindex_snapshots=False):
+def do_reindex(with_reindex_snapshots=False, delete=False):
   """Update the full text search index."""
 
   indexer = fulltext.get_indexer()
@@ -373,7 +399,12 @@ def do_reindex(with_reindex_snapshots=False):
       models.all_models.AccessControlRole.id,
       models.all_models.AccessControlRole.name,
   ))
+  _remove_dead_reindex_objects(indexed_models)
   for model_name in sorted(indexed_models.keys()):
+    if delete:
+      with benchmark("Deleting records for %s" % model_name):
+        pass
+
     logger.info("Updating index for: %s", model_name)
     with benchmark("Create records for %s" % model_name):
       model = indexed_models[model_name]
@@ -647,6 +678,7 @@ def dashboard():
   return flask.render_template(
       "dashboard/index.haml",
       page_type="MY_WORK",
+      page_title="My Work",
   )
 
 
@@ -658,6 +690,7 @@ def object_browser():
   return flask.render_template(
       "dashboard/index.haml",
       page_type="ALL_OBJECTS",
+      page_title="All Objects",
   )
 
 
@@ -766,6 +799,22 @@ def admin_create_missing_revisions():
                         [('Content-Type', 'text/html')])))
 
 
+@app.route("/admin/find_empty_revisions", methods=["POST"])
+@login.login_required
+@login.admin_required
+def admin_find_empty_revisions():
+  """Process all revisions and find empty."""
+  bg_task = background_task.create_task(
+      name="find_empty_revisions",
+      url=flask.url_for(find_empty_revisions.__name__),
+      queued_callback=find_empty_revisions,
+  )
+  db.session.commit()
+  return bg_task.make_response(
+      app.make_response(("scheduled %s" % bg_task.name, 200,
+                        [('Content-Type', 'text/html')])))
+
+
 @app.route("/admin")
 @login.login_required
 @login.admin_required
@@ -819,40 +868,7 @@ def get_background_task_status(object_type, object_id):
 
 def contributed_object_views():
   """Contributed object views"""
-  contributed_objects = [
-      models.AccessGroup,
-      models.Assessment,
-      models.AssessmentTemplate,
-      models.Audit,
-      models.Contract,
-      models.Control,
-      models.DataAsset,
-      models.Document,
-      models.Evidence,
-      models.Facility,
-      models.Issue,
-      models.Market,
-      models.Objective,
-      models.OrgGroup,
-      models.Person,
-      models.Policy,
-      models.Process,
-      models.Product,
-      models.Program,
-      models.Project,
-      models.Regulation,
-      models.Requirement,
-      models.Risk,
-      models.Snapshot,
-      models.Standard,
-      models.System,
-      models.TechnologyEnvironment,
-      models.Threat,
-      models.Vendor,
-      models.Metric,
-      models.ProductGroup,
-  ]
-  return [registry.object_view(obj) for obj in contributed_objects]
+  return [registry.object_view(obj) for obj in CONTRIBUTED_OBJECTS]
 
 
 def all_object_views():
@@ -880,6 +896,7 @@ def init_extra_views(app_):
   notifications.init_notification_views(app_)
   query_views.init_query_views(app_)
   query_views.init_clone_views(app_)
+  folder.init_folder_views(app_)
 
 
 def init_all_views(app_):
@@ -1075,3 +1092,67 @@ def generate_wf_tasks_notifs():
   return bg_task.make_response(
       app.make_response(("scheduled %s" % bg_task.name, 200,
                         [('Content-Type', 'text/html')])))
+
+
+class UnmapObjectsView(flask.views.MethodView):
+  """View for unmaping objects by deletion of relationships."""
+
+  # pylint: disable=arguments-differ
+  @classmethod
+  def as_view(cls, *args, **kwargs):
+    """Override as_view to decorate with "login_required"."""
+    view = super(UnmapObjectsView, cls).as_view(*args, **kwargs)
+    return login.login_required(view)
+
+  def dispatch_request(self, *args, **kwargs):
+    """Handle validation errors."""
+    if not login.is_external_app_user():
+      raise exceptions.Forbidden()
+
+    try:
+      return super(UnmapObjectsView, self).dispatch_request(*args, **kwargs)
+    except ValueError as exc:
+      raise exceptions.BadRequest(exc.message)
+
+  @property
+  def request(self):
+    """Property to access request with "self.request"."""
+    return flask.request
+
+  def post(self):
+    """Unmap objects by deleting relationship."""
+    serializer = serializers.RelationshipSerializer(self.request.json)
+    serializer.clean()
+
+    deleted = 0
+
+    for relationship in serializer.as_query():
+      self.delete_relationship(relationship)
+      deleted += 1
+
+    db.session.commit()
+
+    return flask.jsonify({"count": deleted})
+
+  def delete_relationship(self, relationship):
+    """Send post deletion signals."""
+    db.session.delete(relationship)
+
+    signals.Restful.model_deleted.send(
+        models.Relationship, obj=relationship, service=self)
+    modified_objects = services_common.get_modified_objects(db.session)
+    event = log_event.log_event(db.session, relationship)
+    cache_utils.update_memcache_before_commit(
+        self.request, modified_objects,
+        services_common.CACHE_EXPIRY_COLLECTION)
+
+    db.session.flush()
+
+    services_common.update_snapshot_index(modified_objects)
+    cache_utils.update_memcache_after_commit(flask.request)
+    signals.Restful.model_deleted_after_commit.send(
+        models.Relationship, obj=relationship, service=self, event=event)
+    services_common.send_event_job(event)
+
+app.add_url_rule('/api/relationships/unmap',
+                 view_func=UnmapObjectsView.as_view('unmap_objects'))

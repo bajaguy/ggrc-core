@@ -1,4 +1,4 @@
-# Copyright (C) 2018 Google Inc.
+# Copyright (C) 2019 Google Inc.
 # Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 
 
@@ -23,9 +23,7 @@ class TestAssessmentTemplatesExport(TestCase):
       ("Audit Captain", "Audit Lead"),
       ("Auditors", "Auditors"),
       ("Principal Assignees", "Principal Assignees"),
-      ("Secondary Assignees", "Secondary Assignees"),
-      ("Primary Contacts", "Primary Contacts"),
-      ("Secondary Contacts", "Secondary Contacts")
+      ("Secondary Assignees", "Secondary Assignees")
   )
   @ddt.unpack
   def test_people_labels_export(self, title, label):

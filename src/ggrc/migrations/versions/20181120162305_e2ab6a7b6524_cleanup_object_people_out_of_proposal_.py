@@ -1,4 +1,4 @@
-# Copyright (C) 2018 Google Inc.
+# Copyright (C) 2019 Google Inc.
 # Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 
 """
@@ -31,9 +31,9 @@ def upgrade():
   for proposal in proposals_to_cleanup:
     content = json.loads(proposal.content)
     content['mapping_list_fields'].pop('object_people', None)
-    connection.execute("""
-      UPDATE proposals SET content='{}' WHERE id={};
-    """.format(json.dumps(content), proposal.id))
+    connection.execute(
+        sa.text("""UPDATE proposals SET content=:content WHERE id=:id;"""),
+        content=json.dumps(content), id=proposal.id)
 
 
 def downgrade():

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2018 Google Inc.
+ * Copyright (C) 2019 Google Inc.
  * Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
  */
 
@@ -64,7 +64,7 @@
 }
 
 .#{$fa-css-prefix}-role {
-  &:before { content: $fa-var-key; }
+  &:before { content: $fa-var-address-card; }
   &.color { color: $black; }
 }
 
@@ -231,11 +231,6 @@
   &.color { color: $purple; }
 }
 
-.#{$fa-css-prefix}-risk_assessment {
-  &:before { content: $fa-var-bomb; }
-  &.color { color: #8e0000; }
-}
-
 .#{$fa-css-prefix}-evidence {
   &:before { content: $fa-var-file-archive-o; }
   &.color { color: #005580; }
@@ -252,6 +247,16 @@
 }
 .#{$fa-css-prefix}-technology_environment {
   &:before { content: $fa-var-th; }
+  &.color { color: $green; }
+}
+
+.#{$fa-css-prefix}-key_report {
+  &:before { content: $fa-var-key; }
+  &.color { color: $green; }
+}
+
+.#{$fa-css-prefix}-account_balance {
+  &:before { content: $fa-var-calculator; }
   &.color { color: $green; }
 }
 
@@ -278,13 +283,6 @@
 .get-started__list {
   .dropdown-menu {
     // turns icons to black
-    @extend %black-icons;
-  }
-}
-
-// inner tree icons to black
-.inner-tree {
-  .select {
     @extend %black-icons;
   }
 }

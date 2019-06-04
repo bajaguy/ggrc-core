@@ -1,0 +1,17 @@
+{{!
+    Copyright (C) 2019 Google Inc.
+    Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
+}}
+
+{{#is_allowed 'update' parent_instance context='for'}}
+    {{^if parent_instance.archived}}
+      <assessment-template-clone-button
+        class:from="'btn btn-small btn-darkBlue'"
+        on:refreshTree="loadItems()"
+        objectType:from="model.model_singular"
+        parentId:from="parent_instance.id"
+        parentType:from="parent_instance.class.model_singular">
+        Create
+      </assessment-template-clone-button>
+    {{/if}}
+{{/is_allowed}}

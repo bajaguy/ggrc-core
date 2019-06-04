@@ -1,4 +1,4 @@
-# Copyright (C) 2018 Google Inc.
+# Copyright (C) 2019 Google Inc.
 # Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 
 """Helper for getting related objects."""
@@ -10,7 +10,6 @@ from ggrc import db
 from ggrc.extensions import get_extension_modules
 from ggrc import models
 from ggrc.models import Snapshot
-from ggrc.models import all_models
 from ggrc.models.relationship import Relationship
 from ggrc.snapshotter.rules import Types
 
@@ -54,25 +53,9 @@ def custom_attribute_mapping(object_type, related_type, related_ids):
   )
 
 
-def task_group_object(object_type, related_type, related_ids):
-  """Handle task group object relationship."""
-  if not related_ids:
-    return None
-  if object_type == "TaskGroup":
-    return db.session.query(all_models.TaskGroupObject.task_group_id).filter(
-        (all_models.TaskGroupObject.object_type == related_type) &
-        all_models.TaskGroupObject.object_id.in_(related_ids))
-  elif related_type == "TaskGroup":
-    return db.session.query(all_models.TaskGroupObject.object_id).filter(
-        (all_models.TaskGroupObject.object_type == related_type) &
-        all_models.TaskGroupObject.task_group_id.in_(related_ids))
-  return None
-
-
 def get_special_mappings(object_type, related_type, related_ids):
   return [
       acl_obj_id(object_type, related_type, related_ids),
-      task_group_object(object_type, related_type, related_ids),
       custom_attribute_mapping(object_type, related_type, related_ids),
   ]
 
@@ -100,9 +83,7 @@ def _array_union(queries):
 def _assessment_object_mappings(object_type, related_type, related_ids):
   """Get Object ids for audit scope objects and snapshotted objects."""
 
-  if (object_type in Types.scoped | Types.trans_scope and
-          related_type in Types.all):
-
+  if object_type in Types.scoped and related_type in Types.all:
     source_query = db.session.query(
         Relationship.destination_id.label("result_id"),
     ).join(
@@ -129,8 +110,7 @@ def _assessment_object_mappings(object_type, related_type, related_ids):
         )
     )
 
-  elif (object_type in Types.all and
-        related_type in Types.scoped | Types.trans_scope):
+  elif object_type in Types.all and related_type in Types.scoped:
     source_query = db.session.query(
         Snapshot.child_id.label("result_id"),
     ).join(
@@ -233,10 +213,5 @@ def get_ids_related_to(object_type, related_type, related_ids=None):
       object_type, related_type, related_ids))
   queries.extend(get_special_mappings(
       object_type, related_type, related_ids))
-
-  if (object_type in Types.trans_scope and related_type in Types.all or
-          object_type in Types.all and related_type in Types.trans_scope):
-    queries.append(_assessment_object_mappings(
-        object_type, related_type, related_ids))
 
   return _array_union(queries)

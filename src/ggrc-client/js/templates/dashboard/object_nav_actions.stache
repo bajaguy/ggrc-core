@@ -1,0 +1,42 @@
+{{!
+    Copyright (C) 2019 Google Inc.
+    Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
+}}
+
+<span class="inner-nav__actions">
+  <nav-actions instance:from="instance">
+    {{#if showSetupRequirement}}
+      <p class="tiny-help-text">
+        You need to setup task group(s) before activating workflow.
+      </p>
+    {{/if}}
+    {{#if showAdminRequirement}}
+      <p class="tiny-help-text">
+        You need to add admin(s) to autogenerate upcoming cycles.
+      </p>
+    {{/if}}
+    {{#if showMissingObjectsMessage}}
+      <p class="alert tiny-help-text">
+        <strong>Note:</strong> At least one of the task groups is missing either a task or an object.
+      </p>
+    {{/if}}
+    {{#if canEdit}}
+      <workflow-activate instance:from="instance">
+        <spinner-component toggle:from="waiting"></spinner-component>
+
+        {{^if waiting}}
+          {{#is(instance.status, "Draft")}}
+            <button
+              type="submit"
+              href="#workflowActivate"
+              class="btn btn-lightBlue btn-small"
+              on:el:click="activateWorkflow"
+              {{^if instance.can_start_cycle}}disabled="disabled"{{/if}}>
+              Activate Workflow
+            </button>
+          {{/is}}
+        {{/if}}
+      </workflow-activate>
+    {{/if}}
+  </nav-actions>
+</span>

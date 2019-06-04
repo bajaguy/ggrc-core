@@ -1,5 +1,5 @@
 /*
- Copyright (C) 2018 Google Inc., authors, and contributors
+ Copyright (C) 2019 Google Inc., authors, and contributors
  Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
  */
 
@@ -8,14 +8,13 @@ import {
   buildModifiedACL,
   buildModifiedListField,
 } from '../../plugins/utils/object-history-utils';
-import {caDefTypeName} from '../../plugins/utils/custom-attribute/custom-attribute-config';
-import template from './templates/restore-revision.mustache';
-const tag = 'restore-revision';
+import template from './templates/restore-revision.stache';
 
 export default can.Component.extend({
-  tag,
-  template,
-  viewModel: {
+  tag: 'restore-revision',
+  view: can.stache(template),
+  leakScope: true,
+  viewModel: can.Map.extend({
     instance: {},
     restoredRevision: {},
     loading: false,
@@ -45,7 +44,6 @@ export default can.Component.extend({
       } else {
         // fill in mandatory fields
         this.attr('modalState.open', true);
-        this.closeDiff(element);
       }
     },
     isInstanceValid(instance) {
@@ -87,17 +85,7 @@ export default can.Component.extend({
     },
     applyCustomAttributes(instance, modifiedAttributes) {
       modifiedAttributes.each((modifiedAttribute, caId) => {
-        const valueForPerson = _.get(
-          modifiedAttribute, 'attribute_object.id'
-        ) || null;
-        const caDef = _.find(GGRC.custom_attr_defs, (gca) =>
-          gca.id === Number(caId)
-        );
-        const isPerson = caDefTypeName.MapPerson === caDef.attribute_type;
-        const value = isPerson
-          ? valueForPerson
-          : modifiedAttribute.attribute_value;
-        instance.customAttr(caId, value);
+        instance.customAttr(caId, modifiedAttribute.attribute_value);
       });
     },
     closeDiff(element) {
@@ -106,6 +94,7 @@ export default can.Component.extend({
     },
     revertChanges() {
       this.attr('instance').restore(true);
+      this.attr('loading', false);
     },
-  },
+  }),
 });

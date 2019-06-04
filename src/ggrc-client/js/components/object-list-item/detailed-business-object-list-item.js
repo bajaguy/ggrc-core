@@ -1,5 +1,5 @@
 /*
- Copyright (C) 2018 Google Inc.
+ Copyright (C) 2019 Google Inc.
  Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
  */
 
@@ -11,16 +11,21 @@ import {
 } from '../../plugins/utils/snapshot-utils';
 import '../custom-attributes/custom-attributes-field-view';
 import '../related-objects/related-people-access-control';
-import template from './detailed-business-object-list-item.mustache';
+import template from './detailed-business-object-list-item.stache';
 
-const tag = 'detailed-business-object-list-item';
+const VISIBLE_ROLES = {
+  Control: ['Admin', 'Control Operators', 'Control Owners', 'Other Contacts'],
+  Risk: ['Admin', 'Risk Owners', 'Other Contacts'],
+};
+
 /**
  * Assessment specific mapped objects popover view component
  */
 export default can.Component.extend({
-  tag,
-  template,
-  viewModel: {
+  tag: 'detailed-business-object-list-item',
+  view: can.stache(template),
+  leakScope: true,
+  viewModel: can.Map.extend({
     instance: {},
     customAttributes: null,
     deletableAdmin: false,
@@ -54,17 +59,12 @@ export default can.Component.extend({
       },
       visibleRoles: {
         get: function () {
-          let roles;
-          if (this.attr('itemData.type') === 'Control') {
-            roles = [
-              'Admin', 'Control Operators', 'Control Owners', 'Other Contacts',
-            ];
-          } else {
-            roles = ['Admin', 'Primary Contacts', 'Secondary Contacts'];
-          }
-          return roles;
+          const defaultList = [
+            'Admin', 'Primary Contacts', 'Secondary Contacts',
+          ];
+          return VISIBLE_ROLES[this.attr('itemData.type')] || defaultList;
         },
       },
     },
-  },
+  }),
 });

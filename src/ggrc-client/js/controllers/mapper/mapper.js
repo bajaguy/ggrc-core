@@ -1,5 +1,5 @@
 /*
-    Copyright (C) 2018 Google Inc.
+    Copyright (C) 2019 Google Inc.
     Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 */
 
@@ -9,16 +9,17 @@ import '../../components/object-mapper/object-mapper';
 import '../../components/object-generator/object-generator';
 import '../../components/object-search/object-search';
 import {
-  isInScopeModel,
+  isAuditScopeModel,
 } from '../../plugins/utils/snapshot-utils';
-import asmtTemplateCloneTemplate from './assessment-template-clone-modal.mustache';
-import objectGeneratorTemplate from './object-generator-modal.mustache';
-import objectMapperTemplate from './object-mapper-modal.mustache';
-import objectSearchTemplate from './object-search-modal.mustache';
-import objectBulkUpdateTemplate from './object-bulk-update-modal.mustache';
+import asmtTemplateCloneTemplate from './assessment-template-clone-modal.stache';
+import objectGeneratorTemplate from './object-generator-modal.stache';
+import objectMapperTemplate from './object-mapper-modal.stache';
+import objectSearchTemplate from './object-search-modal.stache';
+import objectBulkUpdateTemplate from './object-bulk-update-modal.stache';
 import {notifier} from '../../plugins/utils/notifiers-utils';
 import * as businessModels from '../../models/business-models';
 import {changeUrl} from '../../router';
+import {getMegaObjectRelation} from '../../plugins/utils/mega-object-utils';
 
 const DATA_CORRUPTION_MESSAGE = 'Some Data is corrupted! ' +
             'Missing Scope Object';
@@ -59,12 +60,11 @@ const ObjectMapper = can.Control.extend({
 
     return $target;
   },
-  isLoading: false,
   openMapper: function (data, disableMapper, btn) {
     let self = this;
     let isSearch = /unified-search/ig.test(data.toggle);
 
-    if (disableMapper || this.isLoading) {
+    if (disableMapper) {
       return;
     }
 
@@ -73,8 +73,10 @@ const ObjectMapper = can.Control.extend({
       throw new Error(OBJECT_REQUIRED_MESSAGE);
     }
 
-    if (isInScopeModel(data.join_object_type) && !isSearch) {
+    if (isAuditScopeModel(data.join_object_type) && !isSearch) {
       openForSnapshots(data);
+    } else if (data.mega_object) {
+      openForMegaObject(data);
     } else {
       openForCommonObjects(data, isSearch);
     }
@@ -114,36 +116,31 @@ const ObjectMapper = can.Control.extend({
         throw new Error(OBJECT_REQUIRED_MESSAGE);
       }
 
-      self.isLoading = true;
-
       let model = businessModels[data.join_object_type];
-      let inScopeObject =
+      let auditScopeObject =
         model.findInCacheById(data.join_object_id);
-      inScopeObject.updateScopeObject().then(function () {
-        let scopeObject = inScopeObject.attr('audit');
+      let audit = auditScopeObject.attr('audit');
 
-        if (!scopeObject.id) {
-          notifier('error', DATA_CORRUPTION_MESSAGE);
-          setTimeout(function () {
-            changeUrl('/dashboard');
-          }, 3000);
-          return;
-        }
+      if (!audit.id) {
+        notifier('error', DATA_CORRUPTION_MESSAGE);
+        setTimeout(function () {
+          changeUrl('/dashboard');
+        }, 3000);
+        return;
+      }
 
-        _.assign(config.general, {
-          object: data.join_object_type,
-          'join-object-id': data.join_object_id,
-          type: data.join_option_type,
-          relevantTo: [{
-            readOnly: true,
-            type: scopeObject.type,
-            id: scopeObject.id,
-            title: scopeObject.title,
-          }],
-        });
-        self.launch(btn, Object.assign(config, data));
-      })
-        .always(() => self.isLoading = false);
+      _.assign(config.general, {
+        object: data.join_object_type,
+        'join-object-id': data.join_object_id,
+        type: data.join_option_type,
+        relevantTo: [{
+          readOnly: true,
+          type: audit.type,
+          id: audit.id,
+          title: audit.title,
+        }],
+      });
+      self.launch(btn, Object.assign(config, data));
     }
 
     function openForCommonObjects(data, isSearch) {
@@ -154,6 +151,19 @@ const ObjectMapper = can.Control.extend({
       } else {
         self.launch(btn, Object.assign(config, data));
       }
+    }
+
+    function openForMegaObject(data) {
+      const config = getConfigForCommonObjects(data);
+
+      const {relation} = getMegaObjectRelation(data.mega_object_widget);
+
+      _.assign(config.general, {
+        isMegaObject: data.mega_object,
+        megaRelation: relation,
+      });
+
+      self.launch(btn, Object.assign(config, data));
     }
 
     function getBaseConfig() {
@@ -185,7 +195,8 @@ const ObjectMapper = can.Control.extend({
   },
 }, {
   init: function () {
-    this.element.html(can.view.mustache(this.options.component)(this.options));
+    let frag = can.stache(this.options.component)(this.options);
+    this.element.html(frag);
   },
 });
 

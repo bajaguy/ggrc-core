@@ -1,9 +1,10 @@
 /*
-    Copyright (C) 2018 Google Inc.
+    Copyright (C) 2019 Google Inc.
     Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 */
 
 import TreeLoader from './tree-loader';
+import {getCounts} from '../../plugins/utils/widgets-utils';
 
 function modelListLoader(controller, params) {
   let model = controller.options.model;
@@ -18,7 +19,7 @@ function modelListLoader(controller, params) {
   return page;
 }
 
-export default TreeLoader({
+export default TreeLoader.extend({
   defaults: {
     is_related: false,
     model: null,
@@ -33,11 +34,9 @@ export default TreeLoader({
     list_view: null,
     list_objects: null,
     list_loader: null,
-    tooltip_view: '/static/mustache/dashboard/object_tooltip.mustache',
   },
 }, {
   init: function () {
-    let that = this;
     if (!this.options.extra_params) {
       this.options.extra_params = {};
     }
@@ -54,23 +53,26 @@ export default TreeLoader({
         },
       },
     });
-    this.context.attr('has_next_page', can.compute(function () {
-      let pager = that.context.attr('pager');
+    this.context.attr('has_next_page', can.compute(() => {
+      let pager = this.context.attr('pager');
       return pager && pager.has_next && pager.has_next();
     }));
-    this.context.attr('has_prev_page', can.compute(function () {
-      let pager = that.context.attr('pager');
+    this.context.attr('has_prev_page', can.compute(() => {
+      let pager = this.context.attr('pager');
       return pager && pager.has_prev && pager.has_prev();
     }));
     this.context.attr(this.options);
 
     if (this.options.header_view) {
-      can.view(this.options.header_view, $.when(this.context))
-        .then(function (frag) {
-          if (that.element) {
-            that.element.prepend(frag);
-          }
-        });
+      $.when(this.context, $.ajax({
+        url: this.options.header_view,
+        dataType: 'text',
+      })).then((ctx, view) => {
+        let frag = can.stache(view[0])(ctx);
+        if (this.element) {
+          this.element.prepend(frag);
+        }
+      });
     }
 
     if (!this.options.list) {
@@ -118,7 +120,7 @@ export default TreeLoader({
         this.options.model.list_view_options.find_params);
     }
 
-    if (this.options.model.shortName === 'Person') {
+    if (this.options.model.model_singular === 'Person') {
       params.__sort = 'name,email';
       if (searchParams.search_term) {
         params.__search = searchParams.search_term;
@@ -167,22 +169,21 @@ export default TreeLoader({
   },
 
   init_view: function () {
-    let that = this;
-    return can.view(this.options.list_view, this.context, function (frag) {
-      that.element.find('.spinner, .tree-structure').hide();
-      that.element
-        .append(frag)
-        .trigger('loaded');
-      that.options.state.attr('loading', false);
+    $.ajax({
+      url: this.options.list_view,
+      dataType: 'text',
+    }).then((view) => {
+      let frag = can.stache(view)(this.context);
+      this.element.find('.spinner, .tree-structure').hide();
+      this.element.append(frag).trigger('loaded');
+      this.options.state.attr('loading', false);
     });
   },
 
   update_count: function () {
     if (this.element) {
-      if (this.options.pager) {
-        this.element.trigger('updateCount', this.options.pager.total);
-      }
-      this.element.trigger('widget_updated');
+      getCounts()
+        .attr(this.options.model.model_singular, this.options.pager.total);
     }
   },
 
@@ -191,7 +192,7 @@ export default TreeLoader({
     this.options.search_query = '';
     this.element.find('.search-filters')
       .find('input[name=search], select[name=user_role]').val('');
-    this.fetch_list().then(this.proxy('draw_list'));
+    this.fetch_list().then((list) => this.draw_list(list));
   },
 
   insert_items: function (items) {
@@ -228,7 +229,7 @@ export default TreeLoader({
 
   '.search-filters input[name=search] change': function (el, ev) {
     this.options.search_params.search_term = el.val();
-    this.fetch_list().then(this.proxy('draw_list'));
+    this.fetch_list().then((list) => this.draw_list(list));
   },
 
   '.search-filters select[name=user_role] change': function (el, ev) {
@@ -240,7 +241,7 @@ export default TreeLoader({
       this.options.search_params.noRole = false;
       this.options.search_params.role_id = value;
     }
-    this.fetch_list().then(this.proxy('draw_list'));
+    this.fetch_list().then((list) => this.draw_list(list));
   },
 
   '.search-filters button[type=reset] click': 'reset_search',

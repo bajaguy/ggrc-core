@@ -1,15 +1,16 @@
 /*
- Copyright (C) 2018 Google Inc.
+ Copyright (C) 2019 Google Inc.
  Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
  */
 
 import '../../person/person-data';
-import template from './person-form-field.mustache';
+import template from './person-form-field.stache';
 
 export default can.Component.extend({
   tag: 'person-form-field',
-  template,
-  viewModel: {
+  view: can.stache(template),
+  leakScope: true,
+  viewModel: can.Map.extend({
     define: {
       inputValue: {
         set(newValue) {
@@ -52,5 +53,5 @@ export default can.Component.extend({
         value: newValue,
       });
     },
-  },
+  }),
 });

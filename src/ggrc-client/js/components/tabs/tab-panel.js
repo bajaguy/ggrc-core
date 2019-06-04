@@ -1,27 +1,24 @@
 /*
- Copyright (C) 2018 Google Inc.
+ Copyright (C) 2019 Google Inc.
  Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
  */
 
 import '../lazy-render/lazy-render';
-import template from './tab-panel.mustache';
-import {REFRESH_TAB_CONTENT} from '../../events/eventTypes';
+import template from './tab-panel.stache';
 
 const PRE_RENDER_DELAY = 3000;
 
 export default can.Component.extend({
   tag: 'tab-panel',
-  template,
-  viewModel: {
+  view: can.stache(template),
+  leakScope: true,
+  viewModel: can.Map.extend({
     define: {
       cssClasses: {
         type: 'string',
         get: function () {
           return this.attr('active') ? 'active' : 'hidden';
         },
-      },
-      forceClearContent: {
-        value: false,
       },
       cacheContent: {
         type: 'boolean',
@@ -47,19 +44,16 @@ export default can.Component.extend({
         value: {},
       },
     },
+    tabType: 'panel',
     active: false,
-    titleText: '@',
-    tabId: '@', // used in REFRESH_TAB_CONTENT event handler
+    titleText: '',
+    tabId: '',
     panels: [],
     tabIndex: null,
     canDisplayWarning: false,
     warningState: false,
-    warningText: '@',
-    extraClasses: '@',
-    clearCache: function () {
-      this.attr('forceClearContent', true);
-      this.attr('forceClearContent', false);
-    },
+    warningText: '',
+    extraClasses: '',
     addPanel: function () {
       let panels = this.attr('panels');
       let isAlreadyAdded = panels.indexOf(this) > -1;
@@ -89,12 +83,12 @@ export default can.Component.extend({
     updateWarningState(event) {
       this.attr('warningState', event.warning);
     },
-  },
+  }),
   events: {
     /**
      * On Components rendering finished add this viewModel to `panels` list
      */
-    inserted: function () {
+    init: function () {
       let vm = this.viewModel;
       vm.addPanel();
 
@@ -105,11 +99,5 @@ export default can.Component.extend({
     removed: function () {
       this.viewModel.removePanel();
     },
-    [`{viewModel.parentInstance} ${REFRESH_TAB_CONTENT.type}`]:
-      function (scope, event) {
-        if ( event.tabId === this.viewModel.tabId ) {
-          this.viewModel.clearCache();
-        }
-      },
   },
 });

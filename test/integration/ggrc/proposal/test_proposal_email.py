@@ -1,4 +1,4 @@
-# Copyright (C) 2018 Google Inc.
+# Copyright (C) 2019 Google Inc.
 # Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 
 """This module contains test about sending emails for proposals."""
@@ -33,36 +33,36 @@ class TestProposalEmail(TestCase):
 
   def test_email_sending(self):
     """Test sending emails about proposals."""
-    role_1 = factories.AccessControlRoleFactory(object_type="Control",
+    role_1 = factories.AccessControlRoleFactory(object_type="Program",
                                                 notify_about_proposal=True)
-    role_2 = factories.AccessControlRoleFactory(object_type="Control",
+    role_2 = factories.AccessControlRoleFactory(object_type="Program",
                                                 notify_about_proposal=True)
-    role_3 = factories.AccessControlRoleFactory(object_type="Control",
+    role_3 = factories.AccessControlRoleFactory(object_type="Program",
                                                 notify_about_proposal=False)
     with factories.single_commit():
-      control = factories.ControlFactory()
+      program = factories.ProgramFactory()
       person_1 = factories.PersonFactory()  # has 1 role
       person_2 = factories.PersonFactory()  # has no roles
       person_3 = factories.PersonFactory()  # has 2 roles
-      factories.PersonFactory()  # not related to control at all
+      factories.PersonFactory()  # not related to program at all
       factories.AccessControlPersonFactory(
-          ac_list=control.acr_acl_map[role_1],
+          ac_list=program.acr_acl_map[role_1],
           person=person_1
       )
       factories.AccessControlPersonFactory(
-          ac_list=control.acr_acl_map[role_1],
+          ac_list=program.acr_acl_map[role_1],
           person=person_3
       )
       factories.AccessControlPersonFactory(
-          ac_list=control.acr_acl_map[role_2],
+          ac_list=program.acr_acl_map[role_2],
           person=person_3
       )
       factories.AccessControlPersonFactory(
-          ac_list=control.acr_acl_map[role_3],
+          ac_list=program.acr_acl_map[role_3],
           person=person_2
       )
       proposal_1 = factories.ProposalFactory(
-          instance=control,
+          instance=program,
           content={
               "fields": {"title": "a"},
               "access_control_list": {},
@@ -72,7 +72,7 @@ class TestProposalEmail(TestCase):
           },
           agenda="agenda 1")
       proposal_2 = factories.ProposalFactory(
-          instance=control,
+          instance=program,
           content={
               "fields": {"title": "b"},
               "access_control_list": {},

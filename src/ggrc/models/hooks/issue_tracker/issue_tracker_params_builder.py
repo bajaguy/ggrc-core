@@ -1,4 +1,4 @@
-# Copyright (C) 2018 Google Inc.
+# Copyright (C) 2019 Google Inc.
 # Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 
 """This module contains functionality for building Issue tracker query."""
@@ -11,14 +11,13 @@ import logging
 import html2text
 
 from ggrc import utils as ggrc_utils
-from ggrc.integrations import issues
-from ggrc.integrations import integrations_errors
 from ggrc.integrations import constants
-from ggrc.integrations.constants import DEFAULT_ISSUETRACKER_VALUES as \
-    default_values
+from ggrc.integrations import integrations_errors
+from ggrc.integrations import issues
 from ggrc.models.hooks.issue_tracker import integration_utils
 from ggrc.models.hooks.issue_tracker import \
     issue_tracker_params_container as params_container
+
 
 logger = logging.getLogger(__name__)
 
@@ -61,6 +60,7 @@ class BaseIssueTrackerParamsBuilder(object):
       "hotlist_id",
       "issue_severity",
       "issue_priority",
+      "title",
   )
 
   def __init__(self):
@@ -77,13 +77,14 @@ class BaseIssueTrackerParamsBuilder(object):
 
   def handle_issue_tracker_info(self, obj, issue_tracker_info):
     """Handle issue tracker information."""
+    default_values = constants.DEFAULT_ISSUETRACKER_VALUES
     issue_component_id = issue_tracker_info.get("component_id")
     self.params.component_id = issue_component_id or \
-        default_values["component_id"]
+        default_values["issue_component_id"]
 
     issue_hotlist_id = issue_tracker_info.get("hotlist_id")
     self.params.hotlist_id = issue_hotlist_id or \
-        default_values["hotlist_id"]
+        default_values["issue_hotlist_id"]
 
     issue_type = issue_tracker_info.get("issue_type")
     self.params.issue_type = issue_type or \
@@ -225,10 +226,17 @@ class IssueParamsBuilder(BaseIssueTrackerParamsBuilder):
       self.params.status = res["issueState"]["status"]
       self._add_link_message(obj)
       self.handle_issue_tracker_info(obj, it_info)
+      self._populate_hotlist(it_info, res)
       self._handle_emails_from_response(res)
       self.params.reporter = obj.modified_by.email
 
     return self.params
+
+  def _populate_hotlist(self, it_info, ticket_info):
+    """Set IssueTracker ticket hotlist if user doesn't specified it."""
+    if not it_info.get("hotlist_id"):
+      ticket_hotlists = ticket_info["issueState"].get("hotlist_ids")
+      self.params.hotlist_id = ticket_hotlists[0] if ticket_hotlists else None
 
   def build_update_issue_tracker_params(self,
                                         obj,

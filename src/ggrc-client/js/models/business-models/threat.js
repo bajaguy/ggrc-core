@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2018 Google Inc.
+ * Copyright (C) 2019 Google Inc.
  * Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
  */
 
@@ -7,10 +7,10 @@ import Cacheable from '../cacheable';
 import uniqueTitle from '../mixins/unique-title';
 import caUpdate from '../mixins/ca-update';
 import accessControlList from '../mixins/access-control-list';
-import baseNotifications from '../mixins/base-notifications';
+import baseNotifications from '../mixins/notifications/base-notifications';
 import Stub from '../stub';
 
-export default Cacheable('CMS.Models.Threat', {
+export default Cacheable.extend({
   root_object: 'threat',
   root_collection: 'threats',
   category: 'risk',
@@ -65,10 +65,20 @@ export default Cacheable('CMS.Models.Threat', {
     status: 'Draft',
   },
   statuses: ['Draft', 'Deprecated', 'Active'],
-  init: function () {
-    if (this._super) {
-      this._super(...arguments);
-    }
-    this.validatePresenceOf('title');
+}, {
+  define: {
+    title: {
+      value: '',
+      validate: {
+        required: true,
+        validateUniqueTitle: true,
+      },
+    },
+    _transient_title: {
+      value: '',
+      validate: {
+        validateUniqueTitle: true,
+      },
+    },
   },
-}, {});
+});

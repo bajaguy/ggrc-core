@@ -1,5 +1,5 @@
 /*
- Copyright (C) 2018 Google Inc.
+ Copyright (C) 2019 Google Inc.
  Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
  */
 
@@ -12,12 +12,14 @@ import {
 import {VALIDATION_ERROR, RELATED_ITEMS_LOADED} from '../../events/eventTypes';
 import tracker from '../../tracker';
 import Permission from '../../permission';
+import isFunction from 'can-util/js/is-function/is-function';
 import {getPageInstance} from '../../plugins/utils/current-page-utils';
 import {getPlainText} from '../../plugins/ggrc_utils';
 
 export default can.Component.extend({
   tag: 'assessment-local-ca',
-  viewModel: {
+  leakScope: true,
+  viewModel: can.Map.extend({
     instance: null,
     fields: [],
     isDirty: false,
@@ -207,7 +209,7 @@ export default can.Component.extend({
         saveDfd: saveDfd,
       });
     },
-  },
+  }),
   events: {
     '{viewModel} evidenceAmount': function () {
       this.viewModel.validateForm();
@@ -224,7 +226,7 @@ export default can.Component.extend({
     '{viewModel.instance} showInvalidField': function (ev) {
       let pageType = getPageInstance().type;
       let $container = (pageType === 'Assessment') ?
-        $('.object-area') : $('.cms_controllers_info_pin');
+        $('.object-area') : $('.pin-content');
       let $body = (pageType === 'Assessment') ?
         $('.inner-content.widget-area') : $('.info-pane__body');
       let field;
@@ -249,9 +251,10 @@ export default can.Component.extend({
   },
   helpers: {
     isInvalidField: function (show, valid, highlightInvalidFields, options) {
-      show = Mustache.resolve(show);
-      valid = Mustache.resolve(valid);
-      highlightInvalidFields = Mustache.resolve(highlightInvalidFields);
+      show = isFunction(show) ? show() : show;
+      valid = isFunction(valid) ? valid() : valid;
+      highlightInvalidFields = isFunction(highlightInvalidFields) ?
+        highlightInvalidFields() : highlightInvalidFields;
 
       if (highlightInvalidFields && show && !valid) {
         return options.fn(options.context);

@@ -1,4 +1,4 @@
-# Copyright (C) 2018 Google Inc.
+# Copyright (C) 2019 Google Inc.
 # Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 
 """Builder the prepare diff in special format between current
@@ -19,13 +19,14 @@ def get_latest_revision_content(instance):
   key = (instance.type, instance.id)
   content = g.latest_revision_content.get(key)
   if not content:
-    content = all_models.Revision.query.filter(
+    last_rev = all_models.Revision.query.filter(
         all_models.Revision.resource_id == instance.id,
         all_models.Revision.resource_type == instance.type
     ).order_by(
         all_models.Revision.created_at.desc(),
         all_models.Revision.id.desc(),
-    ).first().content
+    ).first()
+    content = last_rev.content if last_rev is not None else None
     g.latest_revision_content[key] = content
   return content
 
@@ -152,6 +153,19 @@ def get_validated_value(cad, value, object_id):
   return value, object_id
 
 
+def prepare_cavs_for_diff(cavs):
+  """Build dict with cavs content suitable for comparizon"""
+  cavs_dict = {}
+  for cav in cavs:
+    attribute_value = cav.get("attribute_value")
+    attribute_object_id = (cav.get("attribute_object") or {}).get("id")
+    cavs_dict[int(cav["custom_attribute_id"])] = (
+        attribute_value,
+        attribute_object_id
+    )
+  return cavs_dict
+
+
 def generate_cav_diff(cads, proposed, revisioned):
   """Build diff for custom attributes."""
   if not cads:
@@ -159,14 +173,9 @@ def generate_cav_diff(cads, proposed, revisioned):
   if proposed is None:
     return {}
   diff = {}
-  proposed_cavs = {
-      int(i["custom_attribute_id"]): (i["attribute_value"],
-                                      i["attribute_object_id"])
-      for i in proposed}
-  revisioned_cavs = {
-      int(i["custom_attribute_id"]): (i["attribute_value"],
-                                      i["attribute_object_id"])
-      for i in revisioned}
+  proposed_cavs = prepare_cavs_for_diff(proposed)
+  revisioned_cavs = prepare_cavs_for_diff(revisioned)
+
   for cad in cads:
     if cad.id not in proposed_cavs:
       continue
@@ -177,7 +186,10 @@ def generate_cav_diff(cads, proposed, revisioned):
       revisioned_value = revisioned_cavs[cad.id]
     if proposed_val != revisioned_value:
       value, person_id = proposed_val
-      person = person_obj_by_id(person_id) if person_id else None
+      if person_id and not person_id == "None":
+        person = person_obj_by_id(int(person_id))
+      else:
+        person = None
       diff[cad.id] = {
           "attribute_value": value,
           "attribute_object": person,
@@ -274,7 +286,7 @@ def _construct_diff(meta, current_content, new_content):
       "mapping_list_fields": generate_list_mappings(
           meta.mapping_list_fields,
           new_content,
-          current_content
+          current_content,
       ),
   }
 
@@ -286,15 +298,90 @@ def prepare(instance, content):
   return _construct_diff(
       meta=instance_meta_info,
       current_content=current_data,
-      new_content=content
+      new_content=content,
   )
 
 
-def differ(instance_cls, new_content, current_content):
-  """Get diff between two contents of specified type."""
-  instance_meta_info = meta_info.MetaInfo(instance_cls())
-  return _construct_diff(
-      meta=instance_meta_info,
-      current_content=current_content,
-      new_content=new_content
+def prepare_content_full_diff(instance_meta_info, l_content, r_content):
+  """Prepare diff between two revisions contents of same instance.
+
+  This functionality is needed for `not_empty_revisions` query API operator.
+  The main difference between this function and `prepare` is that this one
+  takes into account all revision's content fields and not just fields
+  explicitly marked as updateable on instance model.
+
+  Args:
+      instance_meta_info (MetaInfo): object of particular instance.
+      l_content (dict): content of first revision.
+      r_content (dict): content of second revision.
+
+  Returns:
+      A dict representing the diff between two revision contents.
+  """
+  diff = _construct_diff(instance_meta_info, l_content, r_content)
+
+  remaining_fields = set(r_content.keys())
+  remaining_fields -= {f.name for f in instance_meta_info.fields}
+  remaining_fields -= {f.name for f in instance_meta_info.mapping_fields}
+  remaining_fields -= {f.name for f in instance_meta_info.mapping_list_fields}
+  remaining_fields -= {
+      # Diff for `access_control_list` and `custom_attribute_values` has
+      # already been calculated in `_construct_diff` function call.
+      "access_control_list",
+      "custom_attribute_values",
+      # `custom_attribute_definitions` is ignored since all possible obj
+      # changes related with any change in CAD would be reflected in CAV.
+      "custom_attribute_definitions",
+      # The following fields are ignored cause they may differ but revisions
+      # still may represent objects of same state.
+      "created_at",
+      "updated_at",
+      "modified_by",
+      "modified_by_id",
+  }
+
+  remaining_fields = {meta_info.Field(f, False) for f in remaining_fields}
+  diff["other"] = generate_fields(
+      fields=remaining_fields,
+      proposed_content=r_content,
+      current_data=l_content,
   )
+
+  return diff
+
+
+def changes_present(obj, new_rev_content, prev_rev_content=None,
+                    obj_meta=None):
+  """Check if `new_rev_content` contains obj changes.
+
+  Checks whether `new_rev_content` contains changes in `obj` state or not. If
+  `prev_rev_content` is not passed to this function, the latest revision of
+  `obj` will be taken. Note that in this case revision whose content is passed
+  as `new_rev_content` should not been saved in DB or no changes would be
+  detected since two equal contents will be compared.
+
+  Args:
+      obj: db.Model instance which last revision would be compared with
+        `new_revision` to detect presence of changes.
+      new_rev_content: Content of newer revision to ckeck for changes.
+      prev_rev_content: Content of older revision. Optional. If is not passed,
+        latest `obj` revision will be taken.
+      obj_meta: MetaInfo instance of `obj`. Optionla. If is not passed, will
+        be constructed manually.
+
+  Returns:
+      Boolean flag indicating whether `new_rev_content` contains any changes
+        in `obj` state comparing to `prev_rev_content`.
+  """
+  if obj_meta is None:
+    obj_meta = meta_info.MetaInfo(obj)
+  if prev_rev_content is None:
+    prev_rev_content = get_latest_revision_content(obj)
+    if prev_rev_content is None:
+      return True
+  diff = prepare_content_full_diff(
+      instance_meta_info=obj_meta,
+      l_content=prev_rev_content,
+      r_content=new_rev_content,
+  )
+  return any(diff.values())

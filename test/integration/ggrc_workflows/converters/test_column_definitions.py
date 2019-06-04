@@ -1,4 +1,4 @@
-# Copyright (C) 2018 Google Inc.
+# Copyright (C) 2019 Google Inc.
 # Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 """Tests for Columns definitions."""
 
@@ -77,20 +77,71 @@ class TestWorkflowObjectColumnDefinitions(TestCase):
     definitions = get_object_column_definitions(wf_models.TaskGroup)
     display_names = {val["display_name"] for val in definitions.itervalues()}
     expected_names = {
-        "Summary",
+        "Title",
         "Details",
         "Assignee",
         "Code",
         "Workflow",
-        "Objects",
         "Delete",
         'Created Date',
         'Last Updated Date',
         'Last Updated By',
+        'map:policy',
+        'unmap:regulation',
+        'unmap:technology environment',
+        'map:requirement',
+        'unmap:access group',
+        'unmap:threat',
+        'map:process',
+        'map:regulation',
+        'map:issue',
+        'unmap:project',
+        'map:control',
+        'map:data asset',
+        'unmap:org group',
+        'unmap:objective',
+        'map:access group',
+        'map:objective',
+        'map:risk',
+        'unmap:process',
+        'map:contract',
+        'map:standard',
+        'unmap:product group',
+        'unmap:policy',
+        'unmap:contract',
+        'map:project',
+        'unmap:requirement',
+        'map:metric',
+        'unmap:vendor',
+        'map:program',
+        'unmap:market',
+        'map:product group',
+        'unmap:system',
+        'map:technology environment',
+        'map:vendor',
+        'map:threat',
+        'unmap:standard',
+        'map:product',
+        'map:key report',
+        'unmap:control',
+        'unmap:issue',
+        'map:system',
+        'map:market',
+        'unmap:key report',
+        'unmap:product',
+        'unmap:data asset',
+        'unmap:metric',
+        'unmap:program',
+        'map:org group',
+        'map:facility',
+        'unmap:facility',
+        'unmap:risk',
+        'map:account balance',
+        'unmap:account balance',
     }
     self.assertEqual(expected_names, display_names)
     vals = {val["display_name"]: val for val in definitions.itervalues()}
-    self.assertTrue(vals["Summary"]["mandatory"])
+    self.assertTrue(vals["Title"]["mandatory"])
     self.assertTrue(vals["Assignee"]["mandatory"])
 
   def test_task_definitions(self):
@@ -133,7 +184,7 @@ class TestWorkflowObjectColumnDefinitions(TestCase):
         "Task Type",
         "Task Assignees",
         "Task Secondary Assignees",
-        "Task Details",
+        "Task Description",
         "Start Date",
         "Due Date",
         "Actual Verified Date",

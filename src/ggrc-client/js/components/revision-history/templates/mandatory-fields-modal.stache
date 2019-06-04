@@ -1,0 +1,51 @@
+{{!
+  Copyright (C) 2019 Google Inc.
+  Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
+}}
+
+<simple-modal state:from="state"
+              instance:from="instance"
+              replaceContent:from="true"
+              extraCssClass:from="'mandatory-fields'">
+  <div class="simple-modal__header">
+      <div class="simple-modal__header-text">Global custom attribute validation</div>
+      <button type="button"
+              class="btn btn-small btn-icon"
+              {{#if loading}}disabled{{/if}}
+              on:el:click="cancel()">
+          <i class="fa fa-times black"></i>
+      </button>
+  </div>
+  <div class="simple-modal__body">
+    <div class="simple-modal__section">
+      <p>
+        Please fill in the field(s) below to apply this version -
+        <person-data person:from="revisionModifiedBy"></person-data>,
+        {{dateTime revisionUpdatedAt}}.
+      </p>
+    </div>
+    <div class="simple-modal__section">
+      {{#if showCAs}}
+        <div class="ggrc-form">
+          <gca-controls instance:from="instance"
+                        items:from="caFields">
+          </gca-controls>
+        </div>
+      {{/if}}
+    </div>
+  </div>
+  <div class="simple-modal__footer">
+    <div class="simple-modal__toolbar">
+      <button class="btn btn-small btn-green simple-modal__toolbar-item {{#if isApplyButtonDisabled}}disabled{{/if}}"
+              type="button" on:el:click="save()" {{#if isApplyButtonDisabled}}disabled{{/if}}>
+        Apply
+      </button>
+      <button class="btn btn-small btn-white simple-modal__toolbar-item"
+              type="button" on:el:click="cancel()">
+        Cancel
+      </button>
+      <spinner-component toggle:from="loading"></spinner-component>
+    </div>
+  </div>
+
+</simple-modal>

@@ -1,4 +1,4 @@
-# Copyright (C) 2018 Google Inc.
+# Copyright (C) 2019 Google Inc.
 # Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 """Assessments Workflow smoke tests."""
 # pylint: disable=no-self-use
@@ -6,7 +6,9 @@
 # pylint: disable=unused-argument
 # pylint: disable=too-few-public-methods
 # pylint: disable=too-many-arguments
+# pylint: disable=too-many-locals
 # pylint: disable=redefined-outer-name
+# pylint: disable=duplicate-code
 
 import random
 
@@ -88,7 +90,7 @@ class TestAssessmentsWorkflow(base.Test):
 
   @pytest.mark.smoke_tests
   def test_asmt_logs(
-      self, new_program_rest, new_audit_rest, new_assessment_rest, selenium
+      self, program, audit, assessment, selenium
   ):
     """Test for validation of Assessment log pane.
     Acceptance criteria:
@@ -96,14 +98,14 @@ class TestAssessmentsWorkflow(base.Test):
       2) all items return 'True' for all attrs.
     """
     log_items_validation = webui_service.AssessmentsService(
-        selenium).get_log_pane_validation_result(obj=new_assessment_rest)
+        selenium).get_log_pane_validation_result(obj=assessment)
     log_validation_results = [all(item_result.values()) for item_result in
                               log_items_validation]
     assert ([True] * 2) == log_validation_results, str(log_items_validation)
 
   @pytest.mark.smoke_tests
   def test_raise_issue(
-      self, new_program_rest, new_audit_rest, new_assessment_rest, selenium
+      self, program, audit, assessment, selenium
   ):
     """Test for checking raising Issues in Related Issues Tab. Open
     Related Issues tab on Assessments Info page. Raise Issue with pre-defined
@@ -112,9 +114,9 @@ class TestAssessmentsWorkflow(base.Test):
     """
     expected_issue = (entities_factory.IssuesFactory().create().repr_ui())
     asmts_ui_service = webui_service.AssessmentsService(selenium)
-    asmts_ui_service.raise_issue(new_assessment_rest, expected_issue)
+    asmts_ui_service.raise_issue(assessment, expected_issue)
     related_issues_titles = asmts_ui_service.get_related_issues_titles(
-        obj=new_assessment_rest)
+        obj=assessment)
     assert related_issues_titles == [expected_issue.title]
 
   @pytest.mark.smoke_tests
@@ -217,8 +219,10 @@ class TestAssessmentsWorkflow(base.Test):
     asmt_service = webui_service.AssessmentsService(selenium)
     getattr(asmt_service, action)(asmt)
     actual_asmt = asmt_service.get_obj_from_info_page(asmt)
+    rest_asmt_obj = rest_facade.get_obj(asmt)
     asmt.update_attrs(
-        updated_at=rest_facade.get_obj(asmt).updated_at,
+        updated_at=rest_asmt_obj.updated_at,
+        modified_by=rest_asmt_obj.modified_by,
         status=end_state,
         verified=(True if action == "verify_assessment" else False)).repr_ui()
     self.general_equal_assert(asmt, actual_asmt, "audit")
@@ -226,8 +230,8 @@ class TestAssessmentsWorkflow(base.Test):
   @pytest.mark.smoke_tests
   @pytest.mark.parametrize("operator", [alias.EQUAL_OP, alias.CONTAINS_OP])
   def test_destructive_asmts_gcas_filtering(
-      self, new_program_rest, new_audit_rest, gcads_for_asmt,
-      new_assessments_rest, operator, selenium
+      self, program, audit, gcads_for_asmt,
+      assessments, operator, selenium
   ):
     """Test for checking filtering of Assessment by Global Custom Attributes
     in audit scope.
@@ -237,8 +241,8 @@ class TestAssessmentsWorkflow(base.Test):
     - Global Custom Attributes for Assessment created via REST API.
     - Assessments created via REST API.
     """
-    unchecked_asmt = new_assessments_rest[0]
-    checked_asmt = new_assessments_rest[1]
+    unchecked_asmt = assessments[0]
+    checked_asmt = assessments[1]
 
     checkbox_value = random.choice([True, False])
     print "Checkbox value: {}".format(checkbox_value)
@@ -250,16 +254,13 @@ class TestAssessmentsWorkflow(base.Test):
         only_checkbox=False, checkbox_value=not checkbox_value)
 
     self._check_assessments_filtration(checked_asmt, cavs,
-                                       operator, new_audit_rest, selenium)
+                                       operator, audit, selenium)
 
   @pytest.mark.smoke_tests
   @pytest.mark.parametrize("operator", [alias.EQUAL_OP])
   def test_destructive_asmts_lcas_filtering(
-      self, new_program_rest, new_controls_rest,
-      map_new_program_rest_to_new_controls_rest,
-      new_audit_rest,
-      new_assessment_template_with_cas_rest,
-      new_assessments_from_template_rest,
+      self, program, controls_mapped_to_program, audit,
+      assessment_template_with_all_cas_rest, assessments_from_template,
       operator, selenium
   ):
     """Test for checking filtering of Assessment by Local Custom Attributes
@@ -280,8 +281,8 @@ class TestAssessmentsWorkflow(base.Test):
       return self._set_values_for_assessment(
           assessment, cads, only_checkbox, checkbox_value)
 
-    unchecked_asmt = new_assessments_from_template_rest[0]
-    checked_asmt = new_assessments_from_template_rest[1]
+    unchecked_asmt = assessments_from_template[0]
+    checked_asmt = assessments_from_template[1]
 
     checkbox_value = random.choice([True, False])
     print "Checkbox value: {}".format(checkbox_value)
@@ -292,7 +293,7 @@ class TestAssessmentsWorkflow(base.Test):
 
     self._check_assessments_filtration(checked_asmt,
                                        set_attr_values,
-                                       operator, new_audit_rest, selenium)
+                                       operator, audit, selenium)
 
   @staticmethod
   def _set_values_for_assessment(assessment, cads,
@@ -420,18 +421,20 @@ class TestAssessmentsWorkflow(base.Test):
         dropdown_types_list=["url"],
         **obj_args if obj == "assessment" else {})
     expected_asmt = rest_facade.create_asmt_from_template(
-        audit, asmt_template_w_dropdown, control_mapped_to_program)
+        audit, asmt_template_w_dropdown, [control_mapped_to_program])
     dropdown = CustomAttributeDefinitionsFactory().create(
         **expected_asmt.cads_from_template()[0])
     users.set_current_user(user)
     asmt_service = webui_service.AssessmentsService(selenium)
     asmt_service.choose_and_fill_dropdown_lca(
         expected_asmt, dropdown, url=url)
+    rest_asmt_obj = self.info_service().get_obj(expected_asmt)
     expected_asmt.update_attrs(
         custom_attributes={
             dropdown.title.upper(): dropdown.multi_choice_options
         },
-        updated_at=self.info_service().get_obj(expected_asmt).updated_at,
+        updated_at=rest_asmt_obj.updated_at,
+        modified_by=rest_asmt_obj.modified_by,
         evidence_urls=[url],
         mapped_objects=[control_mapped_to_program.title],
         status=object_states.IN_PROGRESS)
@@ -470,18 +473,20 @@ class TestAssessmentsWorkflow(base.Test):
         dropdown_types_list=["comment"],
         **obj_args if obj == "assessment" else {})
     expected_asmt = rest_facade.create_asmt_from_template(
-        audit, asmt_template_w_dropdown, control_mapped_to_program)
+        audit, asmt_template_w_dropdown, [control_mapped_to_program])
     dropdown = CustomAttributeDefinitionsFactory().create(
         **expected_asmt.cads_from_template()[0])
     users.set_current_user(user)
     asmt_service = webui_service.AssessmentsService(selenium)
     asmt_service.choose_and_fill_dropdown_lca(
         expected_asmt, dropdown, comment=comment_text)
+    rest_asmt_obj = self.info_service().get_obj(obj=expected_asmt)
     expected_asmt.update_attrs(
         custom_attributes={
             dropdown.title.upper(): dropdown.multi_choice_options
         },
-        updated_at=self.info_service().get_obj(obj=expected_asmt).updated_at,
+        updated_at=rest_asmt_obj.updated_at,
+        modified_by=rest_asmt_obj.modified_by,
         mapped_objects=[control_mapped_to_program.title],
         status=object_states.IN_PROGRESS).repr_ui()
     actual_asmt = asmt_service.get_obj_from_info_page(obj=expected_asmt)
@@ -513,7 +518,7 @@ class TestAssessmentsWorkflow(base.Test):
         Representation.repr_dict_to_obj(cad)
         for cad in asmt_template.custom_attribute_definitions])
     exp_asmt = rest_facade.create_asmt_from_template(
-        audit, asmt_template, control_mapped_to_program)
+        audit, asmt_template, [control_mapped_to_program])
     asmts_ui_service = webui_service.AssessmentsService(selenium)
     asmts_ui_service.fill_asmt_lcas(exp_asmt, cas)
     selenium.refresh()
@@ -553,12 +558,13 @@ class TestAssessmentsWorkflow(base.Test):
     act_asmt = rest_facade.get_obj(asmt)
     asmt.update_attrs(
         updated_at=act_asmt.updated_at, status=act_asmt.status,
+        modified_by=act_asmt.modified_by,
         custom_attributes=custom_attributes)
     _assert_asmt(asmts_ui_service, asmt)
 
   @pytest.mark.smoke_tests
   @pytest.mark.parametrize("attr_type",
-                           AdminWidgetCustomAttributes.ALL_CA_TYPES)
+                           AdminWidgetCustomAttributes.ALL_GCA_TYPES)
   def test_fill_asmt_gcas_inline(
       self, program, audit, assessment, attr_type, selenium
   ):
@@ -776,7 +782,8 @@ class TestRelatedAssessments(base.Test):
     -> Audit-1 -> Asmt-1 mapped to Control-1
     -> Audit-2 -> Asmt-2 mapped to Control-2
     As a result, assessments are related."""
-    controls = [rest_facade.create_control(program) for _ in xrange(2)]
+    controls = [rest_facade.create_control_mapped_to_program(
+        program) for _ in xrange(2)]
     rest_facade.map_objs(controls[0], controls[1])
     audits = [rest_facade.create_audit(program) for _ in xrange(2)]
     assessments = [_create_mapped_asmt(

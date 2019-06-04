@@ -1,11 +1,12 @@
 /*
-  Copyright (C) 2018 Google Inc.
+  Copyright (C) 2019 Google Inc.
   Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 */
 
 import {getPageInstance} from './plugins/utils/current-page-utils';
 import Stub from '../js/models/stub';
 import {getInstance} from '../js/plugins/utils/models-utils';
+import {reify} from '../js/plugins/utils/reify-utils';
 
 let ADMIN_PERMISSION;
 let _CONDITIONS_MAP = {
@@ -26,7 +27,7 @@ let _CONDITIONS_MAP = {
       function (obj, key) {
         let value = obj.attr(key);
         if (value instanceof Stub) {
-          value = value.reify();
+          value = reify(value);
         }
         return value;
       }, instance);
@@ -36,7 +37,7 @@ let _CONDITIONS_MAP = {
     let value = Permission._resolve_permission_variable(args.value);
     let propertyValue = instance[args.property_name];
     if (propertyValue instanceof Stub) {
-      propertyValue = propertyValue.reify();
+      propertyValue = reify(propertyValue);
     }
     return value.indexOf(propertyValue) >= 0;
   },
@@ -53,7 +54,7 @@ let _CONDITIONS_MAP = {
 };
 let permissionsCompute = can.compute(GGRC.permissions);
 
-const Permission = can.Construct({
+const Permission = can.Construct.extend({
   _admin_permission_for_context: function (contextId) {
     return new Permission(
       ADMIN_PERMISSION.action, ADMIN_PERMISSION.resource_type, contextId);
@@ -146,7 +147,7 @@ const Permission = can.Construct({
     }.bind(this);
 
     let actionObj = permissions[action] || {};
-    let shortName = instance.constructor && instance.constructor.shortName;
+    let shortName = instance.constructor && instance.constructor.model_singular;
     let instanceType = instance.type || shortName;
     let typeObj = actionObj[instanceType] || {};
     let conditionsByContext = typeObj.conditions || {};

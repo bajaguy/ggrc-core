@@ -1,4 +1,4 @@
-# Copyright (C) 2018 Google Inc.
+# Copyright (C) 2019 Google Inc.
 # Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 """Widget bar model.
 Multiple models for Widget bar since each object can have it's own rules
@@ -101,6 +101,12 @@ class _ObjectWidgetBar(_WidgetBar):
     Return: lib.page.widget.generic_widget.Issues
     """
     return self._get_widget(element.WidgetBar.ISSUES)
+
+  def select_objectives(self):
+    """
+    Return: lib.page.widget.generic_widget.Issues
+    """
+    return self._get_widget(element.WidgetBar.OBJECTIVES)
 
   def select_processes(self):
     """
@@ -269,6 +275,10 @@ class AccessGroups(_ObjectWidgetBar):
   """Widget bar of Access Group objects."""
 
 
+class AccountBalances(_ObjectWidgetBar):
+  """Widget bar of Account Balance objects."""
+
+
 class Systems(_ObjectWidgetBar):
   """Widget bar of System objects."""
 
@@ -291,6 +301,10 @@ class Projects(_ObjectWidgetBar):
 
 class Facilities(_ObjectWidgetBar):
   """Widget bar of Facility objects."""
+
+
+class KeyReports(_ObjectWidgetBar):
+  """Widget bar of Key Report objects."""
 
 
 class Markets(_ObjectWidgetBar):

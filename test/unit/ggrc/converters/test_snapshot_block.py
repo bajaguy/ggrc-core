@@ -1,4 +1,4 @@
-# Copyright (C) 2018 Google Inc.
+# Copyright (C) 2019 Google Inc.
 # Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 
 """Unit tests for Snapshot block converter class."""
@@ -238,14 +238,25 @@ class TestSnapshotBlockConverter(unittest.TestCase):
       ({"custom_attribute_id": 1, "attribute_value": True}, "yes"),
       ({"custom_attribute_id": 1, "attribute_value": "1"}, "yes"),
       ({"custom_attribute_id": 1, "attribute_value": "0"}, "no"),
-      ({"custom_attribute_id": 3, "attribute_value":
-        "Person", "attribute_object_id": 4}, "user@example.com"),
+      ({"custom_attribute_id": 6, "attribute_value": True}, True),
+      ({"custom_attribute_id": 6, "attribute_value": "yes"}, "yes"),
+      ({"custom_attribute_id": 6, "attribute_value": "no"}, "no"),
+      ({"custom_attribute_id": 3, "attribute_value": "Person",
+        "attribute_object": {
+            "context_id": None, "href": "/api/people/4",
+            "id": 4, "type": "Person"
+        }
+        }, "user@example.com"),
       # If the original object was deleted from the system we do not store all
       # of its values in he revision. Proper thing would be to go through
       # revisions of this object and use those static values. But we do not
       # currently support that.
       ({"custom_attribute_id": 3, "attribute_value": "Bad Option",
-        "attribute_object_id": 4}, ""),
+        "attribute_object": {
+            "context_id": None, "href": "/api/people/4",
+            "id": 4, "type": "Person"
+        }
+        }, ""),
   )
   @ddt.unpack
   def test_get_cav_value_string(self, value, expected_value):
@@ -257,6 +268,7 @@ class TestSnapshotBlockConverter(unittest.TestCase):
             (1, {"id": 1, "title": "CCC", "attribute_type": "Checkbox"}),
             (4, {"id": 4, "title": "DDD", "attribute_type": "Map:Person"}),
             (5, {"id": 5, "title": "DDD", "attribute_type": "Text"}),
+            (6, {"id": 6, "title": "EEE", "attribute_type": "Multiselect"}),
         ]
     )
     self.block._stub_cache = {

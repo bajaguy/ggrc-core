@@ -1,0 +1,21 @@
+{{!
+    Copyright (C) 2019 Google Inc.
+    Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
+}}
+
+{{#items}}
+  <tree-item class="tree-item-element"
+             instance:from="{.}"
+             limitDepthTree:from="limitDepthTree"
+             getDepthFilter:from="@getDepthFilter"
+             selectedColumns:from="selectedColumns"
+             disableConfiguration:from="disableConfiguration"
+             mandatory:from="mandatory">
+  </tree-item>
+{{/items}}
+
+<tree-no-results show:from="notResult"></tree-no-results>
+
+<div class="tree-spinner">
+  <spinner-component toggle:from="loading" size:from="'large'"></spinner-component>
+</div>

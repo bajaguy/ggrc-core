@@ -1,0 +1,51 @@
+{{!
+    Copyright (C) 2019 Google Inc.
+    Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
+}}
+
+<div class="fields-wrapper flex-box flex-row">
+  {{#each fields}}
+    <div class="field-wrapper flex-size-1 custom-attribute-{{type}} {{#isInvalidField validation.show validation.valid highlightInvalidFields}}invalid-field{{/isInvalidField}}">
+      <form-validation-icon validation:from="validation"></form-validation-icon>
+      <div class="field__title form-field__title">
+        <label class="field__title-text custom-attribute-{{type}}" for="form-field-{{id}}">
+          {{title}}
+          {{#if validation.mandatory}}
+            <i class="fa fa-asterisk field__mandatory"></i>
+          {{/if}}
+        </label>
+      </div>
+      {{#if editMode}}
+        <custom-attributes-field
+          type:from="type"
+          value:bind="value"
+          fieldId:from="id"
+          placeholder:from="placeholder"
+          options:from="options"
+          on:valueChanged="fieldValueChanged(scope.event, %context)"
+          class="form-field__content custom-attribute-{{type}}"
+        ></custom-attributes-field>
+        {{#if validation.hasMissingInfo}}
+          <div class="form-field__validation-hint-placeholder">
+              <button type="button"
+                      class="btn btn-small btn-link btn-link-nopadding"
+                      on:el:click="showRequiredInfoModal(scope.event, %context)">
+                Add required info
+              </button>
+          </div>
+        {{/if}}
+        {{#isInvalidField validation.show validation.valid highlightInvalidFields}}
+          <form-validation-text validation:from="validation"
+                                type:from="type">
+          </form-validation-text>
+        {{/isInvalidField}}
+      {{else}}
+        <custom-attributes-field-view
+          type:from="type"
+          value:from="value"
+          class="form-field__content custom-attribute-{{type}}"
+        ></custom-attributes-field-view>
+      {{/if}}
+    </div>
+  {{/each}}
+</div>

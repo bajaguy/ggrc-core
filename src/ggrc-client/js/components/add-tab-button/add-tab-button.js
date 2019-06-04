@@ -1,15 +1,16 @@
 /*
-  Copyright (C) 2018 Google Inc.
+  Copyright (C) 2019 Google Inc.
   Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 */
 
-import template from './add-tab-button.mustache';
+import template from './add-tab-button.stache';
 import {
-  getPageType,
   isMyWork,
   isAllObjects,
 } from '../../plugins/utils/current-page-utils';
 import Permission from '../../permission';
+import Mappings from '../../models/mappers/mappings';
+import '../questionnaire-mapping-link/questionnaire-mapping-link';
 
 const viewModel = can.Map.extend({
   define: {
@@ -32,50 +33,19 @@ const viewModel = can.Map.extend({
           && !instance.attr('archived')
           && !isMyWork()
           && !isAllObjects()
-          && !['Person', 'Evidence'].includes(getPageType())
-          && this.attr('hasHiddenWidgets');
-      },
-    },
-    filteredWidgets: {
-      get() {
-        let widgetList = this.attr('widgetList');
-
-        return _.filter(widgetList, (widget) => {
-          return this.isNotObjectVersion(widget.internav_display) &&
-            !this.isNotProhibitedMap(widget.model.shortName) &&
-            widget.attr('placeInAddTab');
-        });
+          && this.attr('widgetList.length') > 0;
       },
     },
   },
   instance: null,
   widgetList: null,
-  urlPath: '',
   addTabTitle: '',
-  hasHiddenWidgets: true,
-  isNotObjectVersion(internavDisplay) {
-    return internavDisplay.indexOf('Versions') === -1;
-  },
-  isNotProhibitedMap(shortName) {
-    const prohibitedMapList = {
-      Issue: ['Assessment', 'Audit'],
-      Assessment: ['Evidence'],
-    };
-
-    const instanceType = this.attr('instance.type');
-
-    return prohibitedMapList[instanceType] &&
-      prohibitedMapList[instanceType].includes(shortName);
-  },
-  sortWidgets() {
-    this.attr('widgetList',
-      _.sortBy(this.attr('widgetList'), 'internav_display'));
-  },
 });
 
 export default can.Component.extend({
   tag: 'add-tab-button',
-  template,
+  view: can.stache(template),
+  leakScope: true,
   viewModel,
   events: {
     // top nav dropdown position
@@ -100,8 +70,13 @@ export default can.Component.extend({
 
       return options.inverse(options.contexts);
     },
-  },
-  init() {
-    this.viewModel.sortWidgets();
+    isMappableExternally(instance, modelShortName, options) {
+      let source = instance().type;
+      let destination = modelShortName();
+      if (Mappings.shouldBeMappedExternally(source, destination)) {
+        return options.fn(options.contexts);
+      }
+      return options.inverse(options.contexts);
+    },
   },
 });

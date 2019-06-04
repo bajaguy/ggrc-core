@@ -1,4 +1,4 @@
-# Copyright (C) 2018 Google Inc.
+# Copyright (C) 2019 Google Inc.
 # Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 
 """Module containing custom attributable mixin."""
@@ -99,17 +99,33 @@ class CustomAttributable(object):
   @declared_attr
   def _custom_attribute_values(cls):  # pylint: disable=no-self-argument
     """Load custom attribute values"""
-    from ggrc.models.custom_attribute_value import CustomAttributeValue
+    current_type = cls.__name__
 
-    def join_function():
-      return and_(
-          foreign(CustomAttributeValue.attributable_id) == cls.id,
-          foreign(CustomAttributeValue.attributable_type) == cls.__name__)
-    return relationship(
+    joinstr = (
+        "and_("
+        "foreign(remote(CustomAttributeValue.attributable_id)) == {type}.id,"
+        "CustomAttributeValue.attributable_type == '{type}'"
+        ")"
+        .format(type=current_type)
+    )
+
+    # Since we have some kind of generic relationship here, it is needed
+    # to provide custom joinstr for backref. If default, all models having
+    # this mixin will be queried, which in turn produce large number of
+    # queries returning nothing and one query returning object.
+    backref_joinstr = (
+        "remote({type}.id) == foreign(CustomAttributeValue.attributable_id)"
+        .format(type=current_type)
+    )
+
+    return db.relationship(
         "CustomAttributeValue",
-        primaryjoin=join_function,
-        backref='{0}_custom_attributable'.format(cls.__name__),
-        cascade='all, delete-orphan',
+        primaryjoin=joinstr,
+        backref=orm.backref(
+            "{}_custom_attributable".format(current_type),
+            primaryjoin=backref_joinstr,
+        ),
+        cascade="all, delete-orphan"
     )
 
   @hybrid_property
@@ -275,7 +291,9 @@ class CustomAttributable(object):
         CustomAttributeDefinition)
 
     data = {fname: definition.get(fname) for fname in field_names}
-    data["definition_type"] = self._inflector.table_singular
+    data.pop("definition_type", None)
+    data.pop("definition_id", None)
+    data["definition"] = self
     cad = CustomAttributeDefinition(**data)
     db.session.add(cad)
 
@@ -436,9 +454,9 @@ class CustomAttributable(object):
     )
 
   @classmethod
-  def eager_query(cls):
+  def eager_query(cls, **kwargs):
     """Define fields to be loaded eagerly to lower the count of DB queries."""
-    query = super(CustomAttributable, cls).eager_query()
+    query = super(CustomAttributable, cls).eager_query(**kwargs)
     query = query.options(
         orm.subqueryload('custom_attribute_definitions')
            .undefer_group('CustomAttributeDefinition_complete'),

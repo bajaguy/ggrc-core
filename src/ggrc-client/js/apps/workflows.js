@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2018 Google Inc.
+ * Copyright (C) 2019 Google Inc.
  * Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
  */
 
@@ -64,7 +64,7 @@ WorkflowExtension.init_widgets_for_workflow_page = function () {
       info: {
         content_controller: InfoWidget,
         content_controller_options: {
-          widget_view: GGRC.mustache_path + '/workflows/info.mustache',
+          widget_view: GGRC.templates_path + '/workflows/info.stache',
         },
       },
       task_group: {
@@ -77,6 +77,7 @@ WorkflowExtension.init_widgets_for_workflow_page = function () {
         content_controller_options: {
           parent_instance: object,
           model: TaskGroup,
+          countsName: countsMap.taskGroup,
         },
       },
     }
@@ -115,9 +116,7 @@ WorkflowExtension.init_widgets_for_workflow_page = function () {
       model: Cycle,
       countsName: currentWidgetCountsName,
       additional_filter: currentWidgetFilter,
-      add_item_view:
-        GGRC.mustache_path +
-        '/cycle_task_group_object_tasks/tree_add_item.mustache',
+      add_item_view: 'cycle_task_group_object_tasks/tree_add_item',
     },
   };
 

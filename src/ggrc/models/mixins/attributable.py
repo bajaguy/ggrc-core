@@ -1,4 +1,4 @@
-# Copyright (C) 2018 Google Inc.
+# Copyright (C) 2019 Google Inc.
 # Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 
 """Module containing custom attributable mixin."""
@@ -48,9 +48,9 @@ class Attributable(object):
     }
 
   @classmethod
-  def eager_query(cls):
+  def eager_query(cls, **kwargs):
     """Define fields to be loaded eagerly to lower the count of DB queries."""
-    query = super(Attributable, cls).eager_query()
+    query = super(Attributable, cls).eager_query(**kwargs)
     query = query.options(
         orm.subqueryload('_attributes')
     )

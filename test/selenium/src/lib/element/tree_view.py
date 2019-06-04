@@ -1,4 +1,4 @@
-# Copyright (C) 2018 Google Inc.
+# Copyright (C) 2019 Google Inc.
 # Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 """Tree View dropdown elements."""
 # pylint: disable=too-few-public-methods
@@ -34,7 +34,7 @@ class Assessments(CommonDropdownSettings):
     """Select generate Assessments in 3BBS dropdown modal to
     open unified mapper modal.
 
-    Return: lib.page.modal.unified_mapper.GenerateAssessmentsModal
+    Return: GenerateAssessmentsModal
     """
     base.Button(self._driver, self._locators.BTN_3BBS_GENERATE_CSS).click()
     return unified_mapper.GenerateAssessmentsModal(self._driver, self.obj_name)

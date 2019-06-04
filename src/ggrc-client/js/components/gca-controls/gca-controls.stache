@@ -1,0 +1,48 @@
+{{!
+    Copyright (C) 2019 Google Inc.
+    Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
+}}
+{{#each items}}
+<div class="ggrc-form-item {{#isHidable .}}hidable{{/isHidable}}">
+  <div class="ggrc-form-item__row {{#if_helpers '\n #if' validationState.hasGCAErrors '\n and #if' instance.computed_errors.custom_attribute_values}}field-failure{{/if_helpers}}">
+    <div class="ggrc-form-item__field-header">
+      <label for="form-field-{{customAttributeId}}" class="form-label ggrc-form-item__label form-label__extended">
+        <span class="ggrc-form-item__label-text">{{title}}</span>
+        {{#if mandatory}}
+          <i class="fa fa-asterisk"></i>
+        {{/if}}
+      </label>
+      <div class="ggrc-form-item__controls">
+        {{#isHidable .}}
+          <a class="field-hide" tabindex="-1">hide</a>
+        {{/isHidable}}
+      </div>
+    </div>
+    {{#if helptext}}
+      <div class="ggrc-form-item__small-text">
+        <small>
+          <em>{{helptext}}</em>
+        </small>
+      </div>
+    {{/if}}
+    {{!
+      tabindex inside component must not be processed inside component.
+      It's needed for js. It should be removed when hide button
+      will be removed.
+    }}
+    <custom-attributes-field
+      tabindex="20"
+      type:from="attributeType"
+      value:bind="value"
+      fieldId:from="customAttributeId"
+      placeholder:from="placeholder"
+      options:from="multiChoiceOptions"
+      on:valueChanged="updateGlobalAttribute(scope.event, %context)"
+      class="form-field__content custom-attribute-{{attributeType}}"
+    ></custom-attributes-field>
+    {{#if_helpers '\n #if' validationState.hasGCAErrors '\n and #if' instance.computed_errors.custom_attribute_values}}
+      <div role="alert">{{errorMessage attributeType}}</div>
+    {{/if_helpers}}
+  </div>
+</div>
+{{/each}}

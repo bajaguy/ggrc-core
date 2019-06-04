@@ -1,4 +1,4 @@
-# Copyright (C) 2018 Google Inc.
+# Copyright (C) 2019 Google Inc.
 # Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 """Generic three bbs elements."""
 
@@ -14,7 +14,8 @@ class ThreeBbs(object):
 
   def _open(self):
     """Opens dropdown list."""
-    self._three_bbs_el.click()
+    if "open" not in self._three_bbs_el.parent().get_attribute("class"):
+      self._three_bbs_el.click()
 
   def select_option_by_text(self, text):
     """Chooses list option by text."""

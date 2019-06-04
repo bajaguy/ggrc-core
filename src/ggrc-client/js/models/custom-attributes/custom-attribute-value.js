@@ -1,12 +1,12 @@
 /*
-    Copyright (C) 2018 Google Inc.
+    Copyright (C) 2019 Google Inc.
     Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 */
 
 import Cacheable from '../cacheable';
 import Stub from '../stub';
 
-export default Cacheable('CMS.Models.CustomAttributeValue', {
+export default Cacheable.extend({
   root_object: 'custom_attribute_value',
   root_collection: 'custom_attribute_values',
   category: 'custom_attribute_values',
@@ -18,11 +18,4 @@ export default Cacheable('CMS.Models.CustomAttributeValue', {
   attributes: {
     modified_by: Stub,
   },
-  init: function () {
-    this._super(...arguments);
-  },
-}, {
-  init: function () {
-    this._super(...arguments);
-  },
-});
+}, {});

@@ -1,5 +1,5 @@
 /*
-    Copyright (C) 2018 Google Inc.
+    Copyright (C) 2019 Google Inc.
     Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 */
 
@@ -8,11 +8,11 @@ import uniqueTitle from '../mixins/unique-title';
 import caUpdate from '../mixins/ca-update';
 import timeboxed from '../mixins/timeboxed';
 import accessControlList from '../mixins/access-control-list';
-import scopeObjectNotifications from '../mixins/scope-object-notifications';
+import scopeObjectNotifications from '../mixins/notifications/scope-object-notifications';
 import questionnaire from '../mixins/questionnaire';
 import Stub from '../stub';
 
-export default Cacheable('CMS.Models.TechnologyEnvironment', {
+export default Cacheable.extend({
   root_object: 'technology_environment',
   root_collection: 'technology_environments',
   category: 'scope',
@@ -69,8 +69,20 @@ export default Cacheable('CMS.Models.TechnologyEnvironment', {
     default_filter: ['Product'],
   },
   statuses: ['Draft', 'Deprecated', 'Active'],
-  init: function () {
-    this.validateNonBlank('title');
-    this._super(...arguments);
+}, {
+  define: {
+    title: {
+      value: '',
+      validate: {
+        required: true,
+        validateUniqueTitle: true,
+      },
+    },
+    _transient_title: {
+      value: '',
+      validate: {
+        validateUniqueTitle: true,
+      },
+    },
   },
-}, {});
+});

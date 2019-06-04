@@ -1,4 +1,4 @@
-# Copyright (C) 2018 Google Inc.
+# Copyright (C) 2019 Google Inc.
 # Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 
 """Tests for Issue model."""
@@ -93,6 +93,14 @@ class TestIssueDueDate(TestCase):
     self.assert200(response)
     self.assertEqual(response.json["issue"]["due_date"], "2018-06-15")
 
+  def test_issue_due_date_mandatory(self):
+    """Test Issue.due_date is mandatory field"""
+    response = self.api.post(all_models.Issue,
+                             data={"issue": {"title": "TestDueDate",
+                                             "context": None}})
+    self.assert400(response)
+    self.assertIn("Due Date for the issue is not specified", response.data)
+
 
 class TestIssueAuditMapping(TestCase):
   """Test suite to check the rules for Issue-Audit mappings."""
@@ -159,7 +167,8 @@ class TestIssueAuditMapping(TestCase):
     """Issue isn't mapped to Audit by POSTing with audit field."""
     response, issue = self.generator.generate_object(
         all_models.Issue,
-        {"audit": {"type": "Audit", "id": self.audit.id}},
+        {"audit": {"type": "Audit", "id": self.audit.id},
+         "due_date": "06/14/2018"},
     )
     self.assertStatus(response, 201)
     rel = all_models.Relationship
@@ -289,10 +298,6 @@ class TestIssueUnmap(TestCase):
     super(TestIssueUnmap, self).setUp()
     self.generator = generator.ObjectGenerator(fail_no_json=False)
 
-    # TODO: replace this hack with a special test util
-    from ggrc.login import noop
-    noop.login()  # this is needed to pass the permission checks in automapper
-
     with factories.single_commit():
       audit = factories.AuditFactory()
       self.audit_id = audit.id
@@ -300,8 +305,8 @@ class TestIssueUnmap(TestCase):
           factories.AssessmentFactory(audit=audit) for _ in range(2)
       ]
 
-      controls = [factories.ControlFactory() for _ in range(2)]
-      snapshots = self._create_snapshots(audit, controls)
+      objectives = [factories.ObjectiveFactory() for _ in range(2)]
+      snapshots = self._create_snapshots(audit, objectives)
       self.snapshot_ids = [s.id for s in snapshots]
 
       issue = factories.IssueFactory()

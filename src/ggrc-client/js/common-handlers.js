@@ -1,5 +1,5 @@
 /*
-    Copyright (C) 2018 Google Inc.
+    Copyright (C) 2019 Google Inc.
     Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 */
 
@@ -29,7 +29,7 @@ function openMapperByElement(ev, disableMapper) {
   let data = {};
 
   _.forEach(btn.data(), function (val, key) {
-    data[can.camelCaseToUnderscore(key)] = val;
+    data[_.snakeCase(key)] = val;
   });
 
   if (data.tooltip) {

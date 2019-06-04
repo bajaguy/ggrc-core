@@ -1,4 +1,4 @@
-# Copyright (C) 2018 Google Inc.
+# Copyright (C) 2019 Google Inc.
 # Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 
 """Collects all permissions for Global Creator role."""
@@ -11,10 +11,6 @@ description = """
   """
 
 owner_base = [
-    "Categorization",
-    "Category",
-    "ControlCategory",
-    "ControlAssertion",
     "Option",
     "CustomAttributeDefinition",
     "CustomAttributeValue",
@@ -38,24 +34,19 @@ owner_read = owner_base + [
         "terms": {
             "property_name": "instance",
             "action": "read",
-        }
-    },
-    {
-        "type": "CycleTaskEntry",
-        "condition": "is_allowed_based_on",
-        "terms": {
-            "property_name": "cycle_task_group_object_task",
-            "action": "update",
-        }
+        },
     },
     "Role",
     "Comment",
     "UserRole",
     "Context",
     "Person",
+    "PersonProfile",
+    "Label",
+    "ObjectLabel",
 ]
 
-owner_update = owner_base + [
+owner_delete = owner_base + [
     {
         "type": "Relationship",
         "terms": {
@@ -78,20 +69,25 @@ owner_update = owner_base + [
         "terms": {
             "property_name": "instance",
             "action": "update",
-        }
+        },
     },
+]
+
+owner_update = owner_delete + [
+    "PersonProfile",
 ]
 
 permissions = {
     "read": owner_read,
     "create": [
+        "AccountBalance",
         {
             "type": "Audit",
             "condition": "is_allowed_based_on",
             "terms": {
                 "property_name": "program",
                 "action": "update",
-            }
+            },
         },
         {
             "type": "Snapshot",
@@ -99,7 +95,7 @@ permissions = {
             "terms": {
                 "property_name": "parent",
                 "action": "update",
-            }
+            },
         },
         "AssessmentTemplate",
         "BackgroundTask",
@@ -119,22 +115,10 @@ permissions = {
             "terms": {},
         },
         {
-            "type": "CycleTaskEntry",
-            "condition": "is_allowed_based_on",
-            "terms": {
-                "property_name": "cycle_task_group_object_task",
-                "action": "update",
-            }
-        },
-        {
             "type": "TaskGroupObject",
             "condition": "is_workflow_admin",
             "terms": {},
         },
-        "Categorization",
-        "Category",
-        "ControlCategory",
-        "ControlAssertion",
         "Control",
         "Comment",
         {
@@ -169,7 +153,7 @@ permissions = {
             "terms": {
                 "property_name": "instance",
                 "action": "read",
-            }
+            },
         },
         "Project",
         {
@@ -183,6 +167,7 @@ permissions = {
         "Requirement",
         "SystemOrProcess",
         "System",
+        "KeyReport",
         "Process",
         "Metric",
         "ProductGroup",
@@ -192,5 +177,5 @@ permissions = {
         "Review"
     ],
     "update": owner_update,
-    "delete": owner_update,
+    "delete": owner_delete,
 }

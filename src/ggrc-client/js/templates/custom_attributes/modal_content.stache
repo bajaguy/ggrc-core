@@ -1,0 +1,15 @@
+{{!
+    Copyright (C) 2019 Google Inc.
+    Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
+}}
+
+
+{{#instance.class.is_custom_attributable}}
+  {{^if_instance_of instance 'Assessment'}}
+    <div class="ggrc-form">
+      <gca-controls instance:from="instance"
+                    allowHide:from="true"
+      ></gca-controls>
+    </div>
+  {{/if_instance_of}}
+{{/instance.class.is_custom_attributable}}

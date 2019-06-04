@@ -18,6 +18,7 @@
 < docs/source/contributing/javascript.rst
 < docs/source/contributing/performance.rst
 < docs/source/contributing/python.rst
+< docs/source/frontend/frontend-dependencies.md
 < docs/source/frontend/index.rst
 < docs/source/frontend/modals.rst
 < docs/source/frontend/overview.rst
@@ -25,8 +26,10 @@
 < docs/source/_static/data_model/entity-relationship diagram.mwb
 < docs/source/_static/data_model/entity-relationship diagram.pdf
 < docs/source/_static/.gitkeep
+< docs/source/support/aliases.rst
 < docs/source/support/deployment_and_update.rst
 < docs/source/support/index.rst
+< docs/source/support/local_dbs.rst
 < docs/source/_templates/.gitkeep
 < .editorconfig
 < .eslintignore

@@ -1,4 +1,4 @@
-# Copyright (C) 2018 Google Inc.
+# Copyright (C) 2019 Google Inc.
 # Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 
 """
@@ -57,11 +57,11 @@ from ggrc.extensions import get_extension_modules
 
 _DEFAULT_COLUMN_HANDLERS_DICT = {
     "archived": boolean.CheckboxColumnHandler,
-    "assertions": handlers.ControlAssertionColumnHandler,
+    "assertions": handlers.JsonListColumnHandler,
     "assessment_template": assessment_template.AssessmentTemplateColumnHandler,
     "assignee": handlers.UserColumnHandler,
     "audit": handlers.AuditColumnHandler,
-    "categories": handlers.ControlCategoryColumnHandler,
+    "categories": handlers.JsonListColumnHandler,
     "comments": comments.CommentColumnHandler,
     "company": handlers.TextColumnHandler,
     "contact": handlers.UserColumnHandler,
@@ -75,7 +75,6 @@ _DEFAULT_COLUMN_HANDLERS_DICT = {
     "documents_file": document.DocumentFileHandler,
     "documents_reference_url": document.DocumentReferenceUrlHandler,
     "due_date": handlers.DateColumnHandler,
-    "due_on": handlers.DateColumnHandler,
     "email": handlers.EmailColumnHandler,
     "end_date": handlers.DateColumnHandler,
     "evidences_file": evidence.EvidenceFileHandler,
@@ -99,6 +98,7 @@ _DEFAULT_COLUMN_HANDLERS_DICT = {
     "operationally": handlers.ConclusionColumnHandler,
     "review_status": handlers.ExportOnlyColumnHandler,
     "reviewers": handlers.ReviewersColumnHandler,
+    "readonly": boolean.AdminCheckboxColumnHandler,
     "program": handlers.ProgramColumnHandler,
     "ra_counsel": handlers.UserColumnHandler,
     "ra_manager": handlers.UserColumnHandler,
@@ -130,6 +130,7 @@ _DEFAULT_COLUMN_HANDLERS_DICT = {
     "issue_title": issue_tracker.IssueTrackerTitleColumnHandler,
     "issue_type": issue_tracker.IssueTrackerWithValidStates,
     "enabled": issue_tracker.IssueTrackerEnabledHandler,
+    "people_sync_enabled": issue_tracker.PeopleSyncEnabledHandler,
 
     # Mapping column handlers
     "__mapping__:person": handlers.PersonMappingColumnHandler,

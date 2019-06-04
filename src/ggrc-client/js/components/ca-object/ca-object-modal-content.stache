@@ -1,0 +1,100 @@
+{{!
+    Copyright (C) 2019 Google Inc.
+    Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
+}}
+
+<div class="ca-object-modal-content__body">
+    <form class="simple-modal__body">
+        <div class="simple-modal__section">
+            <div class="field__title form-field__title">
+                <label class="field__title-text">{{content.title}}</label>
+            </div>
+            <custom-attributes-field type:from="content.type"
+                                     value:from="content.value"
+                                     options:from="content.options"
+                                     disabled:from="true">
+            </custom-attributes-field>
+        </div>
+        {{#if comment}}
+            <div class="simple-modal__section">
+                <div class="simple-modal__section-title">Comment</div>
+                <comment-input
+                    value:bind="scope.vars.commentValue"
+                    disabled:from="scope.vars.isSaving">
+                </comment-input>
+            </div>
+        {{/if}}
+        {{#if evidence}}
+            <div class="simple-modal__section">
+                <div class="simple-modal__section-title">Evidence file
+                    <spinner-component class="simple-modal__section-title-icon" toggle:from="isUpdatingEvidences"></spinner-component>
+                </div>
+                <object-list items:from="evidences" emptyMessage:from="noItemsText">
+                    <editable-document-object-list-item document:from="{.}">
+                        <a on:el:click="removeRelatedItem(document, 'files')">
+                            <action-toolbar-control>
+                                <i class="fa fa-trash"></i>
+                            </action-toolbar-control>
+                        </a>
+                    </editable-document-object-list-item>
+                </object-list>
+                <attach-button
+                    isAttachActionDisabled:from="isUpdatingEvidences"
+                    instance:from="instance">
+                </attach-button>
+            </div>
+        {{/if}}
+        {{#if url}}
+            <div class="simple-modal__section">
+                <div class="simple-modal__section-title">Evidence url</div>
+                <object-list items:from="urls" emptyMessage:from="noItemsText">
+                    <editable-document-object-list-item document:from="{.}">
+                        <a on:el:click="removeRelatedItem(document, 'urls')">
+                            <action-toolbar-control>
+                                <i class="fa fa-trash"></i>
+                            </action-toolbar-control>
+                        </a>
+                    </editable-document-object-list-item>
+                </object-list>
+                {{#if urlsEditMode}}
+                    <create-url type:from="documentTypes.urls"
+                                context:from="instance.context"
+                                on:setEditMode="setUrlEditMode(false)">
+                        <form class="create-form">
+                            <fieldset class="create-form__layout">
+                                <input el:value:bind="value" class="create-form__input" type="text" placeholder="Add URL" spellcheck="false" autocomplete="false">
+                                <div class="create-form__controls">
+                                    <button type="button" class="create-form__confirm" on:el:click="create">
+                                        <i class="fa fa-check"></i>
+                                    </button>
+                                    <button type="button" class="create-form__cancel" on:el:click="clear">
+                                        <i class="fa fa-times"></i>
+                                    </button>
+                                </div>
+                            </fieldset>
+                        </form>
+                    </create-url>
+                {{else}}
+                    <button type="button" class="btn btn-small btn-gray"
+                        on:el:click="setUrlEditMode(true)">Add</button>
+                {{/if}}
+            </div>
+        {{/if}}
+    </form>
+</div>
+<div class="ca-object-modal-content__footer">
+    <div class="simple-modal__footer">
+        <div class="simple-modal__toolbar">
+        {{#if comment}}
+            <comment-add-button class="simple-modal__toolbar-item"
+                                value:bind="scope.vars.commentValue"
+                                isSaving:to="scope.vars.isSaving"
+                                on:commentCreated="onCommentCreated(scope.event)"
+                                isDisabled:from="isUpdatingEvidences">
+              Save
+            </comment-add-button>
+        {{/if}}
+            <button type="button" class="btn btn-small btn-white simple-modal__toolbar-item" on:el:click="hide; setUrlEditMode(false)">Close</button>
+        </div>
+    </div>
+</div>

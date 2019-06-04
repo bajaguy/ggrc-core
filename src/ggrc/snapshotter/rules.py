@@ -1,4 +1,4 @@
-# Copyright (C) 2018 Google Inc.
+# Copyright (C) 2019 Google Inc.
 # Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 
 """Generate rules for snapshoting"""
@@ -13,6 +13,7 @@ class Types(object):
 
   all = {
       "AccessGroup",
+      "AccountBalance",
       "Contract",
       "Control",
       "DataAsset",
@@ -33,6 +34,7 @@ class Types(object):
       "Threat",
       "Metric",
       "ProductGroup",
+      "KeyReport",
   }
 
   parents = {
@@ -54,6 +56,11 @@ class Types(object):
       "Workflow",
       "Audit",
       "Person"
+  }
+
+  external = {
+      "Control",
+      "Risk",
   }
 
 

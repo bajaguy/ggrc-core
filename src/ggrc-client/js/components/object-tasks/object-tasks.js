@@ -1,5 +1,5 @@
 /*
- Copyright (C) 2018 Google Inc.
+ Copyright (C) 2019 Google Inc.
  Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
  */
 
@@ -7,7 +7,7 @@ import {
   buildParam,
   batchRequests,
 } from '../../plugins/utils/query-api-utils';
-import template from './object-tasks.mustache';
+import template from './object-tasks.stache';
 import CycleTaskGroupObjectTask from '../../models/business-models/cycle-task-group-object-task';
 
 const REQUIRED_TYPE = 'CycleTaskGroupObjectTask';
@@ -51,7 +51,8 @@ let viewModel = can.Map.extend({
 
 export default can.Component.extend({
   tag: 'object-tasks',
-  template,
+  view: can.stache(template),
+  leakScope: true,
   viewModel,
   events: {
     inserted: function () {

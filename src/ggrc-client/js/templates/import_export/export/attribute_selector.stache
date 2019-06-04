@@ -1,0 +1,127 @@
+{{!
+  Copyright (C) 2019 Google Inc.
+  Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
+}}
+
+<div class="attribute-selector">
+    <div class="attribute-selector__group">
+      <div class="attribute-selector__header">
+        <div class="attribute-selector__checkbox">
+          <input type="checkbox" el:checked:bind="showAttributes" checked/>
+        </div>
+        <div class="attribute-selector__title">
+          Attributes
+        </div>
+        {{#if showAttributes}}
+          <div>
+             <a data-action="select_toggle"
+                data-type="attributes"
+                data-value="true"
+                href="javascript://">
+                  Select All
+              </a>
+              /
+              <a data-action="select_toggle"
+                data-value="false"
+                data-type="attributes"
+                href="javascript://">
+                  None
+              </a>
+          </div>
+        {{/if}}
+      </div>
+      {{#if showAttributes}}
+        <div class="attribute-wrap">
+            {{#each attributes}}
+              <label title="{{display_name}}">
+                <input type="checkbox" name="{{key}}" checked
+                       el:checked:bind="isSelected"/>
+                {{display_name}}
+              </label>
+            {{/each}}
+        </div>
+      {{/if}}
+    </div>
+
+    <div class="attribute-selector__group">
+      <div class="attribute-selector__header">
+        <div class="attribute-selector__checkbox">
+          <input type="checkbox" checked 
+                 el:checked:bind="showMappings"/>
+        </div>
+        <div class="attribute-selector__title">
+          Mappings
+        </div>
+        {{#if showMappings}}
+          <div>
+            <a data-action="select_toggle"
+              data-type="mappings"
+              data-value="true"
+              href="javascript://">
+                Select All
+            </a>
+            /
+            <a data-action="select_toggle"
+              data-value="false"
+              data-type="mappings"
+              href="javascript://">
+                None
+            </a>
+          </div>
+        {{/if}}
+      </div>
+      {{#if showMappings}}
+        <div class="attribute-wrap">
+          {{#each mappings}}
+            <label title="{{display_name}}">
+              <input type="checkbox" name="{{key}}" checked
+                     el:checked:bind="isSelected"/>
+              {{display_name}}
+            </label>
+          {{/each}}
+        </div>
+      {{/if}}
+    </div>
+
+    {{#if useLocalAttribute}}
+      <div class="attribute-selector__group">
+        <div class="attribute-selector__header">
+          <div class="attribute-selector__checkbox">
+            <input type="checkbox" checked 
+                   el:checked:bind="showLocalAttributes"/>
+          </div>
+          <div class="attribute-selector__title">
+            Assessment Specific Custom Attributes
+          </div>
+          {{#if showLocalAttributes}}
+            <div>
+              <a data-action="select_toggle"
+                data-type="local_attributes"
+                data-value="true"
+                href="javascript://">
+                  Select All
+              </a>
+              /
+              <a data-action="select_toggle"
+                data-value="false"
+                data-type="local_attributes"
+                href="javascript://">
+                  None
+              </a>
+            </div>
+          {{/if}}
+        </div>
+        {{#if showLocalAttributes}}
+          <div class="attribute-wrap">
+            {{#each localAttributes}}
+              <label title="{{display_name}}">
+                <input type="checkbox" name="{{key}}" checked
+                       el:checked:bind="isSelected"/>
+                {{display_name}}
+              </label>
+            {{/each}}
+          </div>
+        {{/if}}
+      </div>
+    {{/if}}
+</div>

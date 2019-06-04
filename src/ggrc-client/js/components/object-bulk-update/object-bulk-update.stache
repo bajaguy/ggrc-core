@@ -1,0 +1,104 @@
+{{!
+    Copyright (C) 2019 Google Inc.
+    Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
+}}
+
+<div class="modal-header">
+  <a class="modal-dismiss pull-right" href="javascript://" data-dismiss="modal">
+    <i class="fa fa-times black"></i>
+  </a>
+  <h2>
+    Bulk Update
+  </h2>
+</div>
+<div class="modal-filter modal-body">
+  <collapsible-panel softMode:from="true" titleText:from="'filter'" expanded:bind="showSearch">
+    <advanced-search-wrapper
+      modelName:from="model.model_singular"
+      modelDisplayName:from="model.title_plural"
+      filterItems:to="scope.vars.filterItems"
+      statusItem:to="scope.vars.statusItem"
+      on:el:enter="onSubmit()">
+      <div class="object-controls">
+        <div class="object-controls__row">
+          <div class="object-controls__state">
+            <advanced-search-filter-state
+              modelName:from="modelName"
+              stateModel:bind="statusItem.value"
+              showOperator:from="false">
+            </advanced-search-filter-state>
+          </div>
+        </div>
+        <div class="object-controls__filters">
+          <advanced-search-filter-container
+            items:bind="filterItems"
+            availableAttributes:from="availableAttributes"
+            modelName:from="modelName"
+            defaultStatusFilter:from="false"
+            showAddButton:from="mappingItems.length">
+          </advanced-search-filter-container>
+        </div>
+        <div class="object-controls__actions">
+          <div class="object-controls__actions--left">
+            <button type="button" class="btn btn-small btn-white" on:el:click="addFilterAttribute">Add Attribute</button>
+          </div>
+          <div class="object-controls__actions--right">
+            <button type="reset" class="btn btn-small btn-white" {{#if is_loading}}disabled="disabled"{{/if}} on:el:click="resetFilters()">Reset</button>
+           <button type="submit" class="btn btn-small btn-lightBlue" {{#if is_loading}}disabled="disabled"{{/if}} on:el:click="onSubmit()">Search</button>
+          </div>
+        </div>
+      </div>
+    </advanced-search-wrapper>
+  </collapsible-panel>
+</div>
+
+<div class="modal-body">
+  <collapsible-panel softMode:from="true" titleText:from="'Search Results ({{scope.vars.totalObjects}})'" expanded:bind="showResults">
+    <div class="search-results">
+      <mapper-results
+        baseInstance:from="parentInstance"
+        isLoading:bind="is_loading"
+        object:from="object"
+        type:from="type"
+        selected:from="selected"
+        @onSearch:to="onSearchCallback"
+        defaultSort:from="defaultSort"
+        paging.total:to="scope.vars.totalObjects"
+        entries:bind="entries"
+        filterItems:from="scope.vars.filterItems"
+        statusItem:from="scope.vars.statusItem"
+        on:loaded="onLoaded()"
+        applyOwnedFilter:from="reduceToOwnedItems">
+      </mapper-results>
+    </div>
+  </collapsible-panel>
+</div>
+<div class="modal-body">
+  <collapsible-panel softMode:from="true" titleText:from="'Bulk Update'" expanded:bind="showTargetState">
+    <bulk-update-target-state
+      targetStates:from="targetStates"
+      targetState:bind="targetState"
+      modelName:from="model.model_singular"
+      enabled:from="selected.length"
+      class="target-state">
+    </bulk-update-target-state>
+  </collapsible-panel>
+</div>
+
+<div class="modal-footer modal-footer--trailed {{#if showResults}}expanded{{/if}}">
+  <div class="control-buttons">
+    <div class="confirm-buttons">
+      <span class="confirm-buttons__objects-count">
+        {{selected.length}}
+        object(s) selected
+      </span>
+      <button type="button" class="btn btn-small btn-white btn-cancel">
+        Cancel
+      </button>
+      <button type="button" class="btn-update btn btn-small btn-green"
+        {{^if selected.length}}disabled="disabled"{{/if}}>
+        Update
+      </button>
+    </div>
+  </div>
+</div>

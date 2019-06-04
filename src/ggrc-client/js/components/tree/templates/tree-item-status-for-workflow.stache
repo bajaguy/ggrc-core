@@ -1,0 +1,12 @@
+{{!
+    Copyright (C) 2019 Google Inc.
+    Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
+}}
+
+{{#if_instance_of instance "Cycle|CycleTaskGroup|CycleTaskGroupObjectTask"}}
+    <div class="tree-item__icon-wrapper">
+       <span class="state-value-dot {{statusCSSClass}}">
+            {{instance.status}}
+          </span>
+    </div>
+{{/if_instance_of}}

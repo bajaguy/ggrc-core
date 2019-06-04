@@ -1,0 +1,18 @@
+{{!
+    Copyright (C) 2019 Google Inc.
+    Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
+}}
+
+{{#each list}}
+<li class="{{class.category}}" data-model="true" {{canData 'model'}}>
+  <a href="{{viewLink}}" class="show-extended">
+     <span class="lhs-item lhs-item-medium">
+       {{title}}
+     </span>
+  </a>
+</li>
+{{/each}}
+
+<li class="spinny">
+  <spinner-component toggle:from="list.is_loading"></spinner-component>
+</li>

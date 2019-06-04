@@ -1,13 +1,14 @@
 /*
- Copyright (C) 2018 Google Inc.
+ Copyright (C) 2019 Google Inc.
  Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
  */
 
-const tag = 'map-button-using-assessment-type';
+import {trigger} from 'can-event';
 
 export default can.Component.extend({
-  tag,
-  viewModel: {
+  tag: 'map-button-using-assessment-type',
+  leakScope: true,
+  viewModel: can.Map.extend({
     instance: {},
     deferredTo: {},
     openMapper: function () {
@@ -28,10 +29,10 @@ export default can.Component.extend({
       el.data('deferred_to', this.attr('deferredTo'));
       import(/* webpackChunkName: "mapper" */ '../../controllers/mapper/mapper')
         .then(() => {
-          can.trigger(el, 'openMapper', ev);
+          trigger.call(el[0], 'openMapper', ev);
         });
     },
-  },
+  }),
   events: {
     inserted: function () {
       this.viewModel.attr('deferredTo',

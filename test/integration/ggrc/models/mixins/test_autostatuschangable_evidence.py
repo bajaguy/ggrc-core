@@ -1,7 +1,8 @@
-# Copyright (C) 2018 Google Inc.
+# Copyright (C) 2019 Google Inc.
 # Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 
 """Integration test for AutoStatusChangeable mixin related evidence"""
+import collections
 
 import ddt
 
@@ -14,38 +15,6 @@ from integration.ggrc.models.mixins import test_autostatuschangable as asc
 class TestEvidences(asc.TestMixinAutoStatusChangeableBase):
   """Test case for AutoStatusChangeable evidences handlers"""
   # pylint: disable=invalid-name
-
-  @ddt.data(
-      ('URL', models.Assessment.DONE_STATE,
-       models.Assessment.PROGRESS_STATE),
-      ('URL', models.Assessment.START_STATE,
-       models.Assessment.PROGRESS_STATE),
-      ('URL', models.Assessment.FINAL_STATE,
-       models.Assessment.PROGRESS_STATE),
-      ('FILE', models.Assessment.DONE_STATE,
-       models.Assessment.PROGRESS_STATE),
-      ('FILE', models.Assessment.START_STATE,
-       models.Assessment.PROGRESS_STATE),
-      ('FILE', models.Assessment.FINAL_STATE,
-       models.Assessment.PROGRESS_STATE),
-      ('FILE', models.Assessment.REWORK_NEEDED,
-       models.Assessment.REWORK_NEEDED)
-  )
-  @ddt.unpack
-  def test_map_parent(self, kind,
-                      from_status, expected_status):
-    """Move Assessment from '{1}' to '{2}' map evid with parent of type {0}"""
-    assessment = factories.AssessmentFactory(status=from_status)
-
-    factories.EvidenceFactory(
-        title='Simple title',
-        kind=kind,
-        link='some link',
-        parent_obj={
-            'id': assessment.id,
-            'type': 'Assessment'
-        })
-    self.assertEquals(expected_status, assessment.status)
 
   @ddt.data(
       ('URL', models.Assessment.DONE_STATE,
@@ -192,4 +161,31 @@ class TestEvidences(asc.TestMixinAutoStatusChangeableBase):
     })
     assessment = self.refresh_object(assessment, assessment_id)
     self.assert200(response)
+    self.assertEqual(expected_status, assessment.status)
+
+  @ddt.data(
+      ('URL', models.Assessment.FINAL_STATE, models.Assessment.PROGRESS_STATE),
+      ('FILE', models.Assessment.FINAL_STATE, models.Assessment.FINAL_STATE),
+  )
+  @ddt.unpack
+  def test_evidence_import_unmap(self, kind, from_status, expected_status):
+    """Move Assessment from '{1}' to '{2}' if evidence unmapped in import."""
+    with factories.single_commit():
+      assessment = factories.AssessmentFactory(status=from_status)
+      evidence = factories.EvidenceFactory(
+          kind=kind,
+          title='google.com',
+          link='google.com',
+          source_gdrive_id='some_id'
+      )
+      factories.RelationshipFactory(destination=assessment, source=evidence)
+
+    response = self.import_data(collections.OrderedDict([
+        ("object_type", "Assessment"),
+        ("Code*", assessment.slug),
+        ("Evidence URL", ""),
+        ("Evidence File", ""),
+    ]))
+    self._check_csv_response(response, {})
+    assessment = self.refresh_object(assessment)
     self.assertEqual(expected_status, assessment.status)

@@ -1,4 +1,4 @@
-# Copyright (C) 2018 Google Inc.
+# Copyright (C) 2019 Google Inc.
 # Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 
 """Module for Relationship model and related classes."""
@@ -9,15 +9,13 @@ import collections
 import sqlalchemy as sa
 from sqlalchemy import or_, and_
 from sqlalchemy.ext.declarative import declared_attr
-from sqlalchemy.orm import validates
 
 from ggrc import db
 from ggrc.login import is_external_app_user
-from ggrc.models.mixins import base
-from ggrc.models.mixins import Base
-from ggrc.models.mixins import ScopeObject
 from ggrc.models import reflection
 from ggrc.models.exceptions import ValidationError
+from ggrc.models.mixins import base
+from ggrc.models.mixins import Base
 
 logger = logging.getLogger(__name__)
 
@@ -173,44 +171,74 @@ class Relationship(base.ContextRBAC, Base, db.Model):
             .format(self.type, self.source_type, self.destination_type)
         )
 
-  # pylint:disable=unused-argument
-  @validates("is_external")
-  def validate_is_external(self, key, value):
-    """Validates is change of is_external column value allowed."""
-    if is_external_app_user() and (not value or self.is_external is False):
-      raise ValidationError(
-          'External application can create only external relationships.')
-    return value
+  @staticmethod
+  def _check_relation_types_group(type1, type2, group1, group2):
+    """Checks if 2 types belong to 2 groups
+
+    Args:
+      type1: name of model 1
+      type2: name of model 2
+      group1: Collection of model names which belong to group 1
+      group1: Collection of model names which belong to group 2
+    Return:
+      True if types belong to different groups, else False
+    """
+
+    if (type1 in group1 and type2 in group2) or (type2 in group1 and
+                                                 type1 in group2):
+      return True
+
+    return False
 
   # pylint:disable=unused-argument
-  @staticmethod
-  def validate_delete(mapper, connection, target):
+  @classmethod
+  def validate_delete(cls, mapper, connection, target):
     """Validates is delete of Relationship is allowed."""
-    Relationship.validate_relation_by_type(target.source_type,
-                                           target.destination_type)
-    if is_external_app_user() and not target.is_external:
-      raise ValidationError(
-          'External application can delete only external relationships.')
+    cls.validate_relation_by_type(target.source_type,
+                                  target.destination_type)
 
-  @staticmethod
-  def validate_relation_by_type(source_type, destination_type):
+  @classmethod
+  def validate_relation_by_type(cls, source_type, destination_type):
     """Checks if a mapping is allowed between given types."""
     if is_external_app_user():
       # external users can map and unmap scoping objects
-      # check that relationship is external is done in a separate validator
       return
 
     from ggrc.models import all_models
-    scoping_models_names = [m.__name__ for m in all_models.all_models
-                            if issubclass(m, ScopeObject)]
-    if source_type in scoping_models_names and \
-       destination_type in ("Regulation", "Standard") or \
-       destination_type in scoping_models_names and \
-       source_type in ("Regulation", "Standard"):
+    scoping_models_names = all_models.get_scope_model_names()
+
+    # Check Regulation and Standard
+    if cls._check_relation_types_group(source_type, destination_type,
+                                       scoping_models_names,
+                                       ("Regulation", "Standard")):
       raise ValidationError(
           u"You do not have the necessary permissions to map and unmap "
           u"scoping objects to directives in this application. Please "
           u"contact your administrator if you have any questions.")
+
+    # Check Control
+    control_external_only_mappings = set(scoping_models_names)
+    control_external_only_mappings.update(("Regulation", "Standard", "Risk"))
+    if cls._check_relation_types_group(source_type, destination_type,
+                                       control_external_only_mappings,
+                                       ("Control", )):
+      raise ValidationError(
+          u"You do not have the necessary permissions to map and unmap "
+          u"controls to scoping objects, standards and regulations in this "
+          u"application. Please contact your administrator "
+          u"if you have any questions.")
+
+    # Check Risk
+    risk_external_only_mappings = set(scoping_models_names)
+    risk_external_only_mappings.update(("Regulation", "Standard", "Control"))
+    if cls._check_relation_types_group(source_type, destination_type,
+                                       risk_external_only_mappings,
+                                       ("Risk", )):
+      raise ValidationError(
+          u"You do not have the necessary permissions to map and unmap "
+          u"risks to scoping objects, controls, standards "
+          u"and regulations in this application."
+          u"Please contact your administrator if you have any questions.")
 
 
 class Relatable(object):
@@ -218,27 +246,67 @@ class Relatable(object):
 
   @declared_attr
   def related_sources(cls):  # pylint: disable=no-self-argument
-    joinstr = 'and_(remote(Relationship.destination_id) == {type}.id, '\
-        'remote(Relationship.destination_type) == "{type}")'
-    joinstr = joinstr.format(type=cls.__name__)
+    """List of Relationship where 'source' points to related object"""
+    current_type = cls.__name__
+
+    joinstr = (
+        "and_("
+        "foreign(remote(Relationship.destination_id)) == {type}.id,"
+        "Relationship.destination_type == '{type}'"
+        ")"
+        .format(type=current_type)
+    )
+
+    # Since we have some kind of generic relationship here, it is needed
+    # to provide custom joinstr for backref. If default, all models having
+    # this mixin will be queried, which in turn produce large number of
+    # queries returning nothing and one query returning object.
+    backref_joinstr = (
+        "remote({type}.id) == foreign(Relationship.destination_id)"
+        .format(type=current_type)
+    )
+
     return db.relationship(
-        'Relationship',
+        "Relationship",
         primaryjoin=joinstr,
-        foreign_keys='Relationship.destination_id',
-        backref='{0}_destination'.format(cls.__name__),
-        cascade='all, delete-orphan')
+        backref=sa.orm.backref(
+            "{}_destination".format(current_type),
+            primaryjoin=backref_joinstr,
+        ),
+        cascade="all, delete-orphan"
+    )
 
   @declared_attr
   def related_destinations(cls):  # pylint: disable=no-self-argument
-    joinstr = 'and_(remote(Relationship.source_id) == {type}.id, '\
-        'remote(Relationship.source_type) == "{type}")'
-    joinstr = joinstr.format(type=cls.__name__)
+    """List of Relationship where 'destination' points to related object"""
+    current_type = cls.__name__
+
+    joinstr = (
+        "and_("
+        "foreign(remote(Relationship.source_id)) == {type}.id,"
+        "Relationship.source_type == '{type}'"
+        ")"
+        .format(type=current_type)
+    )
+
+    # Since we have some kind of generic relationship here, it is needed
+    # to provide custom joinstr for backref. If default, all models having
+    # this mixin will be queried, which in turn produce large number of
+    # queries returning nothing and one query returning object.
+    backref_joinstr = (
+        "remote({type}.id) == foreign(Relationship.source_id)"
+        .format(type=current_type)
+    )
+
     return db.relationship(
-        'Relationship',
+        "Relationship",
         primaryjoin=joinstr,
-        foreign_keys='Relationship.source_id',
-        backref='{0}_source'.format(cls.__name__),
-        cascade='all, delete-orphan')
+        backref=sa.orm.backref(
+            "{}_source".format(current_type),
+            primaryjoin=backref_joinstr,
+        ),
+        cascade="all, delete-orphan"
+    )
 
   def related_objects(self, _types=None):
     """Returns all or a subset of related objects of certain types.
@@ -264,13 +332,19 @@ class Relatable(object):
   _include_links = []
 
   @classmethod
-  def eager_query(cls):
+  def eager_query(cls, **kwargs):
     from sqlalchemy import orm
 
-    query = super(Relatable, cls).eager_query()
-    return cls.eager_inclusions(query, Relatable._include_links).options(
-        orm.subqueryload('related_sources'),
-        orm.subqueryload('related_destinations'))
+    query = super(Relatable, cls).eager_query(**kwargs)
+    query = cls.eager_inclusions(query, Relatable._include_links)
+
+    if 'load_related' not in kwargs or kwargs.get('load_related'):
+      # load related in subquery by default or if it's explicitly requested
+      return query.options(
+          orm.subqueryload('related_sources'),
+          orm.subqueryload('related_destinations'))
+
+    return query
 
 
 class Stub(collections.namedtuple("Stub", ["type", "id"])):

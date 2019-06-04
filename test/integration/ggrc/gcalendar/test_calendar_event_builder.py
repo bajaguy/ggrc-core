@@ -1,4 +1,5 @@
-# Copyright (C) 2018 Google Inc.
+# -*- coding: utf-8 -*-
+# Copyright (C) 2019 Google Inc.
 # Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 
 """Tests builder of calendar events."""
@@ -53,16 +54,21 @@ class TestCalendarEventBuilder(BaseCalendarEventTest):
           attendee_id=person.id,
       )
       first_task = wf_factories.CycleTaskGroupObjectTaskFactory(
-          title=u"First task",
+          title=u"unicode ascii title",
           end_date=date(2015, 1, 10),
       )
       second_task = wf_factories.CycleTaskGroupObjectTaskFactory(
-          title=u"Second task",
+          title=u"Â тест",
+          end_date=date(2015, 1, 10),
+      )
+      third_task = wf_factories.CycleTaskGroupObjectTaskFactory(
+          title="some ordinary title",
           end_date=date(2015, 1, 10),
       )
       factories.RelationshipFactory(source=first_task, destination=event)
       factories.RelationshipFactory(source=event, destination=second_task)
-      task_ids = [first_task.id, second_task.id]
+      factories.RelationshipFactory(source=event, destination=third_task)
+      task_ids = [first_task.id, second_task.id, third_task.id]
     self.builder._preload_data()
     self.builder._generate_description_for_event(event, task_ids)
     link_not_encoded = (
@@ -73,8 +79,9 @@ class TestCalendarEventBuilder(BaseCalendarEventTest):
     )
     expected_description = (
         u"You have following tasks due today:\n"
-        u"- First task\n"
-        u"- Second task\n"
+        u"- Â тест\n"
+        u"- some ordinary title\n"
+        u"- unicode ascii title\n"
         u"Please click on the link below to review and take action "
         u"on your task(s) due today:\n"
         u"<a href='http://localhost/dashboard#!task&query={link}'>Link</a>"
@@ -142,19 +149,10 @@ class TestCalendarEventBuilder(BaseCalendarEventTest):
     relationship = self.get_relationship(task.id, event.id)
     self.assertIsNotNone(relationship)
 
-  def test_generate_events_for_task_with_event(self):
-    """Test remove relationship to event for overdue task."""
-    with factories.single_commit():
-      person = factories.PersonFactory()
-      task = wf_factories.CycleTaskGroupObjectTaskFactory(
-          end_date=date(2015, 1, 1),
-      )
-      task.add_person_with_role_name(person, u"Task Assignees")
-      event = factories.CalendarEventFactory(
-          due_date=date(2015, 1, 1),
-          attendee_id=person.id,
-      )
-      factories.RelationshipFactory(source=task, destination=event)
+  def test_remove_event_for_tasks(self):
+    """Test remove relationship to event."""
+    person, task, event = self.setup_person_task_event(date(2015, 1, 10))
+    task.status = task.DEPRECATED
     with freeze_time("2015-01-5 12:00:00"):
       self.builder._preload_data()
       self.builder._generate_events()
@@ -205,3 +203,22 @@ class TestCalendarEventBuilder(BaseCalendarEventTest):
     for task in tasks:
       relationship = self.get_relationship(task.id, event.id)
       self.assertIsNotNone(relationship)
+
+  @mock.patch("ggrc.gcalendar.calendar_event_builder.CalendarEventBuilder."
+              "_should_create_event_for", side_effect=Exception("test"))
+  def test_fail_to_build_event(self, should_create_mock):
+    """Test that sync job tried to sync the second event after a failure."""
+    self.setup_person_task_event(date(2015, 1, 5))
+    self.setup_person_task_event(date(2015, 1, 6))
+    with freeze_time("2015-01-1 12:00:00"):
+      self.builder._preload_data()
+      self.builder._generate_events()
+    self.assertEqual(should_create_mock.call_count, 2)
+
+  def test_event_delete_for_overdue_tasks(self):
+    """Test that event is not deleted for overdue tasks."""
+    _, task, event = self.setup_person_task_event(date(2015, 1, 1))
+    with freeze_time("2015-01-05 12:00:00"):
+      self.builder.build_cycle_tasks()
+    relationship = self.get_relationship(task.id, event.id)
+    self.assertIsNotNone(relationship)

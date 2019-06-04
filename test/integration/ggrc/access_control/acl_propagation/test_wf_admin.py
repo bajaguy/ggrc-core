@@ -1,4 +1,4 @@
-# Copyright (C) 2018 Google Inc.
+# Copyright (C) 2019 Google Inc.
 # Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 
 """Test Access Control roles Workflow Admin propagation"""
@@ -31,10 +31,10 @@ class TestWfAdminPropagation(base.TestACLPropagation):
               "update": True,
               "delete": True,
               "read_revisions": True,
-              "map_control": (False, "unimplemented"),
+              "map_control": False,
               "map_created_control": True,
               "read_mapped_control": False,
-              "upmap_control": (False, "unimplemented"),
+              "upmap_control": False,
               "clone": True,
           },
           "TaskGroupTask": {
@@ -89,10 +89,10 @@ class TestWfAdminPropagation(base.TestACLPropagation):
               "update": True,
               "delete": True,
               "read_revisions": True,
-              "map_control": (False, "unimplemented"),
+              "map_control": False,
               "map_created_control": True,
               "read_mapped_control": True,
-              "upmap_control": (False, "unimplemented"),
+              "upmap_control": False,
               "clone": True,
           },
           "TaskGroupTask": {

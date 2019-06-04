@@ -1,11 +1,12 @@
-# Copyright (C) 2018 Google Inc.
+# Copyright (C) 2019 Google Inc.
 # Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 """Create, description, representation and equal of entities."""
 # pylint: disable=too-many-arguments
 # pylint: disable=too-few-public-methods
+# pylint: disable=inconsistent-return-statements
 
 import copy
-from datetime import datetime
+from datetime import date, datetime
 
 from dateutil import parser, tz
 
@@ -18,7 +19,8 @@ class Representation(object):
   # pylint: disable=too-many-public-methods
   diff_info = None  # {"equal": {"atr7": val7, ...}, "diff": {"atr3": val3}}
   tree_view_attrs_to_exclude = (
-      "created_at", "updated_at", "custom_attributes", "assertions")
+      "created_at", "updated_at", "custom_attributes", "assertions",
+      "external_slug", "external_id", "review")
   people_attrs_names = [
       "creators", "assignees", "verifiers", "admins", "primary_contacts",
       "secondary_contacts", "audit_captains", "auditors",
@@ -80,7 +82,6 @@ class Representation(object):
         els.TITLE: "title", els.ADMIN: "admins",
         els.CODE: "slug", els.REVIEW_STATE: "os_state",
         els.OBJECT_REVIEW: "os_state",
-        els.OBJECT_REVIEW_FULL: "object_review_txt",
         els.STATE: "status"
     }
     ui_remap_items = {
@@ -98,14 +99,20 @@ class Representation(object):
         "DESCRIPTION": "description",
         "EVIDENCE_URLS": "evidence_urls",
         "ASSERTIONS": "assertions",
+        "EXTERNAL_SLUG": "external_slug",
+        "EXTERNAL_ID": "external_id",
+        "REVIEW_STATUS": "review_status",
+        "REVIEW_STATUS_DISPLAY_NAME": "review_status_display_name",
         "PRIMARY_CONTACTS": "primary_contacts",
         "CONTROL_OPERATORS": "control_operators",
         "CONTROL_OWNERS": "control_owners",
         "URL": "url",
-        "ID": "id", "RISK_TYPE": "risk_type"
+        "ID": "id", "RISK_TYPE": "risk_type",
+        "REVIEW": "review"
     }
     csv_remap_items = {
-        csv.REVISION_DATE: "updated_at"
+        csv.REVISION_DATE: "updated_at", "REVIEW STATUS": "review_status",
+        "REVIEW_STATUS_DISPLAY_NAME": "review_status_display_name"
     }
     result_remap_items.update(ui_remap_items)
     result_remap_items.update(csv_remap_items)
@@ -124,7 +131,9 @@ class Representation(object):
                 _ for _ in objs)):
           objs = [_.__dict__ for _ in objs]
       else:
-        if (not isinstance(objs, dict) and
+        if isinstance(objs, date):
+          objs = objs.__str__()
+        elif (not isinstance(objs, dict) and
                 not isinstance(objs, (str, unicode, int))):
           objs = objs.__dict__
       return objs
@@ -267,7 +276,7 @@ class Representation(object):
   def repr_snapshot(self, parent_obj):
     """Convert entity's attributes values to Snapshot representation."""
     return (self.convert_repr_to_snapshot(
-        objs=self, parent_obj=parent_obj))
+        obj=self, parent_obj=parent_obj))
 
   def repr_min_dict(self):
     """Get and return entity's minimal dictionary representation w/
@@ -277,7 +286,7 @@ class Representation(object):
             "id": getattr(self, "id")}
 
   @classmethod  # noqa: ignore=C901
-  def convert_repr_to_snapshot(cls, objs, parent_obj):
+  def convert_repr_to_snapshot(cls, obj, parent_obj):
     """Convert object's or objects' attributes values to Snapshot
     representation.
     Retrieved values will be used for: 'id'.
@@ -294,7 +303,7 @@ class Representation(object):
           {k: v for k, v in snapshoted_obj.__dict__.iteritems()})
       return origin_obj
     return help_utils.execute_method_according_to_plurality(
-        objs=objs, types=Entity.all_entities_classes(),
+        objs=obj, types=Entity.all_entities_classes(),
         method_name=convert_repr_to_snapshot, parent_obj=parent_obj)
 
   def update_attrs(self, is_replace_attrs=True, is_allow_none=True,
@@ -626,7 +635,7 @@ class Entity(Representation):
         "primary_contacts", "secondary_contacts", "status",
         "comments", "custom_attribute_definitions", "custom_attribute_values",
         "custom_attributes", "created_at", "updated_at", "modified_by",
-        "object_review_txt", "description", **attrs)
+        "description", **attrs)
 
   @staticmethod
   def all_entities_classes():
@@ -635,7 +644,9 @@ class Entity(Representation):
         PersonEntity, CustomAttributeDefinitionEntity, ProgramEntity,
         ControlEntity, AuditEntity, AssessmentEntity, AssessmentTemplateEntity,
         IssueEntity, CommentEntity, ObjectiveEntity, AccessControlRoleEntity,
-        RiskEntity, OrgGroupEntity, ProposalEntity)
+        RiskEntity, OrgGroupEntity, ProposalEntity, ReviewEntity,
+        ProductEntity
+    )
 
   def __lt__(self, other):
     return self.slug < other.slug
@@ -652,6 +663,13 @@ class CommentEntity(Representation):
 
   def __lt__(self, other):
     return self.description < other.description
+
+  def repr_ui(self):
+    """Represents UI view of comment."""
+    ui_attrs = copy.deepcopy(self.attrs_names_to_repr)
+    ui_attrs.remove("type")
+    return dict(
+        zip(ui_attrs, [getattr(self, ui_attr) for ui_attr in ui_attrs]))
 
 
 class PersonEntity(Entity):
@@ -725,13 +743,20 @@ class ProgramEntity(Entity):
     self.delete_attrs("admins")
     self.set_attrs(
         "managers", "editors", "readers", "primary_contacts",
-        "secondary_contacts", **attrs)
+        "secondary_contacts", "review", **attrs)
+
+
+class ProductEntity(Entity):
+  """Class that represent model for Product entity."""
+  def __init__(self, **attrs):
+    super(ProductEntity, self).__init__()
 
 
 class ControlEntity(Entity):
   """Class that represent model for Control entity."""
-  ASSERTIONS = {"Confidentiality": 37, "Integrity": 38,
-                "Availability": 39, "Security": 40, "Privacy": 41}
+  ASSERTIONS = {"confidentiality": "Confidentiality", "integrity": "Integrity",
+                "availability": "Availability", "security": "Security",
+                "privacy": "Privacy"}
   __hash__ = None
 
   def __init__(self, **attrs):
@@ -740,8 +765,9 @@ class ControlEntity(Entity):
         "primary_contacts", "secondary_contacts")
     self.set_attrs(
         "control_operators", "control_owners", "principal_assignees",
-        "secondary_assignees", "program",
-        "assertions", **attrs)
+        "secondary_assignees", "program", "assertions",
+        "external_slug", "external_id", "review_status",
+        "review_status_display_name", **attrs)
 
 
 class ObjectiveEntity(Entity):
@@ -803,6 +829,32 @@ class AssessmentEntity(Entity):
 
 class IssueEntity(Entity):
   """Class that represent model for Issue entity."""
+
+  def __init__(self, **attrs):
+    super(IssueEntity, self).__init__()
+    self.set_attrs("due_date", **attrs)
+
+
+class ReviewEntity(Entity):
+  """Class that represent model for Review entity."""
+
+  def __init__(self, **attrs):
+    super(ReviewEntity, self).__init__()
+    self.delete_attrs(
+        "admins", "slug", "title", "primary_contacts", "secondary_contacts",
+        "comments", "custom_attribute_definitions", "custom_attribute_values",
+        "custom_attributes")
+    self.set_attrs("type", "reviewers", "status", "last_reviewed_at",
+                   "last_reviewed_by", "reviewable", **attrs)
+
+  def convert_review_to_dict(self):
+    """Convert review entity to UI representation."""
+    return {
+        "status": self.status,
+        "reviewers": self.reviewers,
+        "last_reviewed_by": "Last reviewed by\n{}\non {}".format(
+            self.last_reviewed_by, self.last_reviewed_at) if
+        self.last_reviewed_by and self.last_reviewed_at else None}
 
 
 class ProposalEntity(Representation):

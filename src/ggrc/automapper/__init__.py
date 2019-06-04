@@ -1,4 +1,4 @@
-# Copyright (C) 2018 Google Inc.
+# Copyright (C) 2019 Google Inc.
 # Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 
 """Automapper generator."""
@@ -10,8 +10,10 @@ import sqlalchemy as sa
 import flask
 
 from ggrc import db
+from ggrc import models
 from ggrc.automapper import rules
 from ggrc import login
+from ggrc.models.mixins import mega
 from ggrc.models.audit import Audit
 from ggrc.models.automapping import Automapping
 from ggrc.models.relationship import Relationship, RelationshipsCache, Stub
@@ -35,7 +37,12 @@ class AutomapperGenerator(object):
   inserted mappings since we only queue ordered pairs (see `order`).
   """
 
-  COUNT_LIMIT = 10000
+  COUNT_LIMIT = 50000
+
+  _AUTOMAP_WITHOUT_PERMISSION = [
+      {"Audit", "Issue"},
+      {"Snapshot", "Issue"},
+  ]
 
   def __init__(self):
     self.processed = set()
@@ -63,7 +70,6 @@ class AutomapperGenerator(object):
 
   def generate_automappings(self, relationship):
     """Generate Automappings for a given relationship"""
-    # pylint: disable=protected-access
     self.auto_mappings = set()
 
     # initial relationship is special since it is already created and
@@ -78,12 +84,10 @@ class AutomapperGenerator(object):
         break
       src, dst = entry = self.queue.pop()
 
-      if {src.type, dst.type} != {"Audit", "Issue"}:
-        # Auditor doesn't have edit (+map) permission on the Audit,
-        # but the Auditor should be allowed to Raise an Issue.
-        # Since Issue-Assessment-Audit is the only rule that
-        # triggers Issue to Audit mapping, we should skip the
-        # permission check for it
+      if {src.type, dst.type} not in self._AUTOMAP_WITHOUT_PERMISSION:
+        # Mapping between some objects should be created even if there is no
+        # permission to edit (+map) this objects. Thus permissions check for
+        # them should be skipped.
         if not (permissions.is_allowed_update(src.type, src.id, None) and
                 permissions.is_allowed_update(dst.type, dst.id, None)):
           continue
@@ -98,6 +102,8 @@ class AutomapperGenerator(object):
       self._step(dst, src)
 
     if len(self.auto_mappings) <= self.COUNT_LIMIT:
+      if self.auto_mappings:
+        logger.info("Automapping count: count=%s", len(self.auto_mappings))
       self._flush(relationship)
     else:
       logger.error("Automapping limit exceeded: limit=%s, count=%s",
@@ -116,6 +122,7 @@ class AutomapperGenerator(object):
               source_type=parent_relationship.source_type,
               destination_id=parent_relationship.destination_id,
               destination_type=parent_relationship.destination_type,
+              modified_by_id=current_user_id,
           )
       )
       automapping_id = automapping_result.inserted_primary_key[0]
@@ -201,7 +208,13 @@ class AutomapperGenerator(object):
     if mappings:
       dst_related = (o for o in self.related(dst)
                      if o.type in mappings and o != src)
+      dst_model = models.get_model(dst.type)
       for related in dst_related:
+        if (issubclass(dst_model, mega.Mega) and
+           dst_model.skip_automapping(src, dst, related)):
+          # Mega objects mapping are directed and objects from child
+          # object should be mapped to parent objects, but not vice versa
+          continue
         entry = self.order(related, src)
         if entry not in self.processed:
           self.queue.add(entry)
@@ -245,7 +258,7 @@ class AutomapperGenerator(object):
 
 def register_automapping_listeners():
   """Register event listeners for auto mapper."""
-  # pylint: disable=unused-variable,unused-argument
+  # pylint: disable=unused-variable,unused-argument,protected-access
 
   def automap(session, _):
     """Automap after_flush handler."""

@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2018 Google Inc.
+  Copyright (C) 2019 Google Inc.
   Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 */
 
@@ -8,7 +8,7 @@ import Stub from '../stub';
 describe('Stub model', () => {
   let TestModel;
   beforeAll(() => {
-    TestModel = can.Model.extend({shortName: 'testModel'}, {});
+    TestModel = can.Model.extend({model_singular: 'testModel'}, {});
   });
 
   it('Creates correct stub for single model', () => {

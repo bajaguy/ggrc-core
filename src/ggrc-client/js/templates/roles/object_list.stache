@@ -1,0 +1,39 @@
+{{!
+    Copyright (C) 2019 Google Inc.
+    Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
+}}
+
+<ul class="tree-structure new-tree">
+  {{#list}}
+    <li class="tree-item role" data-model="true" {{canData 'model'}}>
+      <div class="item-main">
+        <div class="item-wrap">
+          <div class="select">
+            <div class="item-data">
+              <div class="row-fluid">
+                <div class="span8">
+                  <div class="title tree-title-area">
+                    {{name}}
+                  </div>
+                </div>
+                <div class="span4">
+                  <ul class="tree-action-list">
+                      <li>
+                        <div class="item-data">
+                          <div class="tree-title-area">
+                            <span class="scope">
+                              {{this.scope}}
+                            </span>
+                          </div>
+                        </div>
+                      </li>
+                  </ul>
+                </div>
+              </div>
+            </div><!-- item-data end -->
+          </div><!-- select end -->
+        </div><!-- item-wrap end -->
+      </div><!-- item-main end -->
+    </li>
+  {{/list}}
+</ul>

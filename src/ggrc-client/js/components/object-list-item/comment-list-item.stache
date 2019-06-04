@@ -1,0 +1,44 @@
+{{!
+    Copyright (C) 2019 Google Inc.
+    Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
+}}
+
+<div class="comment-object-item">
+    <div class="comment-object-item__header">
+      {{#if header_url_link}}
+        <div class="comment-object-item__header-link">
+          {{#if isProposalHeaderLink}}
+            <a class="comment-object-item__proposal-link"
+              href="javascript:void(0)"
+              on:el:click="openProposalTab()">
+                CHANGE PROPOSAL
+            </a>
+          {{else}}
+            <a href="header_url_link">TODO: Name of header link</a>
+          {{/if}}
+        </div>
+      {{/if}}
+      {{#if commentAuthor}}
+        <div class="comment-object-item__header-author">
+          <person-data person:from="commentAuthor"></person-data>
+        </div>
+      {{/if}}
+      <div class="comment-object-item__header-author-info">
+        {{commentAuthorType}} 
+        {{#if commentCreationDate}}
+          {{dateTime commentCreationDate}}
+        {{else}}
+          <spinner-component toggle:from="true"></spinner-component>
+        {{/if}}
+      </div>
+    </div>
+    {{#if hasRevision}}
+      <div class="comment-list__ca-description">{{customAttributeData}}</div>
+    {{/if}}
+    <div class="comment-object-item__text">
+      <read-more
+        text:from="commentText"
+        handleMarkdown:from="instance.class.isChangeableExternally">
+      </read-more>
+    </div>
+</div>

@@ -1,13 +1,11 @@
 /*
- Copyright (C) 2018 Google Inc.
+ Copyright (C) 2019 Google Inc.
  Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
  */
 
 import * as Utils from '../../../plugins/utils/models-utils';
 import Mappings from '../mappings';
-import {widgetModules} from '../../../plugins/utils/widgets-utils';
 import Permission from '../../../permission';
-import TreeViewConfig from '../../../apps/base_widgets';
 
 describe('Mappings', function () {
   let allTypes = [];
@@ -16,6 +14,7 @@ describe('Mappings', function () {
     core: {
       models: [
         'AccessGroup',
+        'AccountBalance',
         'Assessment',
         'AssessmentTemplate',
         'Audit',
@@ -26,6 +25,7 @@ describe('Mappings', function () {
         'Evidence',
         'Facility',
         'Issue',
+        'KeyReport',
         'Market',
         'Metric',
         'Objective',
@@ -47,15 +47,6 @@ describe('Mappings', function () {
         'Threat',
       ],
       notMappable: ['Assessment', 'AssessmentTemplate', 'Evidence', 'Person'],
-      scope: [
-        'Metric', 'TechnologyEnvironment', 'AccessGroup', 'DataAsset',
-        'Facility', 'Market', 'OrgGroup', 'Vendor', 'Process',
-        'Product', 'ProductGroup', 'Project', 'System',
-      ],
-    },
-    risk_assessments: {
-      models: ['RiskAssessment'],
-      notMappable: ['RiskAssessment'],
     },
     workflows: {
       models: [
@@ -75,14 +66,11 @@ describe('Mappings', function () {
     },
   };
 
-  let mappingRules;
-  let filtered;
-
   function getModelsFromGroups(groups, groupNames) {
     let models = [];
     groupNames.forEach(function (groupName) {
       let groupModels = groups[groupName].items.map(function (item) {
-        return item.singular;
+        return item.value;
       });
       models = models.concat(groupModels);
     });
@@ -94,11 +82,11 @@ describe('Mappings', function () {
     notMappableModels = notMappableModels.concat(modules[module].notMappable);
   });
 
-  filtered = _.difference(allTypes, notMappableModels);
+  const filtered = _.difference(allTypes, notMappableModels);
 
-  mappingRules = {
-    AccessGroup: _.difference(filtered, ['AccessGroup', 'Standard',
-      'Regulation']),
+  const mappingRules = Object.freeze({
+    AccessGroup: _.difference(filtered, ['AccessGroup']),
+    AccountBalance: filtered,
     Assessment: _.difference(filtered, ['Audit', 'Person', 'Program', 'Project',
       'Workflow', 'Assessment', 'Document']),
     AssessmentTemplate: [],
@@ -108,48 +96,38 @@ describe('Mappings', function () {
     Control: filtered,
     CycleTaskGroupObjectTask: _.difference(filtered, ['Person',
       'Workflow', 'Assessment', 'Document']),
-    DataAsset: _.difference(filtered, ['Standard', 'Regulation']),
+    DataAsset: filtered,
     Evidence: [],
     Document: _.difference(filtered,
       ['Audit', 'Assessment', 'Document', 'Person', 'Workflow']),
-    Facility: _.difference(filtered, ['Standard', 'Regulation']),
+    Facility: filtered,
     Issue: _.difference(filtered, [
       'Audit', 'Person', 'Workflow', 'Assessment']),
-    Market: _.difference(filtered, ['Standard', 'Regulation']),
-    Metric: _.difference(filtered, ['Standard', 'Regulation']),
+    KeyReport: filtered,
+    Market: filtered,
+    Metric: filtered,
     Objective: filtered,
-    OrgGroup: _.difference(filtered, ['Standard', 'Regulation']),
+    OrgGroup: filtered,
     Person: [],
     Policy: _.difference(filtered, ['Policy']),
-    Process: _.difference(filtered, ['Standard', 'Regulation']),
-    Product: _.difference(filtered, ['Standard', 'Regulation']),
-    ProductGroup: _.difference(filtered, ['Standard', 'Regulation']),
+    Process: filtered,
+    Product: filtered,
+    ProductGroup: filtered,
     Program: _.difference(allTypes,
-      ['Program', 'Audit', 'RiskAssessment', 'Assessment', 'Person']
+      ['Audit', 'Assessment', 'Person']
         .concat(modules.core.notMappable, modules.workflows.notMappable)),
-    Project: _.difference(filtered, ['Standard', 'Regulation']),
-    Regulation: _.difference(filtered, [...modules.core.scope, 'Regulation']),
+    Project: filtered,
+    Regulation: _.difference(filtered, ['Regulation']),
     Risk: filtered,
-    RiskAssessment: [],
     Requirement: filtered,
-    Standard: _.difference(filtered, [...modules.core.scope, 'Standard']),
-    System: _.difference(filtered, ['Standard', 'Regulation']),
+    Standard: _.difference(filtered, ['Standard']),
+    System: filtered,
     TaskGroup: _.difference(filtered, ['Audit', 'Person',
       'Workflow', 'Assessment', 'Document']),
-    TechnologyEnvironment: _.difference(filtered, ['Standard', 'Regulation']),
+    TechnologyEnvironment: filtered,
     Threat: filtered,
-    Vendor: _.difference(filtered, ['Standard', 'Regulation']),
-    MultitypeSearch: _.difference(allTypes, ['CycleTaskGroup',
-      'RiskAssessment']),
-  };
-
-  beforeAll(function () {
-    // init all modules
-    widgetModules.forEach(function (module) {
-      if (modules[module.name] && module.init_widgets) {
-        module.init_widgets();
-      }
-    });
+    Vendor: filtered,
+    MultitypeSearch: _.difference(allTypes, ['CycleTaskGroup']),
   });
 
   describe('getMappingTypes() method', function () {
@@ -175,61 +153,146 @@ describe('Mappings', function () {
     });
   });
 
-  describe('isMappableType() method', function () {
-    it('returns false for AssessmentTemplate and  any type', function () {
-      let result = Mappings.isMappableType('AssessmentTemplate', 'Program');
-      expect(result).toBe(false);
-    });
-
-    it('returns true for Program and Control', function () {
-      let result = Mappings.isMappableType('Program', 'Control');
-      expect(result).toBe(true);
-    });
-  });
-
   describe('allowedToMap() method', () => {
-    let baseWidgets;
-    beforeAll(() => {
-      baseWidgets = TreeViewConfig.attr('base_widgets_by_type');
-      TreeViewConfig.attr('base_widgets_by_type', {
-        Type1: ['Type2'],
-      });
+    beforeEach(() => {
+      spyOn(Permission, 'is_allowed_for').and.returnValue(true);
     });
 
-    afterAll(() => {
-      TreeViewConfig.attr('base_widgets_by_type', baseWidgets);
-    });
+    it('checks that types are mappable', () => {
+      spyOn(Mappings, 'getAllowedToMapModels');
 
-    it('checks mapping rules', () => {
-      spyOn(Permission, 'is_allowed_for');
-      let result =
-        Mappings.allowedToMap('Issue', 'Audit', {isIssueUnmap: false});
+      let result = Mappings.allowedToMap('SourceType', 'TargetType');
+
       expect(result).toBeFalsy();
       expect(Permission.is_allowed_for).not.toHaveBeenCalled();
     });
 
-    it('checks mappable types when there is no additional mapping rules',
-      () => {
-        spyOn(Permission, 'is_allowed_for');
-        let result = Mappings.allowedToMap('DataAsset', 'Assessment');
-        expect(result).toBeFalsy();
-        expect(Permission.is_allowed_for).not.toHaveBeenCalled();
-      });
+    it('checks map and externalMap collections', () => {
+      spyOn(Mappings, 'getAllowedToMapModels');
+      spyOn(Mappings, 'getExternalMapModels');
+
+      Mappings.allowedToMap('SourceType', 'TargetType');
+
+      expect(Mappings.getAllowedToMapModels).toHaveBeenCalled();
+      expect(Mappings.getExternalMapModels).toHaveBeenCalled();
+    });
 
     it('checks permissions to update source', () => {
-      spyOn(Permission, 'is_allowed_for').and.returnValue(true);
-      let result = Mappings.allowedToMap('DataAsset', 'AccessGroup');
+      spyOn(Mappings, 'getAllowedToMapModels').and.returnValue({
+        TargetType: {},
+      });
+
+      let result = Mappings.allowedToMap('SourceType', 'TargetType');
+
       expect(result).toBeTruthy();
       expect(Permission.is_allowed_for)
-        .toHaveBeenCalledWith('update', 'DataAsset');
+        .toHaveBeenCalledWith('update', 'SourceType');
       expect(Permission.is_allowed_for.calls.count()).toEqual(1);
     });
 
     it('checks permissions to update target', () => {
-      spyOn(Permission, 'is_allowed_for').and.returnValue(true);
-      let source = new can.Map({type: 'DataAsset'});
-      let target = new can.Map({type: 'AccessGroup'});
+      spyOn(Mappings, 'getAllowedToMapModels').and.returnValue({
+        TargetType: {},
+      });
+
+      let source = new can.Map({type: 'SourceType'});
+      let target = new can.Map({type: 'TargetType'});
       let result = Mappings.allowedToMap(source, target);
+
+      expect(result).toBeTruthy();
+      expect(Permission.is_allowed_for.calls.count()).toEqual(2);
+      expect(Permission.is_allowed_for.calls.argsFor(0))
+        .toEqual(['update', source]);
+      expect(Permission.is_allowed_for.calls.argsFor(1))
+        .toEqual(['update', target]);
+    });
+  });
+
+  describe('allowedToCreate() method', () => {
+    beforeEach(() => {
+      spyOn(Permission, 'is_allowed_for').and.returnValue(true);
+    });
+
+    it('checks that types are mappable', () => {
+      spyOn(Mappings, 'getAllowedToCreateModels').and.returnValue({
+        anyType: {},
+      });
+
+      let result = Mappings.allowedToCreate('SourceType', 'TargetType');
+
+      expect(result).toBeFalsy();
+      expect(Permission.is_allowed_for).not.toHaveBeenCalled();
+    });
+
+    it('checks permissions to update source', () => {
+      spyOn(Mappings, 'getAllowedToCreateModels').and.returnValue({
+        TargetType: {},
+      });
+
+      let result = Mappings.allowedToCreate('SourceType', 'TargetType');
+
+      expect(result).toBeTruthy();
+      expect(Permission.is_allowed_for)
+        .toHaveBeenCalledWith('update', 'SourceType');
+      expect(Permission.is_allowed_for.calls.count()).toEqual(1);
+    });
+
+    it('checks permissions to update target', () => {
+      spyOn(Mappings, 'getAllowedToCreateModels').and.returnValue({
+        TargetType: {},
+      });
+
+      let source = new can.Map({type: 'SourceType'});
+      let target = new can.Map({type: 'TargetType'});
+      let result = Mappings.allowedToCreate(source, target);
+
+      expect(result).toBeTruthy();
+      expect(Permission.is_allowed_for.calls.count()).toEqual(2);
+      expect(Permission.is_allowed_for.calls.argsFor(0))
+        .toEqual(['update', source]);
+      expect(Permission.is_allowed_for.calls.argsFor(1))
+        .toEqual(['update', target]);
+    });
+  });
+
+  describe('allowedToUnmap() method', () => {
+    beforeEach(() => {
+      spyOn(Permission, 'is_allowed_for').and.returnValue(true);
+    });
+
+    it('checks that types are unmappable', () => {
+      spyOn(Mappings, 'getAllowedToUnmapModels').and.returnValue({
+        anyType: {},
+      });
+
+      let result = Mappings.allowedToUnmap('SourceType', 'TargetType');
+
+      expect(result).toBeFalsy();
+      expect(Permission.is_allowed_for).not.toHaveBeenCalled();
+    });
+
+    it('checks permissions to update source', () => {
+      spyOn(Mappings, 'getAllowedToUnmapModels').and.returnValue({
+        TargetType: {},
+      });
+
+      let result = Mappings.allowedToUnmap('SourceType', 'TargetType');
+
+      expect(result).toBeTruthy();
+      expect(Permission.is_allowed_for)
+        .toHaveBeenCalledWith('update', 'SourceType');
+      expect(Permission.is_allowed_for.calls.count()).toEqual(1);
+    });
+
+    it('checks permissions to update target', () => {
+      spyOn(Mappings, 'getAllowedToUnmapModels').and.returnValue({
+        TargetType: {},
+      });
+
+      let source = new can.Map({type: 'SourceType'});
+      let target = new can.Map({type: 'TargetType'});
+      let result = Mappings.allowedToUnmap(source, target);
+
       expect(result).toBeTruthy();
       expect(Permission.is_allowed_for.calls.count()).toEqual(2);
       expect(Permission.is_allowed_for.calls.argsFor(0))
@@ -249,8 +312,6 @@ describe('Mappings', function () {
       category: 'category',
       name: 'title_plural',
       value: 'model_singular',
-      plural: 'title_plural',
-      singular: 'model_singular',
     };
 
     it('returns specified object', function () {

@@ -1,0 +1,79 @@
+{{!
+    Copyright (C) 2019 Google Inc.
+    Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
+}}
+
+{{#instance}}
+
+<three-dots-menu>
+    {{#if canGetLatestRevision}}
+        {{^if isMapperDetails}}
+            <li>
+                <snapshot-comparer-config
+                    instance:from="instance"
+                    leftRevisionId:from="instance.snapshot.revision_id"
+                    rightRevisions:from="instance.snapshot.revisions">
+                    <revisions-comparer
+                        modalTitle:from="modalTitle"
+                        modalConfirm:from="modalConfirm"
+                        buttonView:from="buttonView"
+                        instance:from="instance"
+                        leftRevisionId:from="leftRevisionId"
+                        rightRevision:from="rightRevision">
+                        <a href="javascript://" on:el:click="compareIt">
+                          <i class="fa fa-refresh"></i>
+                          Get the latest version
+                        </a>
+                    </revisions-comparer>
+                </snapshot-comparer-config>
+            </li>
+        {{/if}}
+    {{/if}}
+
+    {{#if canRead}}
+        <li>
+            {{#if instance.originalObjectDeleted}}
+                <a href="javascript:void(0)" class="disabled-original disabled">
+                    <i class="fa fa-long-arrow-right"></i>
+                    Original {{instance.class.title_singular}} is deleted
+                </a>
+            {{else}}
+                <a href="{{instance.originalLink}}">
+                    <i class="fa fa-long-arrow-right"></i>
+                    View original {{instance.class.title_singular}}
+                </a>
+            {{/if}}
+        </li>
+    {{/if}}
+
+    {{#if instance.class.isChangeableExternally}}
+        {{^if instance.originalObjectDeleted}}
+            <li>
+                <questionnaire-link instance:from="instance" showIcon:from="true">
+                    Open {{instance.class.title_singular}} in new frontend
+                </questionnaire-link>
+            </li>
+        {{/if}}
+    {{/if}}
+
+    {{#if is_info_pin}}
+      <unmap-dropdown-item
+        page_instance:from="page_instance"
+        instance:from="instance.snapshot"
+        options:from="options">
+      </unmap-dropdown-item>
+    {{/if}}
+    {{^if instance.snapshot.archived}}
+      {{#if_instance_of page_instance "Audit"}}
+        {{#is_allowed 'delete' instance.snapshot}}
+          <li>
+            <delete-button
+              instance:from="instance.snapshot">
+            </delete-button>
+          </li>
+        {{/is_allowed}}
+      {{/if_instance_of}}
+    {{/if}}
+</three-dots-menu>
+
+{{/instance}}

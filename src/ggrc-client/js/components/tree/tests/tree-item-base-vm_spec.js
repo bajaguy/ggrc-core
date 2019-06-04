@@ -1,8 +1,9 @@
 /*
- Copyright (C) 2018 Google Inc.
+ Copyright (C) 2019 Google Inc.
  Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
  */
 
+import canEvent from 'can-event';
 import * as CurrentPageUtils from '../../../plugins/utils/current-page-utils';
 import BaseTreeItemVM from '../tree-item-base-vm';
 
@@ -150,7 +151,7 @@ describe('tree-item-base viewModel', function () {
       fakeElement = {
         closest: jasmine.createSpy().and.returnValue('closest'),
       };
-      spyOn(can, 'trigger');
+      spyOn(canEvent, 'trigger');
       vm.attr('instance', 'fakeInstance');
       vm.attr('itemSelector', 'fakeSelector');
     });
@@ -164,8 +165,7 @@ describe('tree-item-base viewModel', function () {
     it('triggers "selectTreeItem" event', () => {
       vm.select(fakeElement);
 
-      expect(can.trigger).toHaveBeenCalledWith(
-        'closest',
+      expect(canEvent.trigger).toHaveBeenCalledWith(
         'selectTreeItem',
         ['closest', 'fakeInstance']);
     });

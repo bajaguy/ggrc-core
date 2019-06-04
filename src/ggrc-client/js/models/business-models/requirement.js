@@ -1,5 +1,5 @@
 /*
-    Copyright (C) 2018 Google Inc.
+    Copyright (C) 2019 Google Inc.
     Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 */
 
@@ -7,11 +7,11 @@ import Cacheable from '../cacheable';
 import uniqueTitle from '../mixins/unique-title';
 import caUpdate from '../mixins/ca-update';
 import accessControlList from '../mixins/access-control-list';
-import baseNotifications from '../mixins/base-notifications';
+import baseNotifications from '../mixins/notifications/base-notifications';
 import Stub from '../stub';
 import Relationship from '../service-models/relationship';
 
-export default Cacheable('CMS.Models.Requirement', {
+export default Cacheable.extend({
   root_object: 'requirement',
   root_collection: 'requirements',
   model_plural: 'Requirements',
@@ -73,11 +73,22 @@ export default Cacheable('CMS.Models.Requirement', {
     status: 'Draft',
   },
   statuses: ['Draft', 'Deprecated', 'Active'],
-  init: function () {
-    this._super(...arguments);
-    this.validateNonBlank('title');
-  },
 }, {
+  define: {
+    title: {
+      value: '',
+      validate: {
+        required: true,
+        validateUniqueTitle: true,
+      },
+    },
+    _transient_title: {
+      value: '',
+      validate: {
+        validateUniqueTitle: true,
+      },
+    },
+  },
   created() {
     this._super(...arguments);
 

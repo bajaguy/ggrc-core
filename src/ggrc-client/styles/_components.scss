@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2018 Google Inc.
+ * Copyright (C) 2019 Google Inc.
  * Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
  */
 
@@ -9,7 +9,7 @@
 @import "components/comment/comment-input";
 @import "components/comment/comment-add-form";
 @import "components/comment/comment-list";
-@import "components/tree_pagination/tree_pagination";
+@import "components/tree-pagination/tree-pagination";
 @import "components/simple-modal/simple-modal";
 @import "components/simple-popover/simple-popover";
 @import "components/read-more/read-more";
@@ -47,7 +47,7 @@
 @import "components/tasks-counter/tasks-counter";
 @import "components/object-state-toolbar/object-state-toolbar";
 @import "components/form/ggrc-form";
-@import "components/inline/inline";
+@import "components/inline-edit-control/inline-edit-control";
 @import "components/issue/issue";
 @import "components/related-objects/related-urls";
 @import "components/person/person-data";
@@ -66,3 +66,13 @@
 @import "components/change-request-link/change-request-link";
 @import "components/people-list-info/people-list-info";
 @import "components/task-group-objects/task-group-objects";
+@import "components/dashboard-workflows/dashboard-workflows";
+@import "components/cycle-task-objects/cycle-task-objects";
+@import "components/questionnaire-link/questionnaire-link";
+@import "components/proposable-control/proposable-control";
+@import "components/general-page-header/general-page-header";
+@import "components/people-autocomplete/people-autocomplete";
+@import "components/issue-tracker/_modal-issue-tracker-fields";
+@import "components/issue-tracker/_info-issue-tracker-fields";
+@import "components/issue-tracker/_info-pane-issue-tracker-fields";
+@import "components/mapped-controls/mapped-controls";

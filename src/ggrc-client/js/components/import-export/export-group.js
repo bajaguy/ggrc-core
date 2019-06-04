@@ -1,16 +1,17 @@
 /*
-  Copyright (C) 2018 Google Inc.
+  Copyright (C) 2019 Google Inc.
   Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 */
 
 import './export-panel';
-import template from './templates/export-group.mustache';
+import template from './templates/export-group.stache';
 import panelModel from './panel';
 
 export default can.Component.extend('exportGroup', {
   tag: 'export-group',
-  template,
-  viewModel: {
+  view: can.stache(template),
+  leakScope: true,
+  viewModel: can.Map.extend({
     define: {
       isRemovable: {
         get() {
@@ -43,7 +44,7 @@ export default can.Component.extend('exportGroup', {
       this.attr('index', index);
       return this.attr('panels').push(new panelModel(data));
     },
-  },
+  }),
   events: {
     inserted: function () {
       this.viewModel.addObjectType({

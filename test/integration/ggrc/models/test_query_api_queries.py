@@ -1,4 +1,4 @@
-# Copyright (C) 2018 Google Inc.
+# Copyright (C) 2019 Google Inc.
 # Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 
 """Tests for making sure eager queries are working on all mixins."""
@@ -24,37 +24,40 @@ class TestAllModels(WithQueryApi, TestCase):
     self.api = api_helper.Api()
 
   QUERY_API_LIMIT = {
-      'Assessment': 16,
-      'AssessmentTemplate': 10,
-      'AccessGroup': 17,
-      'Audit': 14,
-      'Comment': 8,
-      'Contract': 15,
-      'Control': 18,
-      'Cycle': 9,
-      'CycleTaskGroup': 10,
-      'CycleTaskGroupObjectTask': 14,
-      'Document': 9,
+      'Assessment': 14,
+      'AssessmentTemplate': 8,
+      'AccessGroup': 16,
+      'AccountBalance': 12,
+      'Audit': 12,
+      'Comment': 6,
+      'Contract': 13,
+      'Control': 14,
+      'Cycle': 7,
+      'CycleTaskGroup': 8,
+      'CycleTaskGroupObjectTask': 13,
+      'Document': 7,
       'Issue': 14,
-      'Market': 14,
-      'Objective': 15,
-      'OrgGroup': 14,
-      'Person': 12,
-      'Policy': 15,
-      'Process': 14,
+      'KeyReport': 12,
+      'Market': 12,
+      'Objective': 13,
+      'OrgGroup': 12,
+      'Person': 10,
+      'Policy': 13,
+      'Process': 12,
+      'System': 12,
       'Program': 17,
-      'Regulation': 15,
-      'TaskGroup': 11,
-      'TaskGroupObject': 4,
-      'TaskGroupTask': 9,
-      'Workflow': 14,
-      'TechnologyEnvironment': 8,
-      'Product': 14,
-      'Metric': 14,
-      'ProductGroup': 14,
+      'Regulation': 13,
+      'TaskGroup': 8,
+      'TaskGroupTask': 7,
+      'Workflow': 12,
+      'TechnologyEnvironment': 7,
+      'Product': 12,
+      'Metric': 12,
+      'ProductGroup': 12,
   }
 
   MODEL_FACTORIES = [
+      ggrc_factories.AccountBalanceFactory,
       ggrc_factories.AuditFactory,
       ggrc_factories.AssessmentFactory,
       ggrc_factories.AssessmentTemplateFactory,
@@ -62,12 +65,14 @@ class TestAllModels(WithQueryApi, TestCase):
       ggrc_factories.ContractFactory,
       ggrc_factories.ControlFactory,
       ggrc_factories.IssueFactory,
+      ggrc_factories.KeyReportFactory,
       ggrc_factories.MarketFactory,
       ggrc_factories.ObjectiveFactory,
       ggrc_factories.OrgGroupFactory,
       ggrc_factories.PersonFactory,
       ggrc_factories.PolicyFactory,
       ggrc_factories.ProcessFactory,
+      ggrc_factories.SystemFactory,
       ggrc_factories.ProgramFactory,
       ggrc_factories.RegulationFactory,
       ggrc_factories.DocumentFactory,
@@ -109,8 +114,8 @@ class TestAllModels(WithQueryApi, TestCase):
       self.assertEqual(
           counter.get,
           self.QUERY_API_LIMIT[model.__name__],
-          "Eager query of {model} has too much queries: "
-          "{counted} not equal to {expected} for query "
+          "Eager query of {model} has unexpected number of queries: "
+          "actual={counted}, expected={expected} for query "
           "{obj_count} instances".format(
               model=model,
               expected=self.QUERY_API_LIMIT[model.__name__],

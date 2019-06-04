@@ -1,4 +1,4 @@
-# Copyright (C) 2018 Google Inc.
+# Copyright (C) 2019 Google Inc.
 # Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 
 """Workflow RBAC Factory."""
@@ -72,6 +72,8 @@ class WorkflowRBACFactory(base.BaseRBACFactory):
 
     return self.api.post(all_models.Workflow, {
         "workflow": {
+            # workaround - title is required for validation
+            "title": "",
             "clone": self.workflow_id,
             "clone_objects": True,
             "clone_people": True,

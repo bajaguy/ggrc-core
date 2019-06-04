@@ -1,4 +1,4 @@
-# Copyright (C) 2018 Google Inc.
+# Copyright (C) 2019 Google Inc.
 # Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 
 """
@@ -12,7 +12,6 @@ from ggrc.models import all_models
 from integration.ggrc import TestCase
 from integration.ggrc.access_control import acl_helper
 from integration.ggrc.api_helper import Api
-from integration.ggrc.generator import Generator
 from integration.ggrc.generator import ObjectGenerator
 from integration.ggrc.models import factories
 
@@ -23,7 +22,6 @@ class TestCreator(TestCase):
 
   def setUp(self):
     super(TestCreator, self).setUp()
-    self.generator = Generator()
     self.api = Api()
     self.object_generator = ObjectGenerator()
     self.init_users()
@@ -51,7 +49,7 @@ class TestCreator(TestCase):
     audit_id = factories.AuditFactory().id
     all_errors = []
     base_models = {
-        "Control", "DataAsset", "Contract", "Requirement",
+        "DataAsset", "Contract", "Requirement",
         "Policy", "Regulation", "Standard", "Document", "Facility",
         "Market", "Objective", "OrgGroup", "Vendor", "Product",
         "System", "Process", "Project", "AccessGroup",
@@ -63,22 +61,28 @@ class TestCreator(TestCase):
         table_singular = model._inflector.table_singular
         table_plural = model._inflector.table_plural
         # Test POST creation
-        response = self.api.post(model, {
-            table_singular: {
-                "title": model_singular,
-                "context": None,
-                "documents_reference_url": "ref",
-                "link": "https://example.com",  # ignored except for Document
-                "contact": {
-                    "type": "Person",
-                    "id": creator_id,
+        response, _ = self.object_generator.generate_object(
+            model,
+            data={
+                table_singular: {
+                    "title": model_singular,
+                    "context": None,
+                    "documents_reference_url": "ref",
+                    # ignored except for Document
+                    "link": "https://example.com",
+                    "contact": {
+                        "type": "Person",
+                        "id": creator_id
+                    },
+                    # this is ignored on everything but Issues
+                    "audit": {
+                        "id": audit_id,
+                        "type": "Audit",
+                    }
                 },
-                "audit": {  # this is ignored on everything but Issues
-                    "id": audit_id,
-                    "type": "Audit",
-                }
-            },
-        })
+            }
+        )
+
         if response.status_code != 201:
           all_errors.append("{} post creation failed {} {}".format(
               model_singular, response.status, response.data))
@@ -180,22 +184,16 @@ class TestCreator(TestCase):
   def test_relationships_access(self):
     """Check if creator cannot access relationship objects"""
     self.api.set_user(self.users['admin'])
-    _, obj_0 = self.generator.generate(all_models.Regulation, "regulation", {
-        "regulation": {"title": "Test regulation", "context": None},
-    })
-    _, obj_1 = self.generator.generate(all_models.Regulation, "regulation", {
-        "regulation": {"title": "Test regulation 2", "context": None},
-    })
-    response, rel = self.generator.generate(
-        all_models.Relationship, "relationship", {
-            "relationship": {"source": {
-                "id": obj_0.id,
-                "type": "Regulation"
-            }, "destination": {
-                "id": obj_1.id,
-                "type": "Regulation"
-            }, "context": None},
-        }
+    _, first_regulation = self.object_generator.generate_object(
+        all_models.Regulation,
+        data={"regulation": {"title": "Test regulation", "context": None}}
+    )
+    _, second_regulation = self.object_generator.generate_object(
+        all_models.Regulation,
+        data={"regulation": {"title": "Test regulation 2", "context": None}}
+    )
+    response, rel = self.object_generator.generate_relationship(
+        first_regulation, second_regulation
     )
     relationship_id = rel.id
     self.assertEqual(response.status_code, 201)
@@ -214,9 +212,10 @@ class TestCreator(TestCase):
       requirement_content = {"title": title, "context": None}
       if extra_data:
         requirement_content.update(**extra_data)
-      return self.generator.generate(all_models.Requirement, "requirement", {
-          "requirement": requirement_content
-      })[1]
+      return self.object_generator.generate_object(
+          all_models.Requirement,
+          data={"requirement": requirement_content}
+      )[1]
 
     def check(obj, expected):
       """Check that how many revisions of an object current user can see."""
@@ -298,14 +297,99 @@ class TestCreator(TestCase):
         revision_count
     )
 
-  @ddt.data(all_models.ControlCategory, all_models.ControlAssertion)
-  def test_permissions_for_categories(self, category_model):
-    """Test get collection for {0}."""
+  @staticmethod
+  def _query_revisions(api, resource_type, resource_id):
+    """Helper function querying revisions related to particular object."""
+    return api.send_request(
+        api.client.post,
+        api_link="/query",
+        data=[{
+            "object_name": "Revision",
+            "type": "ids",
+            "filters": {
+                "expression": {
+                    "left": {
+                        "left": {
+                            "left": "resource_type",
+                            "op": {"name": "="},
+                            "right": resource_type,
+                        },
+                        "op": {"name": "AND"},
+                        "right": {
+                            "left": "resource_id",
+                            "op": {"name": "="},
+                            "right": resource_id,
+                        },
+                    },
+                    "op": {"name": "OR"},
+                    "right": {
+                        "left": {
+                            "left": {
+                                "left": "source_type",
+                                "op": {"name": "="},
+                                "right": resource_type,
+                            },
+                            "op": {"name": "AND"},
+                            "right": {
+                                "left": "source_id",
+                                "op": {"name": "="},
+                                "right": resource_id,
+                            }
+                        },
+                        "op": {"name": "OR"},
+                        "right": {
+                            "left": {
+                                "left": "destination_type",
+                                "op": {"name": "="},
+                                "right": resource_type,
+                            },
+                            "op": {"name": "AND"},
+                            "right": {
+                                "left": "destination_id",
+                                "op": {"name": "="},
+                                "right": resource_id,
+                            }
+                        }
+                    }
+                },
+            },
+        }],
+    )
+
+  def test_revision_access_query(self):
+    """Test GC assigned to obj can access revisions through query API."""
+    with factories.single_commit():
+      program = factories.ProgramFactory()
+      audit = factories.AuditFactory()
+      factories.RelationshipFactory(
+          source=audit,
+          destination=program,
+      )
+      factories.AccessControlPersonFactory(
+          ac_list=audit.acr_name_acl_map["Auditors"],
+          person=self.users["creator"],
+      )
+
+    audit_id = audit.id
     self.api.set_user(self.users["creator"])
-    resp = self.api.get_collection(category_model, None)
-    plural_name = category_model._inflector.table_plural
-    key_name = "{}_collection".format(plural_name)
-    self.assertIn(key_name, resp.json)
-    self.assertIn(plural_name, resp.json[key_name])
-    collection = resp.json[key_name][plural_name]
-    self.assertTrue(collection, "Collection shouldn't be empty")
+    response = self._query_revisions(self.api, audit.type, audit_id)
+
+    self.assert200(response)
+    self.assertEqual(response.json[0]["Revision"]["count"], 2)
+
+  def test_rev_access_query_no_right(self):
+    """Test GC has no access to revisions of objects it has no right on."""
+    with factories.single_commit():
+      program = factories.ProgramFactory()
+      audit = factories.AuditFactory()
+      factories.RelationshipFactory(
+          source=audit,
+          destination=program,
+      )
+
+    audit_id = audit.id
+    self.api.set_user(self.users["creator"])
+    response = self._query_revisions(self.api, audit.type, audit_id)
+
+    self.assert200(response)
+    self.assertEqual(response.json[0]["Revision"]["count"], 0)

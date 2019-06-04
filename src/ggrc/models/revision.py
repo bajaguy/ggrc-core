@@ -1,22 +1,35 @@
-# Copyright (C) 2018 Google Inc.
+# Copyright (C) 2019 Google Inc.
 # Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 
 """Defines a Revision model for storing snapshots."""
+import json
+
+import flask
 
 from ggrc import builder
 from ggrc import db
-from ggrc.models.mixins import base
-from ggrc.models.mixins import Base
-from ggrc.models.mixins.filterable import Filterable
-from ggrc.models import reflection
+from ggrc import utils
 from ggrc.access_control import role
-from ggrc.models.types import LongJsonType
-from ggrc.utils.revisions_diff import builder as revisions_diff
+from ggrc.models import automapping
+from ggrc.models import mixins
+from ggrc.models import reflection
+from ggrc.models import types
+from ggrc.models.mixins import base
+from ggrc.models.mixins import before_flush_handleable
+from ggrc.models.mixins import filterable
+from ggrc.models.mixins import synchronizable
+from ggrc.models.mixins import with_readonly_access as wroa
 from ggrc.utils import referenced_objects
+from ggrc.utils.revisions_diff import builder as revisions_diff
 from ggrc.utils.revisions_diff import meta_info
 
 
-class Revision(Filterable, base.ContextRBAC, Base, db.Model):
+class Revision(before_flush_handleable.BeforeFlushHandleable,
+               synchronizable.ChangesSynchronized,
+               filterable.Filterable,
+               base.ContextRBAC,
+               mixins.Base,
+               db.Model):
   """Revision object holds a JSON snapshot of the object at a time."""
 
   __tablename__ = 'revisions'
@@ -26,13 +39,15 @@ class Revision(Filterable, base.ContextRBAC, Base, db.Model):
   event_id = db.Column(db.Integer, db.ForeignKey('events.id'), nullable=False)
   action = db.Column(db.Enum(u'created', u'modified', u'deleted'),
                      nullable=False)
-  _content = db.Column('content', LongJsonType, nullable=False)
+  _content = db.Column('content', types.LongJsonType, nullable=False)
 
   resource_slug = db.Column(db.String, nullable=True)
   source_type = db.Column(db.String, nullable=True)
   source_id = db.Column(db.Integer, nullable=True)
   destination_type = db.Column(db.String, nullable=True)
   destination_id = db.Column(db.Integer, nullable=True)
+
+  is_empty = db.Column(db.Boolean, nullable=False, default=False)
 
   @staticmethod
   def _extra_table_args(_):
@@ -73,10 +88,10 @@ class Revision(Filterable, base.ContextRBAC, Base, db.Model):
   ]
 
   @classmethod
-  def eager_query(cls):
+  def eager_query(cls, **kwargs):
     from sqlalchemy import orm
 
-    query = super(Revision, cls).eager_query()
+    query = super(Revision, cls).eager_query(**kwargs)
     return query.options(
         orm.subqueryload('modified_by'),
         orm.subqueryload('event'),  # used in description
@@ -243,6 +258,7 @@ class Revision(Filterable, base.ContextRBAC, Base, db.Model):
 
   def populate_acl(self):
     """Add access_control_list info for older revisions."""
+    # pylint: disable=too-many-locals
     roles_dict = role.get_custom_roles_for(self.resource_type)
     reverted_roles_dict = {n: i for i, n in roles_dict.iteritems()}
     access_control_list = self._content.get("access_control_list") or []
@@ -339,11 +355,13 @@ class Revision(Filterable, base.ContextRBAC, Base, db.Model):
     pop_models = {
         # ggrc
         "AccessGroup",
+        "AccountBalance",
         "Control",
         "DataAsset",
         "Directive",
         "Facility",
         "Issue",
+        "KeyReport",
         "Market",
         "Objective",
         "OrgGroup",
@@ -381,6 +399,33 @@ class Revision(Filterable, base.ContextRBAC, Base, db.Model):
         result["review_status"] = review.Review.STATES.UNREVIEWED
     return result
 
+  def populate_review_status_display_name(self, result):
+    """Get review_status if review_status_display_name is not found"""
+    # pylint: disable=invalid-name
+
+    if self.resource_type in ("Control", "Risk"):
+      if "review_status_display_name" in self._content:
+        result["review_status_display_name"] = self._content[
+            "review_status_display_name"]
+      elif "review_status" in result:
+        result["review_status_display_name"] = result["review_status"]
+
+  def populate_readonly(self):
+    """Add readonly=False to older revisions of WithReadOnlyAccess models"""
+
+    from ggrc.models import all_models
+
+    model = getattr(all_models, self.resource_type, None)
+    if not model or not issubclass(model, wroa.WithReadOnlyAccess):
+      return dict()
+
+    if "readonly" in self._content:
+      # revision has flag "readonly", use it
+      return {"readonly": self._content["readonly"]}
+
+    # not flag "readonly" in revision, use default value False
+    return {"readonly": False}
+
   def _document_evidence_hack(self):
     """Update display_name on evideces
 
@@ -408,22 +453,20 @@ class Revision(Filterable, base.ContextRBAC, Base, db.Model):
     return {u"documents_file": document_evidence}
 
   def populate_categoies(self, key_name):
-    """Fix revision logger.
-
-    On controls in category field was loged categorization instances."""
+    """Return names of categories."""
     if self.resource_type != "Control":
       return {}
     result = []
-    for categorization in self._content.get(key_name) or []:
-      if "category_id" in categorization:
-        result.append({
-            "id": categorization["category_id"],
-            "type": categorization["category_type"],
-            "name": categorization["display_name"],
-            "display_name": categorization["display_name"],
-        })
-      else:
-        result.append(categorization)
+    categories = self._content.get(key_name)
+    if isinstance(categories, (str, unicode)) and categories:
+      result = json.loads(categories)
+    elif isinstance(categories, list):
+      for category in categories:
+        if isinstance(category, dict):
+          result.append(category.get("name"))
+        elif isinstance(category, (str, unicode)):
+          result.append(category)
+
     return {key_name: result}
 
   def _get_cavs(self):
@@ -434,16 +477,30 @@ class Revision(Filterable, base.ContextRBAC, Base, db.Model):
       return self._content["custom_attributes"]
     return []
 
+  def _get_cads(self):
+    """Return cads definitions from content and new CADs from db."""
+    from ggrc.models import custom_attribute_definition
+
+    all_cads = []
+    if "custom_attribute_definitions" in self._content and \
+       self._content["custom_attribute_definitions"]:
+      all_cads.extend(self._content["custom_attribute_definitions"])
+
+    db_cads = custom_attribute_definition.get_custom_attributes_for(
+        self.resource_type, self.resource_id)
+    all_cads_ids = [cad['id'] for cad in all_cads]
+    return all_cads + [cad for cad in db_cads if cad['id'] not in all_cads_ids]
+
   def populate_cavs(self):
     """Setup cads in cav list if they are not presented in content
 
     but now they are associated to instance."""
-    from ggrc.models import custom_attribute_definition
-    cads = custom_attribute_definition.get_custom_attributes_for(
-        self.resource_type, self.resource_id)
+    cads = self._get_cads()
     cavs = {int(i["custom_attribute_id"]): i for i in self._get_cavs()}
+    cads_ids = set()
     for cad in cads:
       custom_attribute_id = int(cad["id"])
+      cads_ids.add(custom_attribute_id)
       if custom_attribute_id in cavs:
         # Old revisions can contain falsy values for a Checkbox
         if cad["attribute_type"] == "Checkbox" \
@@ -456,7 +513,6 @@ class Revision(Filterable, base.ContextRBAC, Base, db.Model):
         value = cad["default_value"]
       cavs[custom_attribute_id] = {
           "attribute_value": value,
-          "attribute_object_id": None,
           "custom_attribute_id": custom_attribute_id,
           "attributable_id": self.resource_id,
           "attributable_type": self.resource_type,
@@ -465,6 +521,10 @@ class Revision(Filterable, base.ContextRBAC, Base, db.Model):
           "type": "CustomAttributeValue",
           "context_id": None,
       }
+
+    cavs = {cad_id: value for cad_id, value in cavs.iteritems()
+            if cad_id in cads_ids}
+
     return {"custom_attribute_values": cavs.values(),
             "custom_attribute_definitions": cads}
 
@@ -511,7 +571,6 @@ class Revision(Filterable, base.ContextRBAC, Base, db.Model):
         "ObjectTemplates": ["name", ],
         "Proposal": ["instance_type", ],
         "Snapshot": ["child_type", "parent_type", ],
-        "TaskGroupObject": ["object_type", ],
     }
     # change to add special values cases
     special_cases = {
@@ -554,6 +613,41 @@ class Revision(Filterable, base.ContextRBAC, Base, db.Model):
             cav["attributable_type"] = "Requirement"
         populated_content["custom_attribute_values"] = cavs
 
+  def populate_options(self, populated_content):
+    """Update revisions for Sync models to have Option fields as string."""
+    if self.resource_type == "Control":
+      for attr in ["kind", "means", "verify_frequency"]:
+        attr_value = populated_content.get(attr)
+        if isinstance(attr_value, dict):
+          populated_content[attr] = attr_value.get("title")
+        elif isinstance(attr_value, (str, unicode)):
+          populated_content[attr] = attr_value
+        else:
+          populated_content[attr] = None
+
+  def populate_automappings(self):
+    """Add automapping info in revisions.
+
+    Populate Relationship revisions with automapping info to help FE
+    show Change Log, but we should not show automapping info
+    in case of deleted relationship"""
+    if ("automapping_id" not in self._content or
+            not self._content["automapping_id"] or
+            self.action != "created"):
+      return {}
+    automapping_id = self._content["automapping_id"]
+    if not hasattr(flask.g, "automappings_cache"):
+      flask.g.automappings_cache = dict()
+    if automapping_id not in flask.g.automappings_cache:
+      automapping_obj = automapping.Automapping.query.get(automapping_id)
+      if automapping_obj is None:
+        return {}
+      automapping_json = automapping_obj.log_json()
+      flask.g.automappings_cache[automapping_id] = automapping_json
+    else:
+      automapping_json = flask.g.automappings_cache[automapping_id]
+    return {"automapping": automapping_json}
+
   @builder.simple_property
   def content(self):
     """Property. Contains the revision content dict.
@@ -572,15 +666,39 @@ class Revision(Filterable, base.ContextRBAC, Base, db.Model):
     populated_content.update(self.populate_categoies("assertions"))
     populated_content.update(self.populate_cad_default_values())
     populated_content.update(self.populate_cavs())
+    populated_content.update(self.populate_readonly())
+    populated_content.update(self.populate_automappings())
 
     self.populate_requirements(populated_content)
+    self.populate_options(populated_content)
+    self.populate_review_status_display_name(populated_content)
     # remove custom_attributes,
     # it's old style interface and now it's not needed
     populated_content.pop("custom_attributes", None)
-
+    # remove attribute_object_id not used by FE anymore
+    for item in populated_content["custom_attribute_values"]:
+      item.pop("attribute_object_id", None)
     return populated_content
 
   @content.setter
   def content(self, value):
     """ Setter for content property."""
     self._content = value
+
+  def _handle_if_empty(self):
+    """Check if revision is empty and update is_empty flag if true."""
+
+    # Check if new revision contains any changes in resource state. Revisions
+    # created with "created" or "deleted" action are not considered empty.
+    if self in db.session.new and self.action == u"modified":
+      obj = referenced_objects.get(self.resource_type, self.resource_id)
+      # Content serialization and deserialization is needed since content of
+      # prev revision stored in DB was serialized before storing and due to
+      # this couldn't be correctly compared to content of revision in hands.
+      content = json.loads(utils.as_json(self.content))
+      self.is_empty = bool(
+          obj and not revisions_diff.changes_present(obj, content))
+
+  def handle_before_flush(self):
+    """Handler that called  before SQLAlchemy flush event."""
+    self._handle_if_empty()

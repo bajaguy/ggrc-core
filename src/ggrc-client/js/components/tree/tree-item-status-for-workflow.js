@@ -1,9 +1,9 @@
 /*
- Copyright (C) 2018 Google Inc.
+ Copyright (C) 2019 Google Inc.
  Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
  */
 
-import template from './templates/tree-item-status-for-workflow.mustache';
+import template from './templates/tree-item-status-for-workflow.stache';
 
 const viewModel = can.Map.extend({
   define: {
@@ -29,6 +29,7 @@ const viewModel = can.Map.extend({
 
 export default can.Component.extend({
   tag: 'tree-item-status-for-workflow',
-  template,
+  view: can.stache(template),
+  leakScope: true,
   viewModel,
 });

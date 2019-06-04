@@ -1,22 +1,33 @@
 /*
- Copyright (C) 2018 Google Inc.
+ Copyright (C) 2019 Google Inc.
  Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
  */
 
-import template from './reusable-objects-item.mustache';
+import template from './reusable-objects-item.stache';
 
 export default can.Component.extend({
   tag: 'reusable-objects-item',
-  template: template,
-  viewModel: {
+  view: can.stache(template),
+  leakScope: true,
+  viewModel: can.Map.extend({
     disabled: false,
     reuseAllowed: true,
     instance: {},
     selectedList: [],
     isChecked: false,
-  },
+    setIsChecked() {
+      let instance = this.attr('instance');
+      let list = this.attr('selectedList');
+      let index = $.makeArray(list).indexOf(instance);
+
+      this.attr('isChecked', index >= 0);
+    },
+  }),
   events: {
-    '{viewModel} isChecked'(viewModel, ev, isChecked) {
+    init() {
+      this.viewModel.setIsChecked();
+    },
+    '{viewModel} isChecked'([viewModel], ev, isChecked) {
       let list = viewModel.attr('selectedList');
       let instance = viewModel.attr('instance');
       let index = list.indexOf(instance);
@@ -29,11 +40,8 @@ export default can.Component.extend({
         }
       }
     },
-    '{viewModel.selectedList} change'(list) {
-      let instance = this.viewModel.attr('instance');
-      let index = list.indexOf(instance);
-
-      this.viewModel.attr('isChecked', index >= 0);
+    '{viewModel.selectedList} length'() {
+      this.viewModel.setIsChecked();
     },
   },
 });

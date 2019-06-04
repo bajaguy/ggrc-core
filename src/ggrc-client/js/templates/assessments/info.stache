@@ -1,0 +1,13 @@
+{{!
+    Copyright (C) 2019 Google Inc.
+    Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
+}}
+{{#if instance}}
+  <assessment-info-pane instance:from="instance"></assessment-info-pane>
+  {{#if is_info_widget}}
+    <info-pane-footer createdAt:from="instance.created_at"
+                      modifiedAt:from="instance.updated_at"
+                      modifiedBy:from="instance.modified_by">
+    </info-pane-footer>
+  {{/if}}
+{{/if}}

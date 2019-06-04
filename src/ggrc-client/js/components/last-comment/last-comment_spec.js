@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2018 Google Inc.
+  Copyright (C) 2019 Google Inc.
   Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 */
 
@@ -16,6 +16,24 @@ describe('last-comment component', () => {
 
   beforeEach(() => {
     vm = getComponentVM(Component);
+  });
+
+  describe('"commentText" get', () => {
+    beforeEach(() => {
+      vm.attr('comment', {});
+    });
+
+    it('returns comment description without tags', () => {
+      vm.attr('comment.description', '<a>ara</a>');
+
+      expect(vm.attr('commentText')).toBe('ara');
+    });
+
+    it('returns empty string if no description in comment', () => {
+      vm.attr('comment.description', null);
+
+      expect(vm.attr('commentText')).toBe('');
+    });
   });
 
   describe('getAuthor() method', () => {
@@ -39,10 +57,6 @@ describe('last-comment component', () => {
   });
 
   describe('tooltip() method', () => {
-    beforeEach(() => {
-
-    });
-
     describe('returns empty string', () => {
       it('if there is no comment', () => {
         vm.attr('comment', null);
@@ -144,13 +158,13 @@ describe('last-comment component', () => {
         const comment = 'mockComment';
         vm.attr('comment', null);
 
-        handler({}, {comment});
+        handler([{}], {comment});
 
         expect(vm.attr('comment')).toEqual(comment);
       });
 
       it('calls getAuthor() method of viewModel', () => {
-        handler({}, {});
+        handler([{}], {});
         expect(vm.getAuthor).toHaveBeenCalled();
       });
     });

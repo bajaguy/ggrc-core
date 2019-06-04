@@ -1,5 +1,5 @@
 {#
-Copyright (C) 2018 Google Inc.
+Copyright (C) 2019 Google Inc.
 Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 #}
 {% macro body_style() -%}
@@ -136,6 +136,7 @@ style=" margin-left: 35px;
 
 {% macro comment_content() -%}
 style=" margin-left: 2em;
+        line-height: 1.3;
         display: block;
 "
 {%- endmacro %}
@@ -269,22 +270,23 @@ style="
     "
 {%- endmacro %}
 
-{% macro import_export_container() -%}
+{% macro notification_container() -%}
   style=" display: block !important;
   max-width: 600px !important;
-  margin: 20px auto !important;
+  margin: auto !important;
+  padding: 20px;
   clear: both !important;
   "
 {%- endmacro %}
 
-{% macro import_export_block() -%}
+{% macro notification_block() -%}
   style="
   padding: 20px;
   background-color: #ffffff;
   "
 {%- endmacro %}
 
-{% macro import_export_title() -%}
+{% macro notification_title() -%}
 style="
   border-bottom: 1px solid #a5a5a5;
   padding-bottom: 20px;
@@ -292,7 +294,7 @@ style="
   "
 {%- endmacro %}
 
-{% macro import_export_body() -%}
+{% macro notification_body() -%}
 style="
   font-size: 13px;
   color: #a5a5a5;
@@ -300,7 +302,7 @@ style="
 "
 {%- endmacro %}
 
-{% macro import_export_btn() -%}
+{% macro notification_btn() -%}
   style="
   width: 40px;
   display: block;
@@ -314,25 +316,7 @@ style="
   "
 {%- endmacro %}
 
-{% macro import_export_footer() -%}
-  style="
-  text-align: right;
-  font-weight: 800;
-  font-size: 16px;
-  color: #555;
-  margin: 20px;
-"
-{%- endmacro %}
-
-{% macro bulk_sync_container() -%}
-  style=" display: block !important;
-  max-width: 600px !important;
-  margin: 20px auto !important;
-  clear: both !important;
-  "
-{%- endmacro %}
-
-{% macro bulk_sync_footer() -%}
+{% macro notification_footer() -%}
   style="
   text-align: right;
   font-weight: 800;
@@ -351,13 +335,6 @@ style=" margin-top: 0;
         font-size: 24px;
         font-weight: normal;
 "
-{%- endmacro %}
-
-{% macro bulk_sync_block() -%}
-  style="
-  padding: 20px;
-  background-color: #ffffff;
-  "
 {%- endmacro %}
 
 {% macro proposal_horizontal_line() -%}

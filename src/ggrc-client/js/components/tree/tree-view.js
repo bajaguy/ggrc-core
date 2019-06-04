@@ -1,10 +1,10 @@
 /*
- Copyright (C) 2018 Google Inc.
+ Copyright (C) 2019 Google Inc.
  Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
  */
 
-import '../sort/sort-by';
-import template from './templates/tree-view.mustache';
+import '../sort-component/sort-component';
+import template from './templates/tree-view.stache';
 
 let viewModel = can.Map.extend({
   define: {
@@ -28,6 +28,7 @@ let viewModel = can.Map.extend({
 
 export default can.Component.extend({
   tag: 'tree-view',
-  template,
+  view: can.stache(template),
+  leakScope: true,
   viewModel,
 });

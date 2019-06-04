@@ -1,0 +1,22 @@
+{{!
+  Copyright (C) 2019 Google Inc.
+  Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
+}}
+
+<div class="ggrc-form revision-history">
+  <div class="revision-history__restore-button">
+    <spinner-component class="revision-history__spinner" toggle:from="loading"></spinner-component>
+    <a class="btn btn-small btn-green {{#if loading}}disabled{{/if}}"
+       on:el:click="restore(scope.element)">
+      Restore Version
+    </a>
+  </div>
+</div>
+
+<mandatory-fields-modal state:from="modalState"
+                        instance:from="instance"
+                        revisionModifiedBy:from="restoredRevision.modified_by"
+                        revisionUpdatedAt:from="restoredRevision.updated_at"
+                        on:save="saveInstance($element)"
+                        on:cancel="revertChanges()">
+</mandatory-fields-modal>

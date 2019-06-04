@@ -1,5 +1,6 @@
-# Copyright (C) 2018 Google Inc.
+# Copyright (C) 2019 Google Inc.
 # Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
+
 from os.path import abspath, dirname, join
 
 import collections
@@ -8,7 +9,6 @@ from flask.json import dumps
 
 from ggrc.converters import get_importables
 from ggrc.models import inflector, all_models
-from ggrc.models.mixins import ScopeObject
 from ggrc.models.reflection import AttributeInfo
 from integration.ggrc import TestCase
 from integration.ggrc.models import factories
@@ -20,6 +20,11 @@ CSV_DIR = join(THIS_ABS_PATH, 'test_csvs/')
 @ddt.ddt
 class TestExportEmptyTemplate(TestCase):
   """Tests for export of import templates."""
+
+  TICKET_TRACKER_FIELDS = ["Ticket Tracker", "Component ID",
+                           "Ticket Tracker Integration", "Hotlist ID",
+                           "Priority", "Severity", "Ticket Title",
+                           "Issue Type"]
 
   def setUp(self):
     self.client.get("/login")
@@ -65,7 +70,7 @@ class TestExportEmptyTemplate(TestCase):
 
   @ddt.data("Assessment", "Issue")
   def test_ticket_tracker_field_order(self, model):
-    """Tests if Ticket Tracker fields come before mapped objects."""
+    """Tests if Ticket Tracker fields come before mapped objects for {}."""
 
     data = {
         "export_to": "csv",
@@ -76,15 +81,26 @@ class TestExportEmptyTemplate(TestCase):
     response = self.client.post("/_service/export_csv",
                                 data=dumps(data), headers=self.headers)
 
-    ticket_tracker_fields = ["Ticket Tracker", "Component ID",
-                             "Integration Enabled", "Hotlist ID",
-                             "Priority", "Severity", "Issue Title",
-                             "Issue Type"]
     first_mapping_field_pos = response.data.find("map:")
 
-    for field in ticket_tracker_fields:
-      self.assertEquals(response.data.find(field) < first_mapping_field_pos,
-                        True)
+    for field in self.TICKET_TRACKER_FIELDS:
+      self.assertLess(response.data.find(field), first_mapping_field_pos)
+
+  @ddt.data("Assessment", "Issue")
+  def test_ticket_tracker_fields(self, model):
+    """Tests if Ticket Tracker fields are in export file for {}"""
+
+    data = {
+        "export_to": "csv",
+        "objects": [
+            {"object_name": model, "fields": "all"},
+        ],
+    }
+    response = self.client.post("/_service/export_csv",
+                                data=dumps(data), headers=self.headers)
+
+    for field in self.TICKET_TRACKER_FIELDS:
+      self.assertIn(field, response.data)
 
 
 class TestExportSingleObject(TestCase):
@@ -99,6 +115,7 @@ class TestExportSingleObject(TestCase):
     }
 
   def test_simple_export_query(self):
+    """Test simple export query."""
     response = self._import_file("data_for_export_testing_program.csv")
     self._check_csv_response(response, {})
     data = [{
@@ -140,6 +157,7 @@ class TestExportSingleObject(TestCase):
         self.assertNotIn(",Cat ipsum {},".format(i), response.data)
 
   def test_and_export_query(self):
+    """Test export query with AND clause."""
     response = self._import_file("data_for_export_testing_program.csv")
     self._check_csv_response(response, {})
     data = [{
@@ -533,7 +551,7 @@ class TestExportMultipleObjects(TestCase):
         },
         "fields": ["slug", "title", "description"],
     }, {
-        "object_name": "Control",  # control-3, control-4, control-5
+        "object_name": "Product",  # product-3, product-4, product-5
         "filters": {
             "expression": {
                 "left": {
@@ -594,7 +612,7 @@ class TestExportMultipleObjects(TestCase):
       else:
         self.assertNotIn(",con {},".format(i), response.data)
 
-    # controls
+    # product
     for i in range(115, 140):
       if i in (117, 118, 119):
         self.assertIn(",Startupsum {},".format(i), response.data)
@@ -608,16 +626,12 @@ class TestExportMultipleObjects(TestCase):
       else:
         self.assertNotIn(",Cheese ipsum ch {},".format(i), response.data)
 
-  SCOPING_MODELS_NAMES = [m.__name__ for m in all_models.all_models
-                          if issubclass(m, ScopeObject)]
-
   @ddt.data(
       "Assessment",
       "Policy",
       "Regulation",
       "Standard",
       "Contract",
-      "Control",
       "Requirement",
       "Objective",
       "Product",
@@ -631,8 +645,9 @@ class TestExportMultipleObjects(TestCase):
       "Project",
       "Vendor",
       "Risk Assessment",
-      "Risk",
       "Threat",
+      "Key Report",
+      "Account Balance",
   )
   def test_asmnt_procedure_export(self, model):
     """Test export of Assessment Procedure. {}"""
@@ -652,14 +667,10 @@ class TestExportMultipleObjects(TestCase):
           ("Description", "{} description".format(model)),
           ("Program", program.slug),
           ("Audit", audit.slug),
-          ("Start Date", ""),
-          ("End Date", ""),
+          ("Start Date", "01/02/2019"),
+          ("End Date", "03/03/2019"),
       ]))
-      if model == "Control":
-        import_queries[-1]["Assertions"] = "Privacy"
-      if model == "Risk":
-        import_queries[-1]["Risk Type"] = "Risk type"
-      if model.replace(" ", "") in self.SCOPING_MODELS_NAMES:
+      if model.replace(" ", "") in all_models.get_scope_model_names():
         import_queries[-1]["Assignee"] = "user@example.com"
         import_queries[-1]["Verifier"] = "user@example.com"
 

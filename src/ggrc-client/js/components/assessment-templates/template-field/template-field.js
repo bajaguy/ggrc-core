@@ -1,5 +1,5 @@
 /*
-    Copyright (C) 2018 Google Inc.
+    Copyright (C) 2019 Google Inc.
     Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 */
 
@@ -7,7 +7,7 @@ import {
   ddValidationValueToMap,
   ddValidationMapToValue,
 } from '../../../plugins/utils/ca-utils';
-import template from './template-field.mustache';
+import template from './template-field.stache';
 
 /*
  * Template field
@@ -16,8 +16,9 @@ import template from './template-field.mustache';
  */
 export default can.Component.extend({
   tag: 'template-field',
-  template,
-  viewModel: {
+  view: can.stache(template),
+  leakScope: true,
+  viewModel: can.Map.extend({
     types: [],
     field: null,
     /*
@@ -43,7 +44,7 @@ export default can.Component.extend({
      * {value: 2, attachment: true, comment: false},
      * ]
      */
-    denormalizeMandatory: function (field, flags) {
+    denormalizeMandatory: function (field) {
       let options = _.splitTrim(field.attr('multi_choice_options'));
       let vals = _.splitTrim(field.attr('multi_choice_mandatory'));
       let isEqualLength = options.length === vals.length;
@@ -62,6 +63,7 @@ export default can.Component.extend({
       return _.zip(options, vals).map(function (zip) {
         let attr = new can.Map();
         let val = parseInt(zip[1], 10);
+        attr.attr('type', field.attr('attribute_type'));
         attr.attr('value', zip[0]);
         attr.attr(ddValidationValueToMap(val));
         return attr;
@@ -76,9 +78,9 @@ export default can.Component.extend({
      * is normalized into "2, 3" (10b, 11b).
      */
     normalizeMandatory: function (attrs) {
-      return can.map(attrs, ddValidationMapToValue).join(',');
+      return _.filteredMap(attrs, ddValidationMapToValue).join(',');
     },
-  },
+  }),
   events: {
     /**
      * The component's entry point.

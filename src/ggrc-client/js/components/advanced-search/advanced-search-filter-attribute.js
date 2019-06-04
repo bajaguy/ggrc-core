@@ -1,10 +1,10 @@
 /*
- Copyright (C) 2018 Google Inc.
+ Copyright (C) 2019 Google Inc.
  Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
  */
 
 import '../dropdown/autocomplete-dropdown';
-import template from './advanced-search-filter-attribute.mustache';
+import template from './advanced-search-filter-attribute.stache';
 
 /**
  * Filter Attribute view model.
@@ -93,7 +93,8 @@ let viewModel = can.Map.extend({
  */
 export default can.Component.extend({
   tag: 'advanced-search-filter-attribute',
-  template: template,
+  view: can.stache(template),
+  leakScope: true,
   viewModel: viewModel,
   events: {
     '{viewModel} availableAttributes': function (ev, desc, attributes) {
@@ -101,7 +102,7 @@ export default can.Component.extend({
         this.viewModel.attr('attribute.field', attributes[0].attr_title);
       }
     },
-    '{viewModel.attribute} operator'(attribute, ev, newValue, oldValue) {
+    '{viewModel.attribute} operator'([attribute], ev, newValue, oldValue) {
       if (newValue === 'is') {
         attribute.attr('value', 'empty');
         return;

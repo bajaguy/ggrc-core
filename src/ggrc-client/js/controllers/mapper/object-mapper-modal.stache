@@ -1,0 +1,12 @@
+{{!
+    Copyright (C) 2019 Google Inc.
+    Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
+}}
+
+<object-mapper deferred:from="deferred"
+               deferred_to:from="deferred_to"
+               object:from="object"
+               type:from="type"
+               joinObjectId:from="join-object-id"
+               isNew:from="isNew">
+</object-mapper>

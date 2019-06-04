@@ -1,4 +1,4 @@
-# Copyright (C) 2018 Google Inc.
+# Copyright (C) 2019 Google Inc.
 # Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 
 """Main notifications module.
@@ -35,7 +35,8 @@ def register_notification_listeners():
 def _get_value(cav, _type):
   """Get value of custom attribute item"""
   if _type == 'Map:Person':
-    return cav["attribute_object_id"]
+    return cav["attribute_object"]["id"] \
+        if cav.get("attribute_object") else None
   if _type == 'Checkbox':
     return cav["attribute_value"] == '1'
   return cav["attribute_value"]

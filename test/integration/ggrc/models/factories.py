@@ -1,4 +1,4 @@
-# Copyright (C) 2018 Google Inc.
+# Copyright (C) 2019 Google Inc.
 # Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 
 """Factories for ggrc models.
@@ -12,8 +12,10 @@ use the object generator in the ggrc.generator module.
 # pylint: disable=too-few-public-methods,missing-docstring,old-style-class
 # pylint: disable=no-init
 
+import sys
 import random
 import string
+import datetime
 from contextlib import contextmanager
 
 import factory
@@ -43,6 +45,15 @@ def single_commit():
     db.session.commit()
   finally:
     db.session.single_commit = True
+
+
+class SynchronizableExternalId:
+
+  _value_iterator = iter(xrange(sys.maxint))
+
+  @classmethod
+  def next(cls):
+    return next(cls._value_iterator)
 
 
 class TitledFactory(ModelFactory):
@@ -125,14 +136,21 @@ class ControlFactory(TitledFactory):
   class Meta:
     model = all_models.Control
 
+  assertions = factory.LazyAttribute(lambda _: '["{}"]'.format(random_str()))
   directive = factory.LazyAttribute(lambda m: RegulationFactory())
-  recipients = ""
+  external_id = factory.LazyAttribute(lambda m:
+                                      SynchronizableExternalId.next())
+  external_slug = factory.LazyAttribute(lambda m: random_str())
+  review_status = all_models.Review.STATES.UNREVIEWED
+  review_status_display_name = "some status"
 
 
 class IssueFactory(TitledFactory):
 
   class Meta:
     model = all_models.Issue
+
+  due_date = factory.LazyFunction(datetime.datetime.utcnow)
 
 
 class IssueTrackerIssueFactory(TitledFactory):
@@ -150,28 +168,6 @@ class AssessmentFactory(TitledFactory):
     model = all_models.Assessment
 
   audit = factory.LazyAttribute(lambda m: AuditFactory())
-
-
-class ControlCategoryFactory(ModelFactory):
-
-  class Meta:
-    model = all_models.ControlCategory
-
-  name = factory.LazyAttribute(lambda m: random_str(prefix='name'))
-  lft = None
-  rgt = None
-  depth = None
-  required = None
-
-
-class CategorizationFactory(ModelFactory):
-
-  class Meta:
-    model = all_models.Categorization
-
-  category_id = None
-  categorizable_id = None
-  categorizable_type = None
 
 
 class ContextFactory(ModelFactory):
@@ -280,6 +276,12 @@ class CommentFactory(ModelFactory):
     model = all_models.Comment
 
 
+class ExternalCommentFactory(ModelFactory):
+
+  class Meta:
+    model = all_models.ExternalComment
+
+
 class DocumentFactory(ModelFactory):
 
   class Meta:
@@ -343,6 +345,18 @@ class SystemFactory(TitledFactory):
 
   class Meta:
     model = all_models.System
+
+
+class KeyReportFactory(TitledFactory):
+
+  class Meta:
+    model = all_models.KeyReport
+
+
+class AccountBalanceFactory(TitledFactory):
+
+  class Meta:
+    model = all_models.AccountBalance
 
 
 class ProcessFactory(TitledFactory):
@@ -461,6 +475,12 @@ class RiskFactory(TitledFactory):
 
   risk_type = "Some Type"
   description = factory.LazyAttribute(lambda _: random_str(length=100))
+  external_id = factory.LazyAttribute(lambda _:
+                                      SynchronizableExternalId.next())
+  created_by_id = factory.LazyAttribute(lambda _: PersonFactory().id)
+  external_slug = factory.LazyAttribute(lambda m: random_str())
+  review_status = all_models.Review.STATES.UNREVIEWED
+  review_status_display_name = "some status"
 
 
 class ThreatFactory(TitledFactory):
@@ -501,7 +521,7 @@ class ReviewFactory(ModelFactory):
   class Meta:
     model = all_models.Review
 
-  reviewable = factory.LazyAttribute(lambda _: ControlFactory())
+  reviewable = factory.LazyAttribute(lambda _: ProgramFactory())
   notification_type = all_models.Review.NotificationTypes.EMAIL_TYPE
 
 
@@ -596,6 +616,14 @@ class RevisionFactory(ModelFactory):
     return rev
 
 
+class MaintenanceFactory(ModelFactory):
+
+  class Meta:
+    model = all_models.Maintenance
+
+  id = 1  # pylint: disable=invalid-name
+
+
 def get_model_factory(model_name):
   """Get object factory for provided model name"""
   from integration.ggrc_workflows.models import factories as wf_factories
@@ -603,16 +631,18 @@ def get_model_factory(model_name):
       "AccessControlRole": AccessControlRoleFactory,
       "AccessControlList": AccessControlListFactory,
       "AccessGroup": AccessGroupFactory,
+      "AccountBalance": AccountBalanceFactory,
       "Assessment": AssessmentFactory,
       "AssessmentTemplate": AssessmentTemplateFactory,
       "Audit": AuditFactory,
       "CalendarEvent": CalendarEventFactory,
+      "Comment": CommentFactory,
+      "ExternalComment": ExternalCommentFactory,
       "Contract": ContractFactory,
       "Control": ControlFactory,
       "Cycle": wf_factories.CycleFactory,
       "CycleTaskGroup": wf_factories.CycleTaskGroupFactory,
       "CycleTaskGroupObjectTask": wf_factories.CycleTaskGroupObjectTaskFactory,
-      "CycleTaskEntry": wf_factories.CycleTaskEntryFactory,
       "DataAsset": DataAssetFactory,
       "Document": DocumentFactory,
       "Evidence": EvidenceFactory,
@@ -620,7 +650,9 @@ def get_model_factory(model_name):
       "ImportExport": ImportExportFactory,
       "Issue": IssueFactory,
       "IssueTrackerIssue": IssueTrackerIssueFactory,
+      "KeyReport": KeyReportFactory,
       "Label": LabelFactory,
+      "Maintenance": MaintenanceFactory,
       "Market": MarketFactory,
       "Metric": MetricFactory,
       "Objective": ObjectiveFactory,
@@ -644,7 +676,6 @@ def get_model_factory(model_name):
       "Standard": StandardFactory,
       "System": SystemFactory,
       "TaskGroup": wf_factories.TaskGroupFactory,
-      "TaskGroupObject": wf_factories.TaskGroupObjectFactory,
       "TaskGroupTask": wf_factories.TaskGroupTaskFactory,
       "TechnologyEnvironment": TechnologyEnvironmentFactory,
       "Threat": ThreatFactory,

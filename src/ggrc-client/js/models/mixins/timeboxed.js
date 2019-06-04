@@ -1,5 +1,5 @@
 /*
-    Copyright (C) 2018 Google Inc.
+    Copyright (C) 2019 Google Inc.
     Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 */
 
@@ -8,7 +8,7 @@ import Mixin from './mixin';
 /**
  * A mixin to use for objects that can have a time limit imposed on them.
  */
-export default Mixin({
+export default Mixin.extend({
   'extend:attributes': {
     start_date: 'date',
     end_date: 'date',

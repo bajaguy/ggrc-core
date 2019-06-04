@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2018 Google Inc.
+  Copyright (C) 2019 Google Inc.
   Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 */
 
@@ -8,7 +8,8 @@ import {getRolesForType} from '../../plugins/utils/acl-utils';
 
 export default can.Component.extend({
   tag: 'related-people-access-control',
-  viewModel: {
+  leakScope: true,
+  viewModel: can.Map.extend({
     instance: {},
     deferredSave: null,
     includeRoles: [],
@@ -25,7 +26,7 @@ export default can.Component.extend({
       Verifier: true,
     }),
 
-    updateRoles: function (args) {
+    updateRoles(args) {
       if (this.attr('deferredSave')) {
         this.attr('deferredSave').push(this.performUpdate.bind(this, args));
       }
@@ -36,24 +37,24 @@ export default can.Component.extend({
         groupId: args.roleId,
       });
     },
-    performUpdate: function (args) {
+    performUpdate(args) {
       this.updateAccessControlList(args.people, args.roleId);
 
       if (this.attr('conflictRoles').length) {
         this.checkConflicts(args.roleTitle);
       }
     },
-    updateAccessControlList: function (people, roleId) {
+    updateAccessControlList(people, roleId) {
       let instance = this.attr('instance');
 
       // get people without current role
       let listWithoutRole = instance
-        .attr('access_control_list').filter(function (item) {
+        .attr('access_control_list').filter((item) => {
           return item.ac_role_id !== roleId;
         });
 
       // push update people with current role
-      people.forEach(function (person) {
+      people.forEach((person) => {
         listWithoutRole.push({
           ac_role_id: roleId,
           person: {id: person.id, type: 'Person'},
@@ -64,7 +65,7 @@ export default can.Component.extend({
         .replace(listWithoutRole);
     },
 
-    checkConflicts: function (groupTitle) {
+    checkConflicts(groupTitle) {
       let groups = this.attr('groups');
       let conflictRoles = this.attr('conflictRoles');
       let hasConflict = false;
@@ -83,7 +84,7 @@ export default can.Component.extend({
         rolesConflict: hasConflict,
       });
     },
-    isGroupsHasConflict: function (groups, conflictRoles) {
+    isGroupsHasConflict(groups, conflictRoles) {
       let hasConflict = false;
 
       let conflictGroups = groups
@@ -107,7 +108,7 @@ export default can.Component.extend({
 
       return hasConflict;
     },
-    isCurrentGroupHasConflict: function (groupTitle, groups, conflictRoles) {
+    isCurrentGroupHasConflict(groupTitle, groups, conflictRoles) {
       let hasConflict = false;
 
       // get people IDs from conflict groups except current group
@@ -131,39 +132,38 @@ export default can.Component.extend({
 
       return hasConflict;
     },
-    buildGroups: function (role, roleAssignments) {
+    buildGroups(role, roleAssignments) {
       let includeRoles = this.attr('includeRoles');
       let groupId = role.id;
       let title = role.name;
-      let group;
-      let people;
       let singleUserRole = this.singleUserRoles[title] ? true : false;
 
       if (includeRoles.length && includeRoles.indexOf(title) === -1) {
         return;
       }
 
-      group = roleAssignments[groupId];
-      people = group ?
-        group.map(function (groupItem) {
-          return {
-            id: groupItem.person.id,
-            email: groupItem.person_email,
-            name: groupItem.person_name,
-            type: 'Person',
-          };
-        }) :
-        [];
-
       return {
         title: title,
         groupId: groupId,
-        people: people,
+        people: this.getPeople(roleAssignments, groupId),
         required: role.mandatory,
         singleUserRole: singleUserRole,
       };
     },
-    filterByIncludeExclude: function (includeRoles, excludeRoles) {
+    getPeople(roleAssignments, groupId) {
+      let people = roleAssignments[groupId];
+      return people ?
+        people.map((person) => {
+          return {
+            id: person.person.id,
+            email: person.person_email,
+            name: person.person_name,
+            type: 'Person',
+          };
+        }) :
+        [];
+    },
+    filterByIncludeExclude(includeRoles, excludeRoles) {
       const instance = this.attr('instance');
       const objectRoles = getRolesForType(instance.class.model_singular);
 
@@ -172,21 +172,21 @@ export default can.Component.extend({
           _.indexOf(excludeRoles, item.name) === -1;
       });
     },
-    filterByInclude: function (includeRoles) {
+    filterByInclude(includeRoles) {
       const instance = this.attr('instance');
       const objectRoles = getRolesForType(instance.class.model_singular);
 
       return objectRoles.filter((item) =>
         _.indexOf(includeRoles, item.name) > -1);
     },
-    filterByExclude: function (excludeRoles) {
+    filterByExclude(excludeRoles) {
       const instance = this.attr('instance');
       const objectRoles = getRolesForType(instance.class.model_singular);
 
       return objectRoles.filter((item) =>
         _.indexOf(excludeRoles, item.name) === -1);
     },
-    getFilteredRoles: function () {
+    getFilteredRoles() {
       const instance = this.attr('instance');
       const includeRoles = this.attr('includeRoles');
       const excludeRoles = this.attr('excludeRoles');
@@ -204,12 +204,12 @@ export default can.Component.extend({
 
       return roles;
     },
-    setGroupOrder: function (groups, orderOfRoles) {
+    setGroupOrder(groups, orderOfRoles) {
       if (!Array.isArray(orderOfRoles)) {
         return groups;
       }
 
-      orderOfRoles.forEach(function (roleName, index) {
+      orderOfRoles.forEach((roleName, index) => {
         let roleIndex = _.findIndex(groups, {title: roleName});
         let group;
         let firstGroup;
@@ -227,7 +227,7 @@ export default can.Component.extend({
 
       return groups;
     },
-    getRoleList: function () {
+    getRoleList() {
       let roleAssignments;
       let roles;
       let groups;
@@ -243,14 +243,14 @@ export default can.Component.extend({
 
       roles = this.getFilteredRoles();
 
-      groups = _.map(roles, function (role) {
+      groups = _.map(roles, (role) => {
         return this.buildGroups(role, roleAssignments);
-      }.bind(this))
-        .filter(function (group) {
+      })
+        .filter((group) => {
           return typeof group !== 'undefined';
         })
         // sort by required
-        .sort(function (a, b) {
+        .sort((a, b) => {
           if (a.required === b.required) {
             return 0;
           }
@@ -264,18 +264,30 @@ export default can.Component.extend({
 
       return groups;
     },
-  },
-  events: {
-    refreshGroups: function () {
-      this.viewModel.attr('groups',
-        this.viewModel.getRoleList());
+    refreshPeopleInGroups() {
+      let instance = this.attr('instance');
+      let groups = this.attr('groups');
+      let roleAssignments = _.groupBy(instance
+        .attr('access_control_list'), 'ac_role_id');
+
+      groups.forEach((group) =>
+        group.attr('people', this.getPeople(roleAssignments, group.groupId)));
     },
     setupGroups() {
-      this.refreshGroups();
+      this.attr('groups', this.getRoleList());
+      this.checkConflicts();
+    },
+  }),
+  events: {
+    init() {
+      this.viewModel.setupGroups();
+    },
+    '{viewModel.instance} updated'() {
+      this.viewModel.refreshPeopleInGroups();
       this.viewModel.checkConflicts();
     },
-    inserted: 'setupGroups',
-    '{viewModel.instance} updated': 'setupGroups',
-    '{viewModel} instance': 'refreshGroups',
+    '{viewModel} instance'() {
+      this.viewModel.setupGroups();
+    },
   },
 });

@@ -1,17 +1,15 @@
 /*
-  Copyright (C) 2018 Google Inc.
+  Copyright (C) 2019 Google Inc.
   Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 */
 
-import Component from '../custom-roles';
-import {getComponentVM} from '../../../../js_specs/spec_helpers';
-import DeferredTransaction from '../../../plugins/utils/deferred-transaction-utils';
+import ViewModel from '../custom-roles-vm';
 
-describe('custom-roles component', () => {
+describe('custom-roles view model', () => {
   let vm;
 
   beforeEach(() => {
-    vm = getComponentVM(Component);
+    vm = new ViewModel();
   });
 
   describe('isReadonly prop', () => {
@@ -32,6 +30,7 @@ describe('custom-roles component', () => {
         'class': {
           isProposable: true,
         },
+        readonly: false,
       };
       vm.attr('instance', instance);
 
@@ -48,6 +47,7 @@ describe('custom-roles component', () => {
         'class': {
           isProposable: false,
         },
+        readonly: false,
       };
       vm.attr('instance', instance);
 
@@ -56,6 +56,24 @@ describe('custom-roles component', () => {
 
       vm.attr('readOnly', true);
       expect(vm.attr('isReadonly')).toBe(true);
+    });
+
+    it('returns value of instance readonly prop if ' +
+      'component readOnly is FALSE and instance.class.isProposable is FALSE',
+    () => {
+      vm.attr('readOnly', );
+      let instance = {
+        'class': {
+          isProposable: false,
+        },
+        readonly: true,
+      };
+      vm.attr('instance', instance);
+
+      expect(vm.attr('isReadonly')).toBe(true);
+
+      vm.attr('instance.readonly', false);
+      expect(vm.attr('isReadonly')).toBe(false);
     });
   });
 
@@ -104,51 +122,16 @@ describe('custom-roles component', () => {
         spyOn(vm, 'filterACL');
       });
 
-      it('calls filterACL', () => {
-        vm.save(args);
-        expect(vm.filterACL).toHaveBeenCalled();
-      });
-
-      it('sets null to updatableGroupId attribute', () => {
-        vm.save(args);
-        expect(vm.attr('updatableGroupId')).toBe(null);
-      });
-    });
-
-    describe('if deferredSave is defined', () => {
-      let instanceSave;
-
-      beforeEach(() => {
-        instanceSave = $.Deferred();
-        vm.attr('instance', {
-          save: () => instanceSave,
-        });
-        vm.attr('deferredSave', new DeferredTransaction((resolve, reject) => {
-          vm.attr('instance').save().done(resolve).fail(reject);
-        }, 0));
-        spyOn(vm, 'filterACL');
-      });
-
-      it('pushes callback into deferredSave which sets updatableGroupId',
-        (done) => {
-          let pushSpy = spyOn(vm.attr('deferredSave'), 'push')
-            .and.returnValue(instanceSave);
-          args.groupId = 711;
-
-          vm.save(args);
-          pushSpy.calls.allArgs()[0][0]();
-          expect(vm.attr('updatableGroupId')).toBe(args.groupId);
+      it('calls filterACL', (done) => {
+        vm.save(args).then(() => {
+          expect(vm.filterACL).toHaveBeenCalled();
           done();
         });
+      });
 
-      it('calls filterACL after save', (done) => {
-        spyOn(vm.attr('deferredSave'), 'push')
-          .and.returnValue(instanceSave.resolve());
-
-        vm.save(args);
-
-        instanceSave.then(() => {
-          expect(vm.filterACL).toHaveBeenCalled();
+      it('sets null to updatableGroupId attribute', (done) => {
+        vm.save(args).then(() => {
+          expect(vm.attr('updatableGroupId')).toBe(null);
           done();
         });
       });

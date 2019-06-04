@@ -1,11 +1,11 @@
 /*
- Copyright (C) 2018 Google Inc.
+ Copyright (C) 2019 Google Inc.
  Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
  */
 
 import '../../components/issue-tracker/modal-issue-tracker-fields';
 import '../../components/issue-tracker/issue-tracker-switcher';
-import '../../components/access_control_list/access-control-list-roles-helper';
+import '../../components/access-control-list/access-control-list-roles-helper';
 import '../../components/assessment/assessment-people';
 import '../../components/assessment/assessment-object-type-dropdown';
 import '../../components/assessment-templates/assessment-template-attributes/assessment-template-attributes';
@@ -16,28 +16,29 @@ import '../../components/textarea-array/textarea-array';
 import '../../components/object-list-item/object-list-item-updater';
 import '../../components/related-objects/related-documents';
 import '../../components/related-objects/related-urls';
-import '../../components/spinner/spinner';
+import '../../components/spinner-component/spinner-component';
 import '../../components/object-list/object-list';
 import '../../components/object-list-item/document-object-list-item';
 import '../../components/action-toolbar-control/action-toolbar-control';
 import '../../components/effective-dates/effective-dates';
-import '../../components/dropdown/dropdown';
-import '../../components/modal_wrappers/assessment_template_form';
-import '../../components/autocomplete/autocomplete';
+import '../../components/dropdown/dropdown-component';
+import '../../components/modal-wrappers/wrapper-assessment-template';
+import '../../components/autocomplete/autocomplete-component';
 import '../../components/external-data-autocomplete/external-data-autocomplete';
 import '../../components/person/person-data';
-import '../../components/rich_text/rich_text';
-import '../../components/modal_wrappers/checkboxes_to_list';
+import '../../components/rich-text/rich-text';
+import '../../components/modal-wrappers/checkbox-to-list';
 import '../../components/deferred-mapper';
-import '../../components/modal_wrappers/assessment-modal';
+import '../../components/modal-wrappers/assessment-modal';
 import '../../components/assessment/map-button-using-assessment-type';
 import '../../components/gca-controls/gca-controls';
-import '../../components/datepicker/datepicker';
+import '../../components/datepicker/datepicker-component';
 import '../../components/external-data-autocomplete/inline-autocomplete-wrapper';
 import '../../components/multi-select-label/multi-select-label';
 import '../../components/proposal/create-proposal';
 import '../../components/input-filter/input-filter';
 import '../../components/workflow/cycle-task-modal/cycle-task-modal';
+import '../../components/person-modal/person-modal';
 import {
   bindXHRToButton,
   BUTTON_VIEW_DONE,
@@ -46,9 +47,7 @@ import {
   checkPreconditions,
   becameDeprecated,
 } from '../../plugins/utils/controllers';
-import {REFRESH_MAPPING} from '../../events/eventTypes';
 import {
-  notifier,
   notifierXHR,
 } from '../../plugins/utils/notifiers-utils';
 import {
@@ -61,13 +60,12 @@ import Stub from '../../models/stub';
 import {getInstance} from '../../plugins/utils/models-utils';
 import {getUrlParams, changeHash} from '../../router';
 
-export default can.Control({
-  pluginName: 'ggrc_controllers_modals',
+export default can.Control.extend({
   defaults: {
-    preload_view: GGRC.mustache_path + '/dashboard/modal_preload.mustache',
-    header_view: GGRC.mustache_path + '/modals/modal_header.mustache',
+    preload_view: GGRC.templates_path + '/dashboard/modal_preload.stache',
+    header_view: GGRC.templates_path + '/modals/modal_header.stache',
     custom_attributes_view:
-    GGRC.mustache_path + '/custom_attributes/modal_content.mustache',
+    GGRC.templates_path + '/custom_attributes/modal_content.stache',
     button_view: null,
     model: null, // model class to use when finding or creating new
     instance: null, // model instance to use instead of finding/creating (e.g. for update)
@@ -87,7 +85,6 @@ export default can.Control({
   },
 }, {
   init: function () {
-    let currentUser;
     let userFetch;
 
     if (!(this.options instanceof can.Map)) {
@@ -95,7 +92,13 @@ export default can.Control({
     }
 
     if (!this.element.find('.modal-body').length) {
-      can.view(this.options.preload_view, {}, this.proxy('after_preload'));
+      $.ajax({
+        url: this.options.preload_view,
+        dataType: 'text',
+      }).then((view) => {
+        let frag = can.stache(view)();
+        this.after_preload(frag);
+      });
       return;
     }
 
@@ -103,11 +106,7 @@ export default can.Control({
     // loaded before rendering the form, otherwise initial validation can
     // incorrectly fail for form fields whose values rely on current user's
     // attributes.
-    currentUser = Person.findInCacheById(GGRC.current_user.id);
-
-    if (currentUser) {
-      currentUser = currentUser.reify();
-    }
+    const currentUser = Person.findInCacheById(GGRC.current_user.id);
 
     if (!currentUser) {
       userFetch = Person.findOne({id: GGRC.current_user.id});
@@ -135,29 +134,45 @@ export default can.Control({
       this.element.html(content);
     }
 
-    this.options.attr('$header', this.element.find('.modal-header'));
-    this.options.attr('$content', this.element.find('.modal-body'));
-    this.options.attr('$footer', this.element.find('.modal-footer'));
+    this.options.attr('headerEl', this.element.find('.modal-header')[0]);
+    this.options.attr('contentEl', this.element.find('.modal-body')[0]);
+    this.options.attr('footerEl', this.element.find('.modal-footer')[0]);
     this.on();
     this.fetch_all()
-      .then(this.proxy('apply_object_params'))
-      .then(this.proxy('serialize_form'))
+      .then(() => this.apply_object_params())
+      .then(() => this.serialize_form())
       .then(() => {
         if (!this.wasDestroyed()) {
           this.element.trigger('preload');
         }
       })
-      .then(this.proxy('autocomplete'))
+      .then((el) => this.autocomplete(el))
       .then(() => {
         if (!this.wasDestroyed()) {
           this.options.afterFetch(this.element);
           this.restore_ui_status_from_storage();
+          if (this.is_audit_modal()) {
+            this.init_audit_title();
+          }
         }
       })
       .fail((error) => {
-        notifierXHR('error')(error);
+        notifierXHR('error', error);
         this.element.modal_form('hide');
       });
+  },
+
+  is_audit_modal: function () {
+    const {instance} = this.options;
+    return instance.constructor
+      && instance.constructor.model_singular === 'Audit';
+  },
+
+  init_audit_title: function () {
+    const {instance, new_object_form: isNewObjectForm} = this.options;
+    if (isNewObjectForm) {
+      instance.initTitle();
+    }
   },
 
   apply_object_params: function () {
@@ -250,6 +265,9 @@ export default can.Control({
       }, 0);
 
       instance.attr(path, null).attr(path, ui.item);
+      if (this.is_audit_modal()) {
+        this.init_audit_title();
+      }
       if (!instance._transient) {
         instance.attr('_transient', can.Map());
       }
@@ -258,16 +276,19 @@ export default can.Control({
   },
 
   fetch_templates: function (dfd) {
-    let that = this;
-    dfd = dfd ? dfd.then(function () {
-      return that.options;
+    dfd = dfd ? dfd.then(() => {
+      return this.options;
     }) : $.when(this.options);
+
     return $.when(
-      can.view(this.options.content_view, dfd),
-      can.view(this.options.header_view, dfd),
-      can.view(this.options.button_view, dfd),
-      can.view(this.options.custom_attributes_view, dfd)
-    ).done(this.proxy('draw'));
+      $.ajax({url: this.options.content_view, dataType: 'text'}),
+      $.ajax({url: this.options.header_view, dataType: 'text'}),
+      $.ajax({url: this.options.button_view, dataType: 'text'}),
+      $.ajax({url: this.options.custom_attributes_view, dataType: 'text'}),
+      dfd,
+    ).then((content, header, footer, customAttributes, context) => {
+      this.draw(content, header, footer, customAttributes, context);
+    });
   },
 
   fetch_data: function (params) {
@@ -373,7 +394,7 @@ export default can.Control({
     return findParams.serialize ? findParams.serialize() : findParams;
   },
 
-  draw: function (content, header, footer, customAttributes) {
+  draw: function (content, header, footer, customAttributes, context) {
     if (this.wasDestroyed()) {
       return;
     }
@@ -382,11 +403,7 @@ export default can.Control({
     let isProposal = this.options.isProposal;
     let isObjectModal = modalTitle && (modalTitle.indexOf('Edit') === 0 ||
       modalTitle.indexOf('New') === 0);
-    let $form;
-    let tabList;
-    let hidableTabs;
-    let storableUI;
-    let i;
+
     if (can.isArray(content)) {
       content = content[0];
     }
@@ -400,39 +417,49 @@ export default can.Control({
       customAttributes = customAttributes[0];
     }
     if (header !== null) {
-      this.options.$header.find('h2').html(header);
+      header = can.stache(header)(context);
+      $(this.options.headerEl).find('h2').html(header);
     }
     if (content !== null) {
-      this.options.$content.html(content).removeAttr('style');
+      content = can.stache(content)(context);
+      $(this.options.contentEl).html(content).removeAttr('style');
     }
     if (footer !== null) {
-      this.options.$footer.html(footer);
+      footer = can.stache(footer)(context);
+      $(this.options.footerEl).html(footer);
     }
-
     if (customAttributes !== null && (isObjectModal || isProposal)) {
-      this.options.$content.append(customAttributes);
+      customAttributes = can.stache(customAttributes)(context);
+      $(this.options.contentEl).append(customAttributes);
     }
 
     // Update UI status array
-    $form = $(this.element).find('form');
-    tabList = $form.find('[tabindex]');
-    hidableTabs = 0;
-    for (i = 0; i < tabList.length; i++) {
+    let $form = $(this.element).find('form');
+    let tabList = $form.find('[tabindex]');
+    let hidableTabs = 0;
+    for (let i = 0; i < tabList.length; i++) {
       if ($(tabList[i]).attr('tabindex') > 0) {
         hidableTabs++;
       }
     }
     // ui_array index is used as the tab_order, Add extra space for skipped numbers
-    storableUI = hidableTabs + 20;
-    for (i = 0; i < storableUI; i++) {
+    let storableUI = hidableTabs + 20;
+    for (let i = 0; i < storableUI; i++) {
       // When we start, all the ui elements are visible
       this.options.ui_array.push(0);
     }
   },
 
   'input, textarea, select change':
-    function (el, ev) {
-      this.options.instance.removeAttr('_suppress_errors');
+    function (el) {
+      const instance = this.options.instance;
+      if (instance.isNew && instance.isNew()) {
+        if (instance.isDirty()) {
+          instance.removeAttr('_suppress_errors');
+        }
+      } else {
+        instance.removeAttr('_suppress_errors');
+      }
       // Set the value if it isn't a search field
       if (!el.hasClass('search-icon') ||
         el.is('[null-if-empty]') &&
@@ -465,17 +492,18 @@ export default can.Control({
   'dropdown[data-purpose="ca-type"] change': function ($el, ev) {
     let instance = this.options.instance;
 
-    if (instance.attribute_type !== 'Dropdown') {
+    if (instance.attribute_type !== 'Dropdown' &&
+      instance.attribute_type !== 'Multiselect') {
       instance.attr('multi_choice_options', undefined);
     }
   },
 
   serialize_form: function () {
-    let $form = this.options.$content.find('form');
+    let $form = $(this.options.contentEl).find('form');
     let $elements = $form
       .find(':input');
 
-    $elements.toArray().forEach(this.proxy('set_value_from_element'));
+    $elements.toArray().forEach((el) => this.set_value_from_element(el));
   },
   set_value_from_element: function (el) {
     let name;
@@ -518,22 +546,19 @@ export default can.Control({
     let $elem;
     let value;
     let model;
-    let $other;
 
     if (!(instance instanceof this.options.model)) {
       instance = this.options.instance =
         new this.options.model(instance && instance.serialize ?
           instance.serialize() : instance);
     }
-    $elem = this.options.$content
+    $elem = $(this.options.contentEl)
       .find("[name='" + item.name + "']");
     model = $elem.attr('model');
 
     if (model) {
       if (item.value instanceof Array) {
-        value = can.map(item.value, function (id) {
-          return getInstance(model, id);
-        });
+        value = _.filteredMap(item.value, (id) => getInstance(model, id));
       } else if (item.value instanceof Object) {
         value = getInstance(model, item.value.id);
       } else {
@@ -551,9 +576,8 @@ export default can.Control({
 
     if (name.length > 1) {
       if (can.isArray(value)) {
-        value = new can.List(can.map(value, function (v) {
-          return new can.Map({}).attr(name.slice(1).join('.'), v);
-        }));
+        value = new can.List(_.filteredMap(value,
+          (v) => new can.Map({}).attr(name.slice(1).join('.'), v)));
       } else if ($elem.is('[data-lookup]')) {
         if (!value) {
           value = null;
@@ -561,35 +585,13 @@ export default can.Control({
           // Setting a "lookup field is handled in the autocomplete() method"
           return;
         }
-      } else if (name[name.length - 1] === 'date') {
-        name.pop(); // date is a pseudoproperty of datetime objects
-        if (!value) {
-          value = null;
-        } else {
-          value = this.options.model.convert.date(value);
-          $other = this.options.$content
-            .find("[name='" + name.join('.') + ".time']");
-          if ($other.length) {
-            value = moment(value).add(parseInt($other.val(), 10)).toDate();
-          }
-        }
-      } else if (name[name.length - 1] === 'time') {
-        name.pop(); // time is a pseudoproperty of datetime objects
-        value = moment(this.options.instance.attr(name.join('.')))
-          .startOf('day').add(parseInt(value, 10)).toDate();
       } else {
         value = new can.Map({}).attr(name.slice(1).join('.'), value);
       }
     }
 
     value = value && value.serialize ? value.serialize() : value;
-    if (name[0] === 'custom_attributes') {
-      const caId = Number(name[1]);
-      const caValue = value[name[1]];
-      instance.customAttr(caId, caValue);
-    } else if (name[0] !== 'people') {
-      instance.attr(name[0], value);
-    }
+    instance.attr(name[0], value);
   },
   '[data-before], [data-after] change': function (el, ev) {
     if (this.wasDestroyed()) {
@@ -629,7 +631,7 @@ export default can.Control({
     });
   },
 
-  "{$footer} a.btn[data-toggle='modal-submit-addmore'] click":
+  "{footerEl} a.btn[data-toggle='modal-submit-addmore'] click":
     function (el, ev) {
       if (el.hasClass('disabled')) {
         return;
@@ -639,7 +641,7 @@ export default can.Control({
       this.triggerSave(el, ev);
     },
 
-  "{$footer} a.btn[data-toggle='modal-submit'] click": function (el, ev) {
+  "{footerEl} a.btn[data-toggle='modal-submit'] click": function (el, ev) {
     let options = this.options;
     let instance = options.attr('instance');
     let oldData = options.attr('oldData');
@@ -673,7 +675,7 @@ export default can.Control({
     }
   },
 
-  '{$content} a.field-hide click': function (el, ev) { // field hide
+  '{contentEl} a.field-hide click': function (el, ev) { // field hide
     let $el = $(el);
     let totalInner = $el.closest('.hide-wrap.hidable')
       .find('.inner-hide').length;
@@ -711,7 +713,7 @@ export default can.Control({
     return false;
   },
 
-  '{$content} #formHide click': function () {
+  '{contentEl} #formHide click': function () {
     if (this.wasDestroyed()) {
       return false;
     }
@@ -748,7 +750,7 @@ export default can.Control({
     return false;
   },
 
-  '{$content} #formRestore click': function () {
+  '{contentEl} #formRestore click': function () {
     if (this.wasDestroyed()) {
       return false;
     }
@@ -900,6 +902,9 @@ export default can.Control({
 
       ajd.always(() => {
         this.options.attr('isSaving', false);
+        if (this.is_audit_modal()) {
+          this.init_audit_title();
+        }
       });
       if (this.options.add_more) {
         bindXHRToButton(ajd, saveCloseBtn);
@@ -927,9 +932,9 @@ export default can.Control({
       $form.trigger('reset');
     }).done(() => {
       $.when(this.options.attr('instance', newInstance))
-        .then(this.proxy('apply_object_params'))
-        .then(this.proxy('serialize_form'))
-        .then(this.proxy('autocomplete'));
+        .then(() => this.apply_object_params())
+        .then(() => this.serialize_form())
+        .then((el) => this.autocomplete(el));
     });
 
     this.restore_ui_status();
@@ -940,13 +945,10 @@ export default can.Control({
     let instance = new this.options.model(params);
     let saveContactModels = ['TaskGroup', 'TaskGroupTask'];
 
-    instance.attr('_suppress_errors', true)
-      .attr('custom_attribute_definitions',
-        this.options.instance.custom_attribute_definitions)
-      .attr('custom_attributes', new can.Map());
+    instance.attr('_suppress_errors', true);
 
     if (this.options.add_more &&
-      _.includes(saveContactModels, this.options.model.shortName)) {
+      _.includes(saveContactModels, this.options.model.model_singular)) {
       instance.attr('contact', this.options.attr('instance.contact'));
     }
 
@@ -962,7 +964,7 @@ export default can.Control({
       return $.Deferred().reject();
     }
 
-    if (instance.errors()) {
+    if (instance.getInstanceErrors()) {
       instance.removeAttr('_suppress_errors');
       return;
     }
@@ -1006,10 +1008,10 @@ export default can.Control({
   save_error: function (_, error) {
     if (error) {
       if (error.status !== 409) {
-        notifier('error', error.responseText);
+        notifierXHR('error', error);
       } else {
         clearTimeout(error.warningId);
-        notifierXHR('warning')(error);
+        notifierXHR('warning', error);
       }
     }
     // enable ui after a fail
@@ -1054,7 +1056,6 @@ export default can.Control({
       instance.notifier.onEmpty(() => {
         instance.refresh();
       });
-      instance.dispatch(REFRESH_MAPPING);
     }
   },
 
@@ -1077,7 +1078,7 @@ export default can.Control({
       return false;
     }
     return $trigger.data('updateHash') ||
-      !$trigger.closest('.modal, .cms_controllers_info_pin').length;
+      !$trigger.closest('.modal, .pin-content').length;
   },
 
   update_hash_fragment: function () {
@@ -1100,7 +1101,7 @@ export default can.Control({
    *  @param {boolean} isDisabled
    */
   disableEnableContentUI(isDisabled = false) {
-    const content = this.options.attr('$content');
+    const content = $(this.options.attr('contentEl'));
 
     if (!content) {
       return;

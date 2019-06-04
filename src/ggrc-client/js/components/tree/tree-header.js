@@ -1,18 +1,19 @@
 /*
- Copyright (C) 2018 Google Inc.
+ Copyright (C) 2019 Google Inc.
  Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
  */
 
 import '../sortable-column/sortable-column';
 import './tree-visible-column-checkbox';
-import template from './templates/tree-header.mustache';
+import template from './templates/tree-header.stache';
 import {getVisibleColumnsConfig, getSortingForModel}
   from '../../plugins/utils/tree-view-utils';
 
 export default can.Component.extend({
   tag: 'tree-header',
-  template,
-  viewModel: {
+  view: can.stache(template),
+  leakScope: true,
+  viewModel: can.Map.extend({
     define: {
       cssClasses: {
         type: String,
@@ -87,7 +88,7 @@ export default can.Component.extend({
       }
     },
     isActiveActionArea: function () {
-      let modelName = this.attr('model').shortName;
+      let modelName = this.attr('model').model_singular;
 
       return modelName === 'CycleTaskGroupObjectTask' || modelName === 'Cycle';
     },
@@ -97,7 +98,7 @@ export default can.Component.extend({
         return;
       }
 
-      sortingInfo = getSortingForModel(this.attr('model').shortName);
+      sortingInfo = getSortingForModel(this.attr('model').model_singular);
       this.attr('orderBy.field', sortingInfo.key);
       this.attr('orderBy.direction', sortingInfo.direction);
     },
@@ -105,7 +106,7 @@ export default can.Component.extend({
       this.initializeOrder();
       this.initializeColumns();
     },
-  },
+  }),
   events: {
     '{viewModel} availableColumns': function () {
       this.viewModel.initializeColumns();

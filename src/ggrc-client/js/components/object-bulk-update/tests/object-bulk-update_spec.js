@@ -1,5 +1,5 @@
 /*
- Copyright (C) 2018 Google Inc.
+ Copyright (C) 2019 Google Inc.
  Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
  */
 
@@ -141,18 +141,16 @@ describe('object-bulk-update component', function () {
     beforeEach(function () {
       context = {
         viewModel: new can.Map({
-          submitCbs: {
-            fire: jasmine.createSpy(),
-          },
+          onSubmit: jasmine.createSpy(),
         }),
       };
       event = events.inserted.bind(context);
     });
 
-    it('calls fire() of submitCbs attribute', function () {
+    it('calls onSubmit()', function () {
       event();
 
-      expect(context.viewModel.submitCbs.fire).toHaveBeenCalled();
+      expect(context.viewModel.onSubmit).toHaveBeenCalled();
     });
   });
 });

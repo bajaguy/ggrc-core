@@ -1,8 +1,8 @@
-# Copyright (C) 2018 Google Inc.
+# Copyright (C) 2019 Google Inc.
 # Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 
 """ This module collect all custom full text attributes classes"""
-
+import json
 from logging import getLogger
 from collections import defaultdict
 
@@ -50,12 +50,8 @@ class FullTextAttr(object):
     If template exists for the property, it's being applied
     """
     if isinstance(instance, Indexed):
-      property_tmpl = instance.PROPERTY_TEMPLATE
-    else:
-      property_tmpl = u"{}"
+      return instance.get_fulltext_attr_name(self)
 
-    if self.with_template:
-      return property_tmpl.format(self.alias)
     return self.alias
 
   def get_value_for(self, instance):
@@ -265,6 +261,23 @@ class MultipleSubpropertyFullTextAttr(FullTextAttr):
           results[sub_key] = None
     if self.is_sortable and results:
       results['__sort__'] = u':'.join(sorted(sorted_dict.values()))
+    return {self.get_attribute_name(instance): results}
+
+
+class JsonListFullTextAttr(FullTextAttr):
+  """Custom fulltext index attribute class for json list values."""
+
+  def get_property_for(self, instance):
+    """Collect property for sent instance."""
+    json_value = self.get_value_for(instance)
+    if not json_value:
+      return {}
+    values = json.loads(json_value)
+    results = {}
+    for value in values:
+      results[value] = value
+    if self.is_sortable and results:
+      results["__sort__"] = u":".join(sorted(results.values()))
     return {self.get_attribute_name(instance): results}
 
 

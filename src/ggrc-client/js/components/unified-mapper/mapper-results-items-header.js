@@ -1,18 +1,23 @@
 /*
- Copyright (C) 2018 Google Inc.
+ Copyright (C) 2019 Google Inc.
  Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
  */
 
-import template from './templates/mapper-results-items-header.mustache';
+import template from './templates/mapper-results-items-header.stache';
 
 export default can.Component.extend({
   tag: 'mapper-results-items-header',
-  template,
-  viewModel: {
+  view: can.stache(template),
+  leakScope: true,
+  viewModel: can.Map.extend({
     columns: [],
+    serviceColumns: [],
     sortKey: '',
     sortDirection: 'asc',
     modelType: '',
+    aggregatedColumns() {
+      return this.attr('columns').concat(this.attr('serviceColumns'));
+    },
     isSorted(attr) {
       return attr.attr('attr_sort_field') === this.attr('sortKey');
     },
@@ -34,5 +39,5 @@ export default can.Component.extend({
         this.attr('sortDirection', 'asc');
       }
     },
-  },
+  }),
 });

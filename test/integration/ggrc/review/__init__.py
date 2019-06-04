@@ -1,4 +1,4 @@
-# Copyright (C) 2018 Google Inc.
+# Copyright (C) 2019 Google Inc.
 # Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 """Helpers for review tests"""
 from ggrc.models import all_models
@@ -9,7 +9,7 @@ def build_reviewer_acl(acr_id=None, user_id=None):
   """Build reviewer acl list from passed values of create new user"""
   if not acr_id:
     acr_id = all_models.AccessControlRole.query.filter_by(
-        name="Reviewer", object_type="Review"
+        name="Reviewers", object_type="Review"
     ).one().id
 
   if not user_id:
@@ -28,7 +28,9 @@ def build_reviewer_acl(acr_id=None, user_id=None):
 def generate_review_object(
         instance,
         state=all_models.Review.STATES.UNREVIEWED,
-        notification_type=all_models.Review.NotificationTypes.EMAIL_TYPE):
+        notification_type=all_models.Review.NotificationTypes.EMAIL_TYPE,
+        email_message="",
+):
   """
   Generates Review for model.
 
@@ -36,6 +38,7 @@ def generate_review_object(
       instance: Factory instance
       state: Review state, unreviewed by default
       notification_type: Notification type, email by default
+      email_message: Email message of the review, empty by default
 
   Returns:
     Response and Review
@@ -52,5 +55,6 @@ def generate_review_object(
           "notification_type": notification_type,
           "status": state,
           "access_control_list": build_reviewer_acl(),
+          "email_message": email_message,
       },
   )

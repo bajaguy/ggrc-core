@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2018 Google Inc.
+  Copyright (C) 2019 Google Inc.
   Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 */
 
@@ -15,12 +15,21 @@ import {
   MAP_OBJECTS,
 } from '../../events/eventTypes';
 import Permission from '../../permission';
-import template from './create-document-button.mustache';
+import template from './create-document-button.stache';
 import Document from '../../models/business-models/document';
 import Context from '../../models/service-models/context';
 
 const viewModel = can.Map.extend({
   parentInstance: null,
+  openPicker() {
+    return uploadFiles()
+      .then((files) => {
+        this.mapDocuments(files);
+      }, () => {
+        // event handler in object-mapper will open mapper again
+        this.dispatch('cancel');
+      });
+  },
   mapDocuments(files) {
     return this.checkDocumentsExist(files)
       .then((statuses) => {
@@ -98,24 +107,18 @@ const viewModel = can.Map.extend({
       });
   },
   refreshPermissionsAndMap(documents) {
-    if (!documents.length) {
-      // handler in object-mapper will close mapper permanently
-      // if it still exists and removes html from the dom
-      if (this.attr('element')) {
-        this.attr('element').trigger('modal:dismiss');
-      }
+    let dfd = $.Deferred().resolve();
 
-      return $.Deferred().resolve();
+    if (documents.length) {
+      dfd = Permission.refresh();
     }
 
-    return Permission.refresh()
-      .then(function () {
-        this.attr('parentInstance')
-          .dispatch({
-            ...MAP_OBJECTS,
-            objects: documents,
-          });
-      }.bind(this));
+    dfd.then(function () {
+      this.dispatch({
+        ...MAP_OBJECTS,
+        objects: documents,
+      });
+    }.bind(this));
   },
   showConfirm(documents) {
     let confirmation = $.Deferred();
@@ -129,7 +132,7 @@ const viewModel = can.Map.extend({
         Please proceed to map existing docs to
         "${parentInstance.type} ${parentInstance.title}"`,
       button_view:
-        `${GGRC.mustache_path}/modals/confirm_cancel_buttons.mustache`,
+        `${GGRC.templates_path}/modals/confirm_cancel_buttons.stache`,
       modal_confirm: 'Proceed',
     }, confirmation.resolve, confirmation.reject);
 
@@ -139,20 +142,7 @@ const viewModel = can.Map.extend({
 
 export default can.Component.extend({
   tag: 'create-document-button',
-  template,
+  view: can.stache(template),
+  leakScope: true,
   viewModel,
-  events: {
-    inserted() {
-      this.viewModel.attr('element', this.element);
-    },
-    '.pick-file click'() {
-      uploadFiles()
-        .then((files) => {
-          this.viewModel.mapDocuments(files);
-        }, () => {
-          // event handler in object-mapper will open mapper again
-          $(window).trigger('modal:dismiss');
-        });
-    },
-  },
 });

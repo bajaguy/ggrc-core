@@ -1,0 +1,50 @@
+{{!
+    Copyright (C) 2019 Google Inc.
+    Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
+}}
+
+
+{{#instance}}
+  <section class="info{{#if is_info_pin}} sticky-info-panel{{/if}}">
+    <div class="tier-content">
+      <div class="pane-header" >
+        <div class="pane-header__container">
+          <div class="pane-header__title" data-test-id="title_0ad9fbaf">
+            {{#if is_info_pin}}
+              <h6>{{modifyFieldTitle instance.type 'Title'}}</h6>
+            {{/if}}
+            <div class="pane-header__title-details">
+              <h3 class="pane-header__title-name">{{title}}</h3>
+              <span class="pane-header__title-item">
+                <span class="state-value {{addclass 'state' status}}">{{un_camel_case status}}</span>
+              </span>
+            </div>
+          </div>
+
+          <div class="pane-header__toolbar">
+            {{#if is_info_pin}}
+              <info-pin-buttons maximized:from="maximized" 
+                                onChangeMaximizedState:from="@onChangeMaximizedState" 
+                                onClose:from="@onClose">
+              </info-pin-buttons>
+            {{/if}}
+          </div>
+        </div>
+      </div>
+      <div class="pane-content">
+        <div class="row-fluid wrap-row">
+          <div class="span12">
+            <h6>{{instance.class.title_singular}} description</h6>
+            <div class="rtf-block">
+              <read-more
+                text:from="instance.description"
+                handleMarkdown:from="instance.class.isChangeableExternally">
+              </read-more>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </section>
+{{/instance}}

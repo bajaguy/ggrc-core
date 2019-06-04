@@ -1,22 +1,23 @@
 /*
-    Copyright (C) 2018 Google Inc.
+    Copyright (C) 2019 Google Inc.
     Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 */
 
 import tracker from '../../tracker';
 import RefreshQueue from '../../models/refresh_queue';
-import template from './templates/generate_assessments_button.mustache';
+import template from './templates/assessment-generator-button.stache';
 import {getPageInstance} from '../../plugins/utils/current-page-utils';
 import BackgroundTask from '../../models/service-models/background-task';
 import Assessment from '../../models/business-models/assessment';
 
 export default can.Component.extend({
   tag: 'assessment-generator-button',
-  template,
-  viewModel: {
+  view: can.stache(template),
+  leakScope: true,
+  viewModel: can.Map.extend({
     audit: null,
-    button: '@',
-  },
+    button: '',
+  }),
   events: {
     'a click': function (el, ev) {
       let instance = this.viewModel.attr('audit') || getPageInstance();
@@ -91,7 +92,7 @@ export default can.Component.extend({
       que.enqueue(list).trigger().then(function (items) {
         let results = _.map(items, function (item) {
           let id = options.assessmentTemplate.split('-')[0];
-          return this.generateModel(item, id, options.type);
+          return this.generateModel(item, id);
         }.bind(this));
         this._results = results;
         $.when(...results)
@@ -112,7 +113,7 @@ export default can.Component.extend({
           }.bind(this));
       }.bind(this));
     },
-    generateModel: function (object, template, type) {
+    generateModel: function (object, template) {
       let assessmentModel;
       let audit = this.viewModel.attr('audit');
       let title = 'Generated Assessment for ' + audit.title;
@@ -127,7 +128,7 @@ export default can.Component.extend({
         },
         context: audit.context,
         title: title,
-        assessment_type: type,
+        assessment_type: object.child_type,
       };
       data.run_in_background = true;
 

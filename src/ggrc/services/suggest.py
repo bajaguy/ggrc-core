@@ -1,4 +1,4 @@
-# Copyright (C) 2018 Google Inc.
+# Copyright (C) 2019 Google Inc.
 # Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 
 """Suggest persons by prefix"""
@@ -19,12 +19,13 @@ def mock_suggest():
   """Mocks the url request for local development
      Called when INTEGRATION_SERVICE_URL=mock"""
   tokens = request.args.get("prefix", "")
+  limit = request.args.get("limit", 10)
   results = all_models.Person.query\
       .filter(or_(
           all_models.Person.name.ilike('%{}%'.format(tokens)),
           all_models.Person.email.ilike('%{}%'.format(tokens))))\
       .options(load_only("name", "email"))\
-      .order_by(all_models.Person.email)[:20]
+      .order_by(all_models.Person.email)[:limit]
   return make_suggest_result([{
       "firstName": result.name,
       "lastName": "",

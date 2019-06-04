@@ -17,7 +17,7 @@ The client-side of GGRC is initially constructed from templates and/or
 views defined and rendered on the server. The templates and views
 provide a scaffolding for the UI. Rendering those elements invokes
 JavaScript code which bootstraps the majority of the client-side of GGRC
-which is constructed from CanJS Controls, Components and Mustache templates.
+which is constructed from CanJS Controls, Components and templates.
 
 Once the Controls are rendered, they take control of generating the
 remainder of the UI and attaching all relevant logic and user
@@ -32,8 +32,8 @@ For example, ``GGRC.page_object`` is the object rendered by the current page
 (e.g. a Program), as it was received from the server (mapped objects are
 stubs).
 
-``CMS.Models.<MODEL>.cache`` stores the loaded objects. For example,
-``CMS.Models.Program.cache`` will have an array of all the loaded
+``<Imported Cacheable Model>.cache`` stores the loaded objects. For example,
+``<Imported Cacheable Model>`` will have an array of all the loaded
 programs.
 
 
@@ -190,8 +190,8 @@ In contrast, all of the models referenced by a full-form model are not
 just placeholders, but are true model instances themselves. This
 approach is more analogous to “eager-loading”.
 
-A stub can be converted into a full-form instance by calling ``reify()``
-on the stub. See also ``builder.json``.
+A stub can be converted into a full-form instance by calling ``reify(stub)``
+util placed in ``reify-utils``.
 
 Lifecycle of a Model
 ^^^^^^^^^^^^^^^^^^^^
@@ -245,10 +245,10 @@ Are they cached?
 
 -  Client-side:
 
-   -  can.Model.Cacheable
+   -  Cacheable
 
       -  Once a model is retrieved to the browser, it is stored in
-         ``CMS.Models.<model_name>.cache[<id>]``.  Once present, it is
+         ``<Imported Cacheable Model>.cache[<id>]``.  Once present, it is
          only requested again via the ``<instance>.refresh()`` method.
       -  A model can be conditionally pulled from the server (if it only
          exists on the client in stub form) by enqueueing it into a
@@ -266,10 +266,9 @@ How/when are they validated?
 
 -  Client-side:
 
-   -  Defined in class ``init()`` method on Model classes, and uses Can
-      Validations (http://canjs.com/docs/can.Map.validations.html)
-   -  Includes a custom ``validateNonBlank()`` validation function that
-      trims strings before checking for empty strings.
+   -  Defined in Model classes, and uses Can
+      Validations (https://v3.canjs.com/doc/can-validate-legacy.html)
+   -  Includes a custom validation functions (validation-extensions.js).
 
 View
 ~~~~
@@ -290,15 +289,15 @@ within GGRC. Additional fragments can be created and utilized as needed.
 But these templates are the main templates from which the majority of
 the UI is created.
 
--  ``info.mustache`` - Defines the “Info” widget on each object’s page.
+-  ``info.stache`` - Defines the “Info” widget on each object’s page.
     Defined per-widget in InfoWidget controller as the
    ``widget_view`` option, and specified using ``WidgetList``
    definitions.
--  ``extended_info.mustache`` - Defines the content of an object’s
+-  ``extended_info.stache`` - Defines the content of an object’s
    tooltip/popover in the LHN lists.  Specified as the ``tooltip_view``
    parameter when rendering
-   :src:`ggrc-client/js/mustache/dashboard/lhn.mustache`.
--  ``modal_content.mustache`` - Defines the view for modal “create” or
+   :src:`ggrc-client/js/templates/dashboard/lhn.stache`.
+-  ``modal_content.stache`` - Defines the view for modal “create” or
    “edit” form functionality.  For most objects, this path is
    automatically generated using the ``data-template`` or
    ``data-object-plural`` attributes of the invoking element (see
@@ -308,20 +307,17 @@ Where to find view templates
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 The view files are in the following folder within a module
-``src/ggrc-client/js/mustache/``.
+``src/ggrc-client/js/templates/``.
 
 For example, the ``workflow`` views are in the following folder
-:src:`src/ggrc-client/js/mustache/workflows`
+:src:`src/ggrc-client/js/templates/workflows`
 
 View Helpers
 ^^^^^^^^^^^^
 
-View helpers are defined using the Mustache `helper mechanism provided
-by CanJS <http://canjs.com/docs/can.mustache.Helpers.html>`_.  Core
+View helpers are defined using the helper mechanism provided by CanJS. Core
 helpers are specified in
-:src:`ggrc-client/js/mustache_helpers.js`,
-and extension helpers should be specified in a file named similar to
-``src/<module_name>/js/<class_name>_mustache_helpers.js``.
+:src:`ggrc-client/js/helpers.js`.
 
 Extensions
 ~~~~~~~~~~
@@ -427,7 +423,7 @@ following files:
 -  ``ggrc-client/js/controllers/modals/modals_controller.js``
 
 The view for a modal is defined in
-``/src/ggrc-client/js/mustache/<class_name>/modal_content.mustache``.
+``/src/ggrc-client/js/templates/<class_name>/modal_content.stache``.
 
 More about modals in `modals.md <modals.md>`_.
 
@@ -488,51 +484,14 @@ Mappings essentially turn the entire system into a
 
 Mappings are defined in :src:`ggrc-client/js/models/mappers/mappings-ggrc.js`.
 
-We don't have a function that gets all the objects mapped to a given
-object. You can get the mappings of an instance by calling
-``instance.get_mappings('_mapping_')`` if the mappings are already
-loaded, or by calling
-``instance.get_binding('_mapping_').refresh_list()`` if they are not.
-
-Types of Mappings
+"Direct" Mapping
 ^^^^^^^^^^^^^^^^^
 
-There are 8 types of mappings. The types of mappings are defined with
+There is "Direct" type of mapping. It defined with
 Mappers. Mappers are defined in :src:`ggrc-client/js/models/mappers/models/index.js`
-
-Each type of mapping is defined below:
-
--  **Proxy** :src:`ggrc-client/js/models/mappers/proxy-list-loader.js`:
-   A proxy mapping is a relationship where one model
-   references another through another “join” or “proxy” model.  E.g.,
-   Programs reference Controls via the ProgramControl join/proxy model.
-    The Proxy mapping specifies the attributes and models involved in
-   the relationship, e.g.:
 
 -  **Direct** :src:`ggrc-client/js/models/mappers/direct-list-loader.js`:
    A direct mapping is a relationship where one model
    directly references another model.  E.g., Sections contain a
    ``directive`` attribute, so Section has a Direct mapping to
    Directive.
-
--  **Search** :src:`ggrc-client/js/models/mappers/search-list-loader.js`:
-   A search mapping is a relationship where results are
-   produced by a function returning a deferred. This mapping is f
-   foremost used by the Advanced Search feature and for getting owned
-   objects for a Person, but other uses are also possible. Note that the
-   search function is run at attach time and also when a new object of
-   any type is created, so it is recommended to use this mapper
-   sparingly in the system if it makes a number of large AJAX calls.
-
--  **Multi** :src:`ggrc-client/js/models/mappers/multi-list-loader.js`:
-   Constructs a mapping which is the union of zero or more
-   other mappings.  Specifically, the set of ``result.instance`` values
-   is the union of ``result.instance`` from the contributing mappings.
-
--  **CustomFilter** :src:`ggrc-client/js/models/mappers/custom-filtered-list-loader.js`:
-   A custom filtered mapping runs a filter function on
-   every result coming from a source mapping and returns all results
-   where the function returns either a truthy value or a deferred that
-   resolves to a truthy value. The filter function is re-run whenever an
-   instance in the source mapping changes, and adds and removes a
-   mapping to that instance accordingly.

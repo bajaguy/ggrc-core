@@ -1,0 +1,15 @@
+{{!
+    Copyright (C) 2019 Google Inc.
+    Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
+}}
+
+<div class="input-wrapper {{#if isNoneSelected}}none-selected{{/if}}">
+  <dropdown-component name:bind="inputValue"
+            isDisabled:from="disabled"
+            optionsList:from="options"
+            isGroupedDropdown:from="isGroupedDropdown"
+            optionsGroups:from="dropdownOptionsGroups"
+            noValue:from="noValue"
+            controlId:from="'form-field-{{fieldId}}'">
+  </dropdown-component>
+</div>

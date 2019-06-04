@@ -1,6 +1,7 @@
-# Copyright (C) 2018 Google Inc.
+# Copyright (C) 2019 Google Inc.
 # Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 
+""" This module contains base functionality and rules for caching data. """
 
 from collections import namedtuple
 
@@ -17,15 +18,14 @@ def mapping(class_name, attr, polymorph=False):
 
 
 def all_cache_entries():
+  """Get list of all models that can be cached."""
   ret = [
       resource('access_groups', 'AccessGroup'),
+      resource('account_balances', 'AccountBalance'),
       resource('audits', 'Audit'),
       resource('custom_attribute_values', 'CustomAttributeValue'),
-      resource('categorizations', 'Categorization'),
-      resource('category_bases', 'CategoryBase'),
       resource('comments', 'Comment'),
-      resource('control_categories', 'ControlCategory'),
-      resource('control_assertions', 'ControlAssertion'),
+      resource('external_comments', 'ExternalComment'),
       resource('contexts', 'Context'),
       resource('controls', 'Control'),
       resource('assessments', 'Assessments'),
@@ -55,6 +55,7 @@ def all_cache_entries():
       resource('systems_or_processes', 'SystemOrProcess'),
       resource('systems', 'System'),
       resource('processes', 'Process'),
+      resource('key_reports', 'KeyReport'),
       resource('issues', 'Issue'),
       resource('snapshots', 'Snapshot'),
       resource('product_groups', 'ProductGroup'),
@@ -87,11 +88,9 @@ def all_cache_entries():
       resource('vulnerabilities', 'Vulnerability'),
 
       # ggrc_workflows models
-      resource('cycle_task_entries', 'CycleTaskEntry'),
       resource('cycle_task_group_object_tasks', 'CycleTaskGroupObjectTask'),
       resource('cycle_task_groups', 'CycleTaskGroup'),
       resource('cycles', 'Cycle'),
-      resource('task_group_objects', 'TaskGroupObject'),
       resource('task_group_tasks', 'TaskGroupTask'),
       resource('task_groups', 'TaskGroup'),
       resource('workflows', 'Workflow'),
@@ -101,6 +100,7 @@ def all_cache_entries():
 
 
 def all_mapping_entries():
+  """Get list of related model pairs."""
   ret = [
       mapping('Audit', 'program'),
       mapping('CustomAttributeValue', 'attributable', True),
@@ -115,8 +115,6 @@ def all_mapping_entries():
       mapping('Notification', 'recipients'),
       mapping('Notification', 'notification_object'),
       # ggrc_workflows mappings:
-      mapping('TaskGroupObject', 'object', True),
-      mapping('TaskGroupObject', 'task_group'),
       mapping('TaskGroupTask', 'task_group'),
       mapping('TaskGroup', 'workflow'),
       mapping('Cycle', 'workflow'),
@@ -124,12 +122,10 @@ def all_mapping_entries():
       mapping('CycleTaskGroup', 'cycle'),
       mapping('CycleTaskGroup', 'task_group'),
       mapping('CycleTaskGroupObjectTask', 'cycle'),
-      mapping('CycleTaskGroupObjectTask', 'cycle_task_entries'),
       mapping('CycleTaskGroupObjectTask', 'cycle_task_group'),
       mapping('CycleTaskGroupObjectTask', 'task_group_task'),
       mapping('CycleTaskGroupObjectTask', 'cycle_task_objects_for_cache'),
-      mapping('CycleTaskEntry', 'cycle'),
-      mapping('CycleTaskEntry', 'cycle_task_group_object_task'),
+
       # mapping('RiskAssessmentMapping'),
       # mapping('RiskAssessmentControlMapping'),
   ]
@@ -137,7 +133,10 @@ def all_mapping_entries():
   return ret
 
 
-class Cache(object):  # pylint: disable=no-self-use
+class Cache(object):
+  """Base cache class."""
+  # pylint: disable=no-self-use
+
   name = None
   supported_resources = {}
 
@@ -176,6 +175,7 @@ class Cache(object):  # pylint: disable=no-self-use
 
   @staticmethod
   def get_key(category, resource_name):
+    """Construct cache key for resource."""
     cache_key = category + ":" + resource_name
     return cache_key
 
@@ -184,6 +184,7 @@ class Cache(object):  # pylint: disable=no-self-use
     return filter_obj.get('ids'), filter_obj.get('attrs')
 
   def is_caching_supported(self, category, resource_name):
+    """Check if caching supported for resource."""
     if category is 'collection':
       return resource_name in self.supported_resources
     return False

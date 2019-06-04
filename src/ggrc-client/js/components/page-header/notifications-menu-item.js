@@ -1,9 +1,9 @@
 /*
- Copyright (C) 2018 Google Inc.
+ Copyright (C) 2019 Google Inc.
  Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
  */
 
-import template from './notifications-menu-item.mustache';
+import template from './notifications-menu-item.stache';
 import NotificationConfig
   from '../../models/service-models/notification-config';
 import Context from '../../models/service-models/context';
@@ -12,12 +12,13 @@ const emailDigestType = 'Email_Digest';
 
 export default can.Component.extend({
   tag: 'notifications-menu-item',
-  template,
-  viewModel: {
+  view: can.stache(template),
+  leakScope: true,
+  viewModel: can.Map.extend({
     define: {
       emailDigest: {
         set(newValue) {
-          if (!this.attr('isLoading')) {
+          if (!this.attr('isLoading') && this.attr('isLoaded')) {
             this.saveEmailDigest(newValue);
           }
 
@@ -27,6 +28,7 @@ export default can.Component.extend({
     },
     isSaving: false,
     isLoading: false,
+    isLoaded: false,
     existingConfigId: null,
     async saveEmailDigest(checked) {
       this.attr('isSaving', true);
@@ -73,9 +75,10 @@ export default can.Component.extend({
         }
       } finally {
         this.attr('isLoading', false);
+        this.attr('isLoaded', true);
       }
     },
-  },
+  }),
   events: {
     // Don't close the dropdown if clicked on checkbox
     'click'(el, ev) {

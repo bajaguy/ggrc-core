@@ -1,4 +1,4 @@
-# Copyright (C) 2018 Google Inc.
+# Copyright (C) 2019 Google Inc.
 # Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 
 """Test audit RBAC."""
@@ -236,6 +236,6 @@ class TestPermissionsOnAssessmentRelatedAssignables(TestCase):
     Allow only Global Admin to delete Documents.
     """
     resp = self.api.delete(self.evidence)
-    self.assert403(resp)
+    self.assert200(resp)
     self.assertEquals(len(all_models.Evidence.query.filter(
-        all_models.Evidence.id == self.evidence.id).all()), 1)
+        all_models.Evidence.id == self.evidence.id).all()), 0)

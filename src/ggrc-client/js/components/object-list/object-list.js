@@ -1,20 +1,20 @@
 /*
- Copyright (C) 2018 Google Inc.
+ Copyright (C) 2019 Google Inc.
  Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
  */
 
 import '../show-more/show-more';
-import '../spinner/spinner';
-import template from './object-list.mustache';
+import '../spinner-component/spinner-component';
+import template from './object-list.stache';
 
-const tag = 'object-list';
 /**
  * Object List component
  */
 export default can.Component.extend({
-  tag,
-  template,
-  viewModel: {
+  tag: 'object-list',
+  view: can.stache(template),
+  leakScope: true,
+  viewModel: can.Map.extend({
     define: {
       itemSelector: {
         type: 'string',
@@ -56,7 +56,7 @@ export default can.Component.extend({
         },
       },
     },
-    listType: '@',
+    listType: '',
     isDisabled: false,
     showMore: false,
     /**
@@ -98,7 +98,7 @@ export default can.Component.extend({
       }
       this.attr('isInnerClick', false);
     },
-  },
+  }),
   events: {
     '.object-list__item click': function () {
       this.viewModel.attr('isInnerClick', true);

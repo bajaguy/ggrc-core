@@ -1,11 +1,11 @@
 /*
-    Copyright (C) 2018 Google Inc.
+    Copyright (C) 2019 Google Inc.
     Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 */
 
 import Cacheable from '../cacheable';
 
-export default Cacheable('CMS.Models.PersonProfile', {
+export default Cacheable.extend({
   root_object: 'person_profile',
   root_collection: 'people_profiles',
   findOne: 'GET /api/people_profiles/{id}',

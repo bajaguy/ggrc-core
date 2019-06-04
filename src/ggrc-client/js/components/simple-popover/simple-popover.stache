@@ -1,0 +1,17 @@
+{{!
+    Copyright (C) 2019 Google Inc.
+    Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
+}}
+
+<div class="simple-popover {{extraCssClass}}
+     {{#if open}} simple-popover_active{{/if}}
+     simple-popover_placement_{{placement}}">
+    <div class="simple-popover__button">
+        <button type="button" class="btn btn-link" on:el:click="toggle">{{buttonText}}</button>
+    </div>
+    {{#if open}}
+    <div class="simple-popover__content" on:el:click="hide">
+        <content></content>
+    </div>
+    {{/if}}
+</div>

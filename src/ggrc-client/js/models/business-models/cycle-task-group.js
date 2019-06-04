@@ -1,5 +1,5 @@
 /*
-    Copyright (C) 2018 Google Inc.
+    Copyright (C) 2019 Google Inc.
     Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 */
 
@@ -7,7 +7,7 @@ import Cacheable from '../cacheable';
 import isOverdue from '../mixins/is-overdue';
 import Stub from '../stub';
 
-export default Cacheable('CMS.Models.CycleTaskGroup', {
+export default Cacheable.extend({
   root_object: 'cycle_task_group',
   root_collection: 'cycle_task_groups',
   category: 'workflow',
@@ -23,11 +23,5 @@ export default Cacheable('CMS.Models.CycleTaskGroup', {
     cycle_task_group_tasks: Stub.List,
     modified_by: Stub,
     context: Stub,
-  },
-
-  init: function () {
-    this._super(...arguments);
-    this.validateNonBlank('contact');
-    this.validateContact(['_transient.contact', 'contact']);
   },
 }, {});

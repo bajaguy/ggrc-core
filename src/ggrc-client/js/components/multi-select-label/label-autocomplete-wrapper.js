@@ -1,5 +1,5 @@
 /*
-    Copyright (C) 2018 Google Inc.
+    Copyright (C) 2019 Google Inc.
     Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 */
 
@@ -19,6 +19,7 @@ let viewModel = baseAutocompleteWrapper.extend({
 
 export default can.Component.extend({
   tag: 'label-autocomplete-wrapper',
-  template: '<content></content>',
+  view: can.stache('<content/>'),
+  leakScope: true,
   viewModel: viewModel,
 });

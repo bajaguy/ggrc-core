@@ -1,13 +1,14 @@
 /*
- Copyright (C) 2018 Google Inc.
+ Copyright (C) 2019 Google Inc.
  Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
  */
 
 import './external-data-provider';
 import './autocomplete-results';
-import '../spinner/spinner';
+import '../spinner-component/spinner-component';
 import * as businessModels from '../../models/business-models';
-import template from './external-data-autocomplete.mustache';
+import {reify, isReifiable} from '../../plugins/utils/reify-utils';
+import template from './external-data-autocomplete.stache';
 
 /**
  * The autocomplete component used to load data from external sources.
@@ -15,8 +16,9 @@ import template from './external-data-autocomplete.mustache';
  */
 export default can.Component.extend({
   tag: 'external-data-autocomplete',
-  template,
-  viewModel: {
+  view: can.stache(template),
+  leakScope: true,
+  viewModel: can.Map.extend({
     define: {
       /**
        * The flag indicating that results will be rendered.
@@ -101,10 +103,11 @@ export default can.Component.extend({
     /**
      * Creates model in system and dispatches corresponding event.
      * @param {Object} item - an item picked by user.
+     * @return {Object} - Deferred chain.
      */
     onItemPicked(item) {
       this.attr('saving', true);
-      this.createOrGet(item).then((model) => {
+      return this.createOrGet(item).then((model) => {
         if (this.attr('autoClean')) {
           this.attr('searchCriteria', '');
         }
@@ -113,7 +116,7 @@ export default can.Component.extend({
           type: 'itemSelected',
           selectedItem: model,
         });
-      }).finally(() => {// create is async and returns Promise (not $.Deferred)
+      }).always(() => {
         this.attr('saving', false);
       });
     },
@@ -133,12 +136,12 @@ export default can.Component.extend({
         let data = response[0];
         let model = data[1][ModelClass.root_object];
 
-        model = model.reify ? model.reify() : model;
+        model = isReifiable(model) ? reify(model) : model;
 
         let result = ModelClass.cache[model.id] || new ModelClass(model);
 
         return result;
       });
     },
-  },
+  }),
 });

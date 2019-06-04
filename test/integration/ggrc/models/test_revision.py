@@ -1,4 +1,4 @@
-# Copyright (C) 2018 Google Inc.
+# Copyright (C) 2019 Google Inc.
 # Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 
 """ Tests for ggrc.models.Revision """
@@ -43,14 +43,10 @@ def _project_content(content):
 class TestRevisions(query_helper.WithQueryApi, TestCase):
   """ Tests for ggrc.models.Revision """
 
-  @classmethod
-  def setUpClass(cls):
-    """Sets up objects common to all tests."""
-    cls.gen = integration.ggrc.generator.ObjectGenerator()
-    cls.api_helper = api_helper.Api()
-
   def setUp(self):
     super(TestRevisions, self).setUp()
+    self.gen = integration.ggrc.generator.ObjectGenerator()
+    self.api_helper = api_helper.Api()
     self.api_helper.client.get("/login")
 
   def test_revisions(self):
@@ -156,6 +152,7 @@ class TestRevisions(query_helper.WithQueryApi, TestCase):
           title="test_name",
           definition_type="control",
       )
+      cad_id = cad.id
       if is_add_cav:
         factories.CustomAttributeValueFactory(
             custom_attribute=cad,
@@ -168,7 +165,8 @@ class TestRevisions(query_helper.WithQueryApi, TestCase):
           ggrc.models.Revision.resource_type == control.type,
       ).order_by(ggrc.models.Revision.id.desc()).first().id
 
-    self.api_helper.delete(cad)
+    with self.api_helper.as_external():
+      self.api_helper.delete(cad, cad_id)
 
     control = ggrc.models.Control.query.first()
 
@@ -201,7 +199,8 @@ class TestRevisions(query_helper.WithQueryApi, TestCase):
             attribute_value="test")
 
     user = self.gen.generate_person(
-        data={"name": "test_admin"}, user_role="Administrator")[1]
+        data={"name": "test_admin", "email": "external_app@example.com"},
+        user_role="Administrator")[1]
     self.api_helper.set_user(user)
     self.client.get("/login")
 
@@ -275,7 +274,6 @@ class TestRevisions(query_helper.WithQueryApi, TestCase):
             'attributable_id': asmnt_id,
             'attributable_type': 'Assessment',
             'attribute_object': None,
-            'attribute_object_id': None,
             'attribute_value': attribute_value,
             'context_id': None,
             'custom_attribute_id': cad_id,
@@ -294,7 +292,6 @@ class TestRevisions(query_helper.WithQueryApi, TestCase):
       ("Dropdown", ""),
       ("Checkbox", "0"),
       ("Date", ""),
-      ("Map:Person", "Person"),
   )
   @ddt.unpack
   def test_revisions_with_empty_gcads(self, attribute_type, attribute_value):
@@ -307,7 +304,6 @@ class TestRevisions(query_helper.WithQueryApi, TestCase):
       ("Dropdown", ""),
       ("Checkbox", "0"),
       ("Date", ""),
-      ("Map:Person", "Person"),
   )
   @ddt.unpack
   def test_revisions_with_empty_lcads(self, attribute_type, attribute_value):
@@ -348,10 +344,46 @@ class TestRevisions(query_helper.WithQueryApi, TestCase):
     self.assertEqual(
         content["custom_attribute_values"][0]["attribute_value"], "0")
 
+  def test_revisions_cavs_wo_cad(self):
+    """Test filtering CAVs without definitions."""
+    with factories.single_commit():
+      asmnt = factories.AssessmentFactory()
+      ca_def = factories.CustomAttributeDefinitionFactory(
+          definition_id=asmnt.id,
+          definition_type="assessment",
+          title="CA",
+          attribute_type="Text",
+      )
+      ca_def_id = ca_def.id
+
+    self.gen.api.modify_object(
+        asmnt, {
+            "custom_attribute_values": [{
+                "attributable_id": asmnt.id,
+                "attributable_type": "assessment",
+                "attribute_value": "abc",
+                "custom_attribute_id": ca_def.id,
+            }, ],
+        },
+    )
+    ggrc.models.CustomAttributeDefinition.query.filter_by(
+        id=ca_def_id
+    ).delete()
+
+    revisions = ggrc.models.Revision.query.filter(
+        ggrc.models.Revision.resource_id == asmnt.id,
+        ggrc.models.Revision.resource_type == "Assessment",
+    ).order_by(ggrc.models.Revision.id.desc()).all()
+    content = revisions[0].content
+    self.assertEqual(len(content["custom_attribute_values"]), 1)
+    cav = content["custom_attribute_values"][0]
+    self.assertEqual(cav["custom_attribute_id"], ca_def.id)
+    self.assertEqual(cav["attributable_id"], asmnt.id)
+
   def test_revision_review_stub(self):
     """ Test proper review stub population in revision content """
-    control = factories.ControlFactory()
-    revisions = _get_revisions(control)
+    program = factories.ProgramFactory()
+    revisions = _get_revisions(program)
     self.assertEqual(len(revisions), 1)
     self.assertEqual(revisions[0].action, "created")
 
@@ -360,8 +392,8 @@ class TestRevisions(query_helper.WithQueryApi, TestCase):
         {
             "review": {
                 "reviewable": {
-                    "type": control.type,
-                    "id": control.id,
+                    "type": program.type,
+                    "id": program.id,
                 },
                 "context": None,
                 "notification_type": "email",
@@ -376,7 +408,7 @@ class TestRevisions(query_helper.WithQueryApi, TestCase):
     self.assertEqual(all_models.Review.STATES.REVIEWED,
                      resp_review["status"])
 
-    revisions = _get_revisions(control)
+    revisions = _get_revisions(program)
     self.assertEqual(len(revisions), 2)
     self.assertEqual(revisions[0].action, "created")
     self.assertEqual(revisions[1].action, "modified")
@@ -466,3 +498,53 @@ class TestRevisions(query_helper.WithQueryApi, TestCase):
         "ids"
     )
     self.assertItemsEqual(resp, expected_ids)
+
+  def test_populated_automapping(self):
+    """Test automapping content in revision"""
+    with factories.single_commit():
+      program_a = factories.ProgramFactory()
+      program_b = factories.ProgramFactory()
+      factories.RelationshipFactory(source=program_b,
+                                    destination=program_a)
+      regulation_a = factories.RegulationFactory()
+
+    program_a_id = program_a.id
+    program_b_id = program_b.id
+    regulation_a_id = regulation_a.id
+    self.gen.generate_relationship(regulation_a, program_a)
+    rel_1 = all_models.Relationship.query.filter_by(
+        source_type="Regulation",
+        source_id=regulation_a_id,
+        destination_type="Program",
+        destination_id=program_b_id
+    ).first()
+    rel_2 = all_models.Relationship.query.filter_by(
+        source_type="Program",
+        source_id=program_b_id,
+        destination_type="Regulation",
+        destination_id=regulation_a_id
+    ).first()
+    relationship = rel_1 or rel_2
+    revision = all_models.Revision.query.filter_by(
+        resource_type="Relationship",
+        resource_id=relationship.id
+    ).first()
+    automapping = revision.content["automapping"]
+    nodes = {automapping["source_type"]: automapping["source_id"],
+             automapping["destination_type"]: automapping["destination_id"]}
+    self.assertTrue(program_a_id == nodes["Program"])
+    self.assertTrue(regulation_a_id == nodes["Regulation"])
+
+  def test_empty_revision(self):
+    """Test revision is marked as empty if no changes present."""
+    with factories.single_commit():
+      audit = factories.AuditFactory()
+
+    response = self.api_helper.put(audit, {})
+    self.assert200(response)
+
+    self.refresh_object(audit)
+    revisions = _get_revisions(audit)
+    self.assertEqual(len(revisions), 2)
+    self.assertFalse(revisions[0].is_empty)
+    self.assertTrue(revisions[1].is_empty)

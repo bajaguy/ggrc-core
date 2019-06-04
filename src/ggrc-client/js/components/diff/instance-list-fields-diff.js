@@ -1,5 +1,5 @@
 /*
- Copyright (C) 2018 Google Inc., authors, and contributors
+ Copyright (C) 2019 Google Inc., authors, and contributors
  Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
  */
 
@@ -7,8 +7,8 @@ import {getModelInstance} from '../../plugins/utils/models-utils';
 import {buildModifiedListField} from '../../plugins/utils/object-history-utils';
 import {REFRESH_PROPOSAL_DIFF} from '../../events/eventTypes';
 import DiffBaseVM from './diff-base-vm';
-import template from './templates/instance-diff-items.mustache';
-const tag = 'instance-list-fields-diff';
+import {reify} from './../../plugins/utils/reify-utils';
+import template from './templates/instance-diff-items.stache';
 
 const viewModel = DiffBaseVM.extend({
   modifiedFields: {},
@@ -49,12 +49,12 @@ const viewModel = DiffBaseVM.extend({
   },
   buildDisplayNames(diffData) {
     const currentDisplayNames = this.getDisplayValue(diffData.currentVal);
-    const modifiedDiplayNames = this.getDisplayValue(diffData.modifiedVal);
+    const modifiedDisplayNames = this.getDisplayValue(diffData.modifiedVal);
     const attrName = this.getAttrDisplayName(diffData.attrName);
     const diff = {
       attrName,
       currentVal: currentDisplayNames,
-      modifiedVal: modifiedDiplayNames,
+      modifiedVal: modifiedDisplayNames,
     };
 
     return diff;
@@ -67,13 +67,14 @@ const viewModel = DiffBaseVM.extend({
   },
   loadFieldList(values) {
     // get from cache
-    return values.map((item) => item.reify());
+    return values.map((item) => reify(item));
   },
 });
 
 export default can.Component.extend({
-  tag,
-  template,
+  tag: 'instance-list-fields-diff',
+  view: can.stache(template),
+  leakScope: true,
   viewModel: viewModel,
   events: {
     buildDiff() {

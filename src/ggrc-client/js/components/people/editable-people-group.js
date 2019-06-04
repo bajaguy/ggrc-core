@@ -1,21 +1,21 @@
 /*
- Copyright (C) 2018 Google Inc.
+ Copyright (C) 2019 Google Inc.
  Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
  */
 
 import './people-group-modal';
 import './editable-people-group-header';
-import '../autocomplete/autocomplete';
+import '../autocomplete/autocomplete-component';
 import '../external-data-autocomplete/external-data-autocomplete';
 import '../person/person-data';
 import peopleGroupVM from '../view-models/people-group-vm';
 import {isInnerClick} from '../../plugins/ggrc_utils';
-import template from './editable-people-group.mustache';
+import template from './editable-people-group.stache';
 
 const SHOW_MODAL_LIMIT = 4;
 
 let viewModel = peopleGroupVM.extend({
-  title: '@',
+  title: '',
   canEdit: {},
   showPeopleGroupModal: false,
   updatableGroupId: null,
@@ -99,7 +99,8 @@ let viewModel = peopleGroupVM.extend({
 
 export default can.Component.extend({
   tag: 'editable-people-group',
-  template,
+  view: can.stache(template),
+  leakScope: true,
   viewModel,
   events: {
     '{window} mousedown': function (el, ev) {

@@ -1,0 +1,145 @@
+{{!
+  Copyright (C) 2019 Google Inc.
+  Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
+}}
+
+{{#instance}}
+  <section class="info{{#if is_info_pin}} sticky-info-panel{{/if}}">
+    <wrapper-assessment-template instance:from="instance">
+      <div class="tier-content">
+
+        <div class="pane-header">
+          <div class="pane-header__container">
+            <div class="pane-header__title" data-test-id="title_0ad9fbaf">
+              {{#if is_info_pin}}
+                <h6>Title</h6>
+              {{/if}}
+              <div class="pane-header__title-details">
+                <h3 class="pane-header__title-name">{{title}}</h3>
+                {{#if status}}
+                  <span class="pane-header__title-item">
+                    <span class="state-value {{addclass 'state' status}}">{{un_camel_case status}}</span>
+                  </span>
+                {{/if}}
+              </div>
+            </div>
+            <div class="pane-header__toolbar">
+              {{#if is_info_pin}}
+                <info-pin-buttons maximized:from="maximized" 
+                                  onChangeMaximizedState:from="@onChangeMaximizedState" 
+                                  onClose:from="@onClose">
+                </info-pin-buttons>
+              {{/if}}
+              {{> /static/templates/base_objects/info-pane-utility.stache}}
+            </div>
+          </div>
+        </div>
+
+        <tab-container>
+          <tab-panel panels:bind="panels" titleText:from="'Attributes'">
+            <div class="row-fluid wrap-row">
+              <div class="span4">
+                <h6>Objects under assessment</h6>
+                {{#if template_object_type}}
+                  {{template_object_type}}
+                {{else}}
+                  <span class="empty-message">None</span>
+                {{/if}}
+              </div>
+
+              <div class="span4">
+                <h6>Copy Assessment Procedure from mapped object</h6>
+                {{#if test_plan_procedure}}YES{{else}}NO{{/if}}
+              </div>
+
+              <div class="span4">
+                <h6>Default assessment procedure</h6>
+                {{#if procedure_description}}
+                  {{{procedure_description}}}
+                {{else}}
+                  <span class="empty-message">None</span>
+                {{/if}}
+              </div>
+            </div>
+
+            <div class="row-fluid wrap-row">
+              <div class="span4">
+                <h6>Default Assignees</h6>
+                {{#if default_people.assignees}}
+                  {{#isArray default_people.assignees}}
+                    <ul class="person-info-list">
+                      {{#default_people.assignees}}
+                        <li><person-data personId:from="{{.}}"></person-data></li>
+                      {{/default_people.assignees}}
+                    </ul>
+                  {{else}}
+                    {{defaultAssigneeLabel}}
+                  {{/isArray}}
+                {{else}}
+                  <span class="empty-message">None</span>
+                {{/if}}
+              </div>
+
+              <div class="span4">
+                <h6>Default Verifiers</h6>
+                {{#if default_people.verifiers}}
+                  {{#isArray default_people.verifiers}}
+                    <ul class="person-info-list">
+                      {{#default_people.verifiers}}
+                        <li><person-data personId:from="{{.}}"></person-data></li>
+                      {{/default_people.verifiers}}
+                    </ul>
+                  {{else}}
+                    {{defaultVerifierLabel}}
+                  {{/isArray}}
+                {{else}}
+                  <span class="empty-message">None</span>
+                {{/if}}
+              </div>
+
+              <div class="span4">
+                <h6>Code</h6>
+                <span class="empty-message">{{slug}}</span>
+              </div>
+            </div>
+
+            {{#if instance.can_use_issue_tracker}}
+              <div class="row-fluid wrap-row">
+                <div class="expanded-area">
+                  <div class="info-expand">
+                    <a class="show-hidden-fields info-show-hide active" href="javascript://">
+                      <span class="out">
+                        <i class="fa fa-caret-right"></i>
+                        SHOW
+                      </span>
+                      <span class="in">
+                        <i class="fa fa-caret-down"></i>
+                        HIDE
+                      </span>
+                      TICKET TRACKER INFO
+                    </a>
+                  </div>
+                  <div class="hidden-fields-area">
+                    <info-issue-tracker-fields
+                      instance:from="instance"
+                      note:from="'Turns on Ticket Tracker integration.'">
+                    </info-issue-tracker-fields>
+                  </div>
+                </div>
+              </div>
+            {{/if}}
+
+          </tab-panel>
+          <tab-panel panels:bind="panels" titleText:from="'Change Log'">
+              <revision-log instance:from="instance" options:from="tabOptions"></revision-log>
+          </tab-panel>
+        </tab-container>
+      </div><!-- tier-content end -->
+
+    </wrapper-assessment-template>
+  </section>
+
+  {{#if is_info_widget}}
+    <info-pane-footer createdAt:from="instance.created_at" modifiedAt:from="instance.updated_at" modifiedBy:from="instance.modified_by"></info-pane-footer>
+  {{/if}}
+{{/instance}}

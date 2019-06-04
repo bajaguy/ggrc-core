@@ -19,28 +19,23 @@
   "globals": {
     "_": false,
     "can": false,
-    "CMS": false,
     "GGRC": false,
     "moment": false,
-    "Mustache": false,
     "MutationObserver": false,
     "Spinner": false,
-    "Stickyfill": false,
     "Clipboard": false,
     "calculate_spinner_z_index": false,
-    "resolve_computed": false,
-    "rangy": false,
     "ga": false,
     "gapi": false,
-    "oauth_dfd": false,
-    "getPageToken": false,
     "google": false,
-    "st": false,
     // Webpack variables
-    "DEV_MODE": false,
     "GOOGLE_ANALYTICS_ID": false,
     "RELEASE_NOTES_DATE": false,
-    "BUILD_DATE": false
+    "BUILD_DATE": false,
+    // "env.jasmine: true" includes rules only for 1.3 and 2.0 versions. Because
+    // of this reason need to allow to use features which are included for
+    // newer versions of Jasmine
+    "expectAsync": false
   },
 
   "rules": {
@@ -50,6 +45,14 @@
       1, "always-multiline"
     ],
     "indent": [2, 2, {
+      "FunctionDeclaration": {
+        "body": 1,
+        "parameters": 1
+      },
+      "FunctionExpression": {
+        "body": 1,
+        "parameters": 1
+      },
       "SwitchCase": 1
     }],
     "id-length": [1, {

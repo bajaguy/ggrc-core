@@ -1,9 +1,9 @@
 /*
- Copyright (C) 2018 Google Inc., authors, and contributors
+ Copyright (C) 2019 Google Inc., authors, and contributors
  Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
  */
 
-export default can.Map({
+export default can.Map.extend({
   currentInstance: {},
   diff: [],
   emptyValue: '—',
@@ -29,7 +29,7 @@ export default can.Map({
       return this.attr('emptyValue');
     }
 
-    // display_name is function in case when object is CMS.Model
+    // display_name is function in case when object is instance of Cacheable
     displayName = typeof object.display_name === 'function' ?
       object.display_name() :
       object.display_name;

@@ -1,9 +1,9 @@
 /*
- Copyright (C) 2018 Google Inc.
+ Copyright (C) 2019 Google Inc.
  Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
  */
 
-import template from './templates/tree-filter-input.mustache';
+import template from './templates/tree-filter-input.stache';
 import router from '../../router';
 import QueryParser from '../../generated/ggrc_filter_query_parser';
 
@@ -75,7 +75,8 @@ let viewModel = can.Map.extend({
 
 export default can.Component.extend({
   tag: 'tree-filter-input',
-  template,
+  view: can.stache(template),
+  leakScope: true,
   viewModel,
   events: {
     'input keyup': function (el, ev) {

@@ -1,16 +1,15 @@
 /*
-    Copyright (C) 2018 Google Inc.
+    Copyright (C) 2019 Google Inc.
     Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 */
 
 import '../object-list-item/business-object-list-item';
-import template from './issue-unmap-item.mustache';
+import template from './issue-unmap-item.stache';
 import Pagination from '../base-objects/pagination';
 import {
   buildParam,
   batchRequests,
 } from '../../plugins/utils/query-api-utils';
-import Mappings from '../../models/mappers/mappings';
 import {
   getPageInstance,
   navigate,
@@ -21,17 +20,32 @@ import * as businessModels from '../../models/business-models';
 
 export default can.Component.extend({
   tag: 'issue-unmap-item',
-  template,
-  viewModel: {
+  view: can.stache(template),
+  leakScope: true,
+  viewModel: can.Map.extend({
     define: {
       paging: {
         value() {
           return new Pagination({pageSizeSelect: [5, 10, 15]});
         },
       },
+      issueInstance: {
+        get() {
+          return this.attr('source.type') === 'Issue'
+            ? this.attr('source')
+            : this.attr('destination');
+        },
+      },
+      target: {
+        get() {
+          return this.attr('source.type') === 'Issue'
+            ? this.attr('destination')
+            : this.attr('source');
+        },
+      },
     },
-    issueInstance: {},
-    target: {},
+    source: {},
+    destination: {},
     modalTitle: 'Unmapping',
     showRelatedObjects: false,
     isLoading: false,
@@ -41,11 +55,6 @@ export default can.Component.extend({
     modalState: {
       open: false,
     },
-    canUnmap() {
-      return Mappings.allowedToMap(this.attr('issueInstance'),
-        this.attr('target'), {isIssueUnmap: true});
-    },
-
     processRelatedSnapshots() {
       this.loadRelatedObjects().done(() => {
         if (this.attr('total')) {
@@ -136,7 +145,7 @@ export default can.Component.extend({
         this.attr('isLoading', false);
       }
     },
-    showNoRelationhipError() {
+    showNoRelationshipError() {
       const issueTitle = this.attr('issueInstance.title');
       const targetTitle = this.attr('target.title');
       const targetType = this.attr('target').class.title_singular;
@@ -147,7 +156,7 @@ export default can.Component.extend({
         from ${targetType} version (${targetTitle}),
         then mapping with original object will be automatically reverted.`);
     },
-  },
+  }),
   events: {
     async click(el, ev) {
       ev.preventDefault();
@@ -159,7 +168,7 @@ export default can.Component.extend({
         if (!relationship) {
           // if there is no relationship it mean that user try to unmap
           // original object from Issue automapped to snapshot via assessment
-          this.viewModel.showNoRelationhipError();
+          this.viewModel.showNoRelationshipError();
         } else if (this.viewModel.attr('target.type') === 'Assessment' &&
           !this.viewModel.attr('issueInstance.allow_unmap_from_audit')) {
           // In this case we should show modal with related objects.

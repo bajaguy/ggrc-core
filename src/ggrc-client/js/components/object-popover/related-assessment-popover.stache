@@ -1,0 +1,35 @@
+{{!
+    Copyright (C) 2019 Google Inc.
+    Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
+}}
+
+<object-popover item:from="selectedAssessment" popoverTitle:from="selectedAssessmentTitle" direction:from="popoverDirection"
+                popoverLink:from="selectedAssessmentLink" popoverTitleInfo:from="popoverTitleInfo">
+    <tab-container class="related-assessments__tab-container">
+        <tab-panel panels:bind="panels" titleText:from="'Attributes'">
+            <div class="fields-wrapper flex-box flex-row">
+                <show-more items:from="selectedAssessmentFields">
+                    <div class="field-wrapper flex-size-1 custom-attribute-{{type}}">
+                        <form-validation-icon validation:from="validation"></form-validation-icon>
+                        <div class="field__title form-field__title">
+                            <label class="field__title-text custom-attribute-{{type}}" for="form-field-{{id}}">
+                              {{title}}
+                              {{#if helptext}}
+                                <i class="fa fa-question-circle field__title-helper-text" rel="tooltip" title="{{helptext}}"></i>
+                              {{/if}}
+                            </label>
+                        </div>
+                        <custom-attributes-field-view class="form-field__content custom-attribute-{{type}}"
+                                                      type:from="type"
+                                                      value:from="value">
+                        </custom-attributes-field-view>
+                    </div>
+                </show-more>
+            </div>
+        </tab-panel>
+        <tab-panel panels:bind="panels" titleText:from="'Comments'">
+            <related-comments parentInstance:from="item.data">
+            </related-comments>
+        </tab-panel>
+    </tab-container>
+</object-popover>

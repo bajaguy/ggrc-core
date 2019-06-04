@@ -1,4 +1,4 @@
-# Copyright (C) 2018 Google Inc.
+# Copyright (C) 2019 Google Inc.
 # Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 
 """Tests for snapshot model."""
@@ -32,7 +32,6 @@ class TestSnapshotQueryApi(TestCase):
       "kind_id",
 
       "means",
-      "means_id",
 
       "meta_kind",
 
@@ -41,11 +40,6 @@ class TestSnapshotQueryApi(TestCase):
 
       "verify_frequency",
       "verify_frequency_id",
-
-      "assertions",
-      "categories",
-      "categorizations",
-      "categorized_assertions",
 
       # special fields not needed for snapshots.
       "display_name",
@@ -66,7 +60,6 @@ class TestSnapshotQueryApi(TestCase):
       "related_destinations",
       "related_sources",
       "risks",
-      "task_group_objects",
       "task_group_tasks",
       "task_groups",
 
@@ -86,9 +79,12 @@ class TestSnapshotQueryApi(TestCase):
       "contact_id",
       "secondary_contact_id",
 
+      "created_by_id",
       "modified_by_id",
 
       "attribute_object_id",
+      "last_submitted_by_id",
+      "last_verified_by_id",
 
       # revisions require complete data for documents,
       # while api returns only basic data in stubs
@@ -106,11 +102,12 @@ class TestSnapshotQueryApi(TestCase):
     """Set up test cases for all tests."""
     super(TestSnapshotQueryApi, self).setUp()
     self._create_cas()
+    self._create_external_object()
     self.import_file("all_snapshottable_objects.csv")
 
-  @staticmethod
-  def _create_cas():
+  def _create_cas(self):
     """Create custom attribute definitions."""
+    self._ca_objects = {}
     ca_model_names = [
         "facility",
         "control",
@@ -125,7 +122,8 @@ class TestSnapshotQueryApi(TestCase):
         {"title": "CA rich text", "attribute_type": "Rich Text"},
         {"title": "CA date", "attribute_type": "Date"},
         {"title": "CA checkbox", "attribute_type": "Checkbox"},
-        {"title": "CA person", "attribute_type": "Map:Person"},
+        {"title": "CA multiselect", "attribute_type": "Multiselect",
+         "multi_choice_options": "yes,no"},
         {"title": "CA dropdown", "attribute_type": "Dropdown",
          "multi_choice_options": "one,two,three,four,five"},
     ]
@@ -135,6 +133,44 @@ class TestSnapshotQueryApi(TestCase):
           factories.CustomAttributeDefinitionFactory(
               definition_type=type_,
               **args
+          )
+
+  @staticmethod
+  def _create_external_object():
+    """Populate external model object that could not be imported."""
+    with factories.single_commit():
+      objects = [
+          factories.ControlFactory(directive=None),
+          factories.RiskFactory()
+      ]
+
+      ca_definitions = {
+          cad.title: cad
+          for object in objects
+          for cad in object.get_custom_attribute_definitions([
+              "CA text",
+              "CA rich text",
+              "CA date",
+              "CA checkbox",
+              "CA multiselect",
+              "CA dropdown"
+          ])
+      }
+      ca_values = {
+          "CA text": "Control ca text",
+          "CA rich text": "control<br><br>\nrich text",
+          "CA date": "22/02/2022",
+          "CA checkbox": "yes",
+          "CA multiselect": "yes",
+          "CA dropdown": "one"
+      }
+
+      for title, value in ca_values.items():
+        for obj in objects:
+          factories.CustomAttributeValueFactory(
+              custom_attribute=ca_definitions[title],
+              attributable=obj,
+              attribute_value=value
           )
 
   def test_revision_content(self):
@@ -194,7 +230,8 @@ class TestSnapshotQueryApi(TestCase):
 
     The content in the revision (that is set by log_json) must match closely to
     what the api returns for a get request. This ensures that when a model is
-    created from a snapshot on the fronend, it will have all the needed fields.
+    created from a snapshot on the frontend, it will have all the needed
+    fields.
     """
     self.client.get("/login")
     test_models = get_snapshottable_models()

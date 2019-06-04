@@ -1,10 +1,12 @@
 /*
- * Copyright (C) 2018 Google Inc.
+ * Copyright (C) 2019 Google Inc.
  * Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
  */
 
 .multiselect-dropdown {
-  max-width: 350px;
+  &:not(.inline) {
+    max-width: 350px;
+  }
   min-width: 150px;
 
   .dropdown-focus {
@@ -30,7 +32,7 @@
     color: rgb(85, 85, 85);
     font-size: 12px;
 
-    &:focus {
+    &.highlightable:focus {
       @extend .dropdown-focus;
     }
     &[disabled] {
@@ -43,6 +45,8 @@
   }
 
   label.multiselect-dropdown__label {
+    display: flex;
+    word-break: break-word;
     width: 96%;
     margin: 0;
     padding: 2px 0 2px 5px;
@@ -55,11 +59,17 @@
   }
 
   input[type="checkbox"].multiselect-dropdown__checkbox {
+    position: relative;
+    top: 2px;
     margin: 0 3px;
   }
 
   .multiselect-dropdown {
     &__body {
+      &.inline {
+        position: initial;
+        box-shadow: none;
+      }
       position: absolute;
       box-sizing: border-box;
       width: 100%;
@@ -116,14 +126,6 @@
         border-color: #ddd;
         outline: none;
       }
-    }
-  }
-}
-
-dropdown-options-loader {
-  .multiselect-dropdown {
-    .multiselect-dropdown__list {
-      max-height: 150px;
     }
   }
 }

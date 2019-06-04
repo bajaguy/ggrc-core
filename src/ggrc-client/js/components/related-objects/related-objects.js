@@ -1,10 +1,15 @@
 /*
- Copyright (C) 2018 Google Inc.
+ Copyright (C) 2019 Google Inc.
  Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
  */
 
 import '../sortable-column/sortable-column';
-import {REFRESH_RELATED} from '../../events/eventTypes';
+import {
+  REFRESH_RELATED,
+  ADD_RELATED,
+  RELATED_REFRESHED,
+  RELATED_ADDED,
+} from '../../events/eventTypes';
 import {
   batchRequests,
 } from '../../plugins/utils/query-api-utils';
@@ -14,7 +19,8 @@ let defaultOrderBy = 'created_at';
 
 export default can.Component.extend({
   tag: 'related-objects',
-  viewModel: {
+  leakScope: true,
+  viewModel: can.Map.extend({
     define: {
       noRelatedObjectsMessage: {
         type: 'string',
@@ -41,9 +47,9 @@ export default can.Component.extend({
     },
     baseInstance: null,
     modelConstructor: null,
-    relatedItemsType: '@',
+    relatedItemsType: '',
     orderBy: {},
-    initialOrderBy: '@',
+    initialOrderBy: '',
     selectedItem: {},
     getFilters: function (id, type) {
       let predefinedFilter = this.attr('predefinedFilter');
@@ -130,10 +136,17 @@ export default can.Component.extend({
         name: orderBy.attr('field'),
         desc: orderBy.attr('direction') === 'desc'}];
     },
-    setRelatedItems: function () {
-      this.attr('relatedObjects').replace(this.loadRelatedItems());
+    setRelatedItems: async function () {
+      let items = await this.loadRelatedItems();
+
+      this.attr('relatedObjects').replace(items);
+
+      this.attr('baseInstance').dispatch({
+        ...RELATED_REFRESHED,
+        model: this.attr('relatedItemsType'),
+      });
     },
-  },
+  }),
   init: function () {
     this.viewModel.setRelatedItems();
   },
@@ -154,6 +167,34 @@ export default can.Component.extend({
       },
     '{viewModel.orderBy} changed': function () {
       this.viewModel.setRelatedItems();
+    },
+    [`{viewModel.relatedObjects} ${RELATED_ADDED.type}`]([scope], event) {
+      let vm = this.viewModel;
+
+      if (vm.attr('relatedItemsType') !== event.model) {
+        return;
+      }
+
+      let paging = this.viewModel.attr('paging');
+
+      if (paging.attr('current') === 1) {
+        vm.setRelatedItems();
+      } else {
+        paging.attr('current', 1);
+      }
+    },
+    [`{viewModel.relatedObjects} ${ADD_RELATED.type}`]([scope], event) {
+      const vm = this.viewModel;
+      const relatedObjects = vm.attr('relatedObjects');
+      relatedObjects.unshift({instance: event.object});
+
+      let paging = vm.attr('paging');
+      if (relatedObjects.length > paging.attr('pageSize')) {
+        relatedObjects.pop(); // remove last element
+      }
+
+      let total = paging.attr('total');
+      paging.attr('total', total + 1);
     },
   },
 });

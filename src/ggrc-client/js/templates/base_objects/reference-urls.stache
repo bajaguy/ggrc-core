@@ -1,0 +1,28 @@
+{{!
+    Copyright (C) 2019 Google Inc.
+    Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
+}}
+
+{{#instance}}
+{{^if readonly}}
+  <div class="row-fluid wrap-row">
+    <div data-test-id="title_reference_url_aa7d1a65">
+      <related-documents instance:from="instance" kind:from="'REFERENCE_URL'">
+        <related-urls
+          instance:from="instance"
+          urls:bind="documents"
+          isDisabled:from="isLoading"
+          isNotEditable:from="isSnapshot"
+          isSnapshot:from="isSnapshot"
+          on:createUrl="createRelatedDocument(scope.event.payload)"
+          on:removeUrl="removeRelatedDocument(scope.event.payload)">
+          <div class="related-urls__heading">
+            <spinner-component class="related-urls__spinner" toggle:from="isLoading"></spinner-component>
+            <h6 class="related-urls__title">Reference URL</h6>
+          </div>
+        </related-urls>
+      </related-documents>
+    </div>
+  </div>
+{{/if}}
+{{/instance}}

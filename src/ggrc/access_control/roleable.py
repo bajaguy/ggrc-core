@@ -1,4 +1,4 @@
-# Copyright (C) 2018 Google Inc.
+# Copyright (C) 2019 Google Inc.
 # Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 
 """Roleable model"""
@@ -6,23 +6,21 @@
 import logging
 from collections import defaultdict
 from collections import namedtuple
-from sqlalchemy import and_
+
 from sqlalchemy import orm
 from sqlalchemy import inspect
-from sqlalchemy.orm import remote
 from sqlalchemy.ext.declarative import declared_attr
 from cached_property import cached_property
 from werkzeug.exceptions import BadRequest
-
 
 from ggrc import db
 from ggrc.access_control.list import AccessControlList
 from ggrc.access_control import role
 from ggrc.fulltext.attributes import CustomRoleAttr
 from ggrc.models import reflection
-from ggrc import utils
 from ggrc.utils import errors
 from ggrc.utils import referenced_objects
+
 
 logger = logging.getLogger(__name__)
 
@@ -63,16 +61,35 @@ class Roleable(object):
   @declared_attr
   def _access_control_list(cls):  # pylint: disable=no-self-argument
     """access_control_list"""
+    current_type = cls.__name__
+
+    joinstr = (
+        'and_('
+        'foreign(remote(AccessControlList.object_id)) == {type}.id,'
+        'AccessControlList.object_type == "{type}",'
+        'AccessControlList.parent_id_nn == 0'
+        ')'
+        .format(type=current_type)
+    )
+
+    # Since we have some kind of generic relationship here, it is needed
+    # to provide custom joinstr for backref. If default, all models having
+    # this mixin will be queried, which in turn produce large number of
+    # queries returning nothing and one query returning object.
+    backref_joinstr = (
+        'remote({type}.id) == foreign(AccessControlList.object_id)'
+        .format(type=current_type)
+    )
+
     return db.relationship(
         'AccessControlList',
-        primaryjoin=lambda: and_(
-            remote(AccessControlList.object_id) == cls.id,
-            remote(AccessControlList.object_type) == cls.__name__,
-            remote(AccessControlList.parent_id_nn) == 0
+        primaryjoin=joinstr,
+        backref=orm.backref(
+            '{}_object'.format(current_type),
+            primaryjoin=backref_joinstr,
         ),
-        foreign_keys='AccessControlList.object_id',
-        backref='{0}_object'.format(cls.__name__),
-        cascade='all, delete-orphan')
+        cascade='all, delete-orphan'
+    )
 
   @property
   def access_control_list(self):
@@ -105,21 +122,31 @@ class Roleable(object):
     if values is None:
       return
 
-    new_acl_people_map = defaultdict(set)
+    from ggrc.models import person
+
+    for value in values:
+      referenced_objects.mark_to_cache(person.Person, value["person"]["id"])
+    referenced_objects.rewarm_cache(
+        rewarm_type=person.Person,
+        skip_cad=True,
+        undefer=True,
+    )
+
+    persons_by_acl = defaultdict(set)
     for value in values:
       if value["ac_role_id"] not in self.acr_id_acl_map:
         raise BadRequest(errors.BAD_PARAMS)
       person = referenced_objects.get("Person", value["person"]["id"])
       acl = self.acr_id_acl_map[value["ac_role_id"]]
-      new_acl_people_map[acl].add(person)
+      persons_by_acl[acl].add(person)
 
     for acl in self._access_control_list:
-      acl.update_people(new_acl_people_map[acl])
+      acl.update_people(persons_by_acl[acl])
 
   @classmethod
-  def eager_query(cls):
+  def eager_query(cls, **kwargs):
     """Eager Query"""
-    query = super(Roleable, cls).eager_query()
+    query = super(Roleable, cls).eager_query(**kwargs)
     return query.options(
         orm.subqueryload(
             '_access_control_list'
@@ -170,17 +197,12 @@ class Roleable(object):
     revision logs.
     """
     acl_json = []
-    for person, acl in self.access_control_list:
-      person_entry = acl.log_json()
-      person_entry["person"] = utils.create_stub(person)
-      person_entry["person_email"] = person.email
-      person_entry["person_id"] = person.id
-      person_entry["person_name"] = person.name
-      acl_json.append(person_entry)
+    for acl in self._access_control_list:
+      acl_json.extend(acl.people_json)
     return acl_json
 
   def log_json(self):
-    """Log custom attribute values."""
+    """Log access control lists values."""
     # pylint: disable=not-an-iterable
     res = super(Roleable, self).log_json()
     res["access_control_list"] = self.acl_json
@@ -216,6 +238,26 @@ class Roleable(object):
         inspect(acl).attrs["access_control_people"].history.has_changes()
         for acl in self._access_control_list
     )
+
+  def has_acr_acl_changed(self, acr_name):
+    """Check if the object has had any changes in ACL with `acr_name` role.
+
+    Helper function checking access control list with particular access
+    control role `acr_name` for changes in current session. If there is no
+    such role on object, `False` will be returned.
+
+    Args:
+      acr_name: Name of particular access control role to check for changes.
+
+    Returns:
+      Boolean indicating if there are any changes in particular access control
+      list in the current session. If there is not any ACL with `acr_name`
+      ACR, `False` will be returned.
+    """
+    if acr_name not in self.acr_name_acl_map:
+      return False
+    acl = self.acr_name_acl_map[acr_name]
+    return inspect(acl).attrs["access_control_people"].history.has_changes()
 
   def validate_acl(self):
     """Check correctness of access_control_list."""

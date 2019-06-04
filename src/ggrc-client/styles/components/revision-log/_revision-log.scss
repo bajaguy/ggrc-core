@@ -1,11 +1,30 @@
 /*
- * Copyright (C) 2018 Google Inc.
+ * Copyright (C) 2019 Google Inc.
  * Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
  */
 
 revision-log {
   .revision-log {
     position: relative;
+
+    &__header {
+      display: flex;
+      margin: 0 0 16px 0;
+
+      &-item {
+        display: flex;
+        align-items: center;
+      }
+
+      &-toolbar {
+        flex: 1;
+        justify-content: flex-end;
+      }
+    }
+
+    &__logs-message {
+      color: $text;
+    }
 
     &__field-name {
       li, p {
@@ -23,9 +42,13 @@ revision-log {
       }
     }
 
-    .entry-list li {
-      margin: 0;
-      padding: 16px;
+    .entry-list {
+      width: 100%;
+
+      li {
+        margin: 0;
+        padding: 16px;
+      }
     }
 
     &__status-reviewed {

@@ -1,21 +1,19 @@
 /*
- Copyright (C) 2018 Google Inc.
+ Copyright (C) 2019 Google Inc.
  Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
  */
 
 import {SWITCH_TO_ERROR_PANEL, SHOW_INVALID_FIELD} from '../../events/eventTypes';
-import template from './object-state-toolbar.mustache';
-
-const tag = 'object-state-toolbar';
-const activeStates = ['In Progress', 'Rework Needed', 'Not Started'];
+import template from './object-state-toolbar.stache';
 
 /**
  * Object State Toolbar Component allowing Object state modification
  */
 export default can.Component.extend({
-  tag,
-  template,
-  viewModel: {
+  tag: 'object-state-toolbar',
+  view: can.stache(template),
+  leakScope: true,
+  viewModel: can.Map.extend({
     define: {
       updateState: {
         get: function () {
@@ -35,20 +33,20 @@ export default can.Component.extend({
         },
       },
     },
+    instanceState: '',
     disabled: false,
+    isUndoButtonVisible: false,
     verifiers: [],
     instance: {},
     isActiveState: function () {
-      return activeStates.includes(this.attr('instance.status'));
+      const activeStates = this.attr('instance').constructor.editModeStatuses;
+      return activeStates.includes(this.attr('instanceState'));
     },
     isInProgress: function () {
-      return this.attr('instance.status') === 'In Progress';
+      return this.attr('instanceState') === 'In Progress';
     },
     isInReview: function () {
-      return this.attr('instance.status') === 'In Review';
-    },
-    hasPreviousState: function () {
-      return !!this.attr('instance.previousStatus');
+      return this.attr('instanceState') === 'In Review';
     },
     changeState: function (newState, isUndo) {
       if (this.attr('instance._hasValidationErrors')) {
@@ -64,5 +62,5 @@ export default can.Component.extend({
         undo: isUndo,
       });
     },
-  },
+  }),
 });

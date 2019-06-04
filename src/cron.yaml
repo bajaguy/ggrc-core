@@ -1,4 +1,4 @@
-# # Copyright (C) 2018 Google Inc.
+# # Copyright (C) 2019 Google Inc.
 # Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 #
 # See https://developers.google.com/appengine/docs/python/config/appconfig
@@ -17,3 +17,11 @@ cron:
 - description: GGRC - import health jobs
   url: /import_health_cron_endpoint
   schedule: every 10 mins
+- description: ggrc sync
+  url: /ggrc_sync
+  target: ggrc-service
+  schedule: every 1 minutes
+- description: ggrc sox sync
+  url: /sync_sox_objects
+  target: ggrc-service
+  schedule: every day 04:00

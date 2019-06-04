@@ -1,7 +1,18 @@
 /*
-    Copyright (C) 2018 Google Inc.
+    Copyright (C) 2019 Google Inc.
     Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 */
+
+/**
+ * Fired after instance refresh.
+ *
+ * @event refreshed
+ * @type {object}
+ * @property {string} type - Event name.
+ */
+const REFRESHED = {
+  type: 'refreshed',
+};
 
 /**
  *
@@ -12,6 +23,38 @@
  */
 const REFRESH_RELATED = {
   type: 'refreshRelated',
+};
+
+/**
+ *
+ * @event addRelated
+ * @type {object}
+ * @property {string} type - Event name.
+ * @property {string} model -  Model name.
+ */
+const ADD_RELATED = {
+  type: 'addRelated',
+};
+
+/**
+ *
+ * @event relatedRefreshed
+ * @type {object}
+ * @property {string} type - Event name.
+ * @property {string} model -  Model name.
+ */
+const RELATED_REFRESHED = {
+  type: 'relatedRefreshed',
+};
+
+/**
+ * @event relatedAdded
+ * @type {object}
+ * @property {string} type - Event name.
+ * @property {string} model -  Model name.
+ */
+const RELATED_ADDED = {
+  type: 'relatedAdded',
 };
 
 /**
@@ -63,13 +106,13 @@ const DESTINATION_UNMAPPED = {
 };
 
 /**
- * Refreshes cached Related Assessments tab
- * @event refreshRelatedAssessments
+ * Notifies that proposal was created
+ * @event proposalCreated
  * @type {object}
  * @property {string} type - Event name.
  */
-const REFRESH_TAB_CONTENT = {
-  type: 'refreshTabContent',
+const PROPOSAL_CREATED = {
+  type: 'proposalCreated',
 };
 
 /**
@@ -193,7 +236,7 @@ const MAP_OBJECTS = {
  * @event deferredMapObjects
  * @type {object}
  * @property {string} type - Event name.
- * @property {Stub[]|can.Model.Cacheable[]} objects - Mapped objects (always
+ * @property {Stub[]|Cacheable[]} objects - Mapped objects (always
  * contain "id" and "type" fields).
  */
 const DEFERRED_MAP_OBJECTS = {
@@ -211,16 +254,42 @@ const REFRESH_MAPPED_COUNTER = {
   type: 'refreshMappedCounter',
 };
 
+/**
+ * Objects were mapped via object-mapper functionality.
+ * @event objectsMappedViaMapper
+ * @type {object}
+ * @property {(Stub[]|Cacheable[])=} objects - Mapped objects.
+ */
+const OBJECTS_MAPPED_VIA_MAPPER = {
+  type: 'objectsMappedViaMapper',
+};
+
+/**
+ * Notifies that some objects were mapped and/or unmapped from the instance.
+ * @event deferredMappedUnmapped
+ * @type {object}
+ * @property {string} type - Event name.
+ * @property {Cacheable[]} mapped - Mapped objects.
+ * @property {Cacheable[]} unmapped - Unmapped objects.
+ */
+const DEFERRED_MAPPED_UNMAPPED = {
+  type: 'deferredMappedUnmapped',
+};
+
 export {
+  REFRESHED,
   REFRESH_SUB_TREE,
   REFRESH_RELATED,
+  ADD_RELATED,
+  RELATED_REFRESHED,
+  RELATED_ADDED,
   ROLES_CONFLICT,
   SWITCH_TO_ERROR_PANEL,
   SHOW_INVALID_FIELD,
   VALIDATION_ERROR,
   DESTINATION_UNMAPPED,
-  REFRESH_TAB_CONTENT,
   NAVIGATE_TO_TAB,
+  PROPOSAL_CREATED,
   REFRESH_PROPOSAL_DIFF,
   REFRESH_COMMENTS,
   RELATED_ITEMS_LOADED,
@@ -232,4 +301,6 @@ export {
   MAP_OBJECTS,
   DEFERRED_MAP_OBJECTS,
   REFRESH_MAPPED_COUNTER,
+  OBJECTS_MAPPED_VIA_MAPPER,
+  DEFERRED_MAPPED_UNMAPPED,
 };

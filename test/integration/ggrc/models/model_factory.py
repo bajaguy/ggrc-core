@@ -1,4 +1,4 @@
-# Copyright (C) 2018 Google Inc.
+# Copyright (C) 2019 Google Inc.
 # Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 
 """Factories for ggrc models.
@@ -16,8 +16,9 @@ import factory
 
 from ggrc import db
 from ggrc import models
-from ggrc.login import noop
 from ggrc.fulltext import get_indexer
+from ggrc.fulltext import mixin
+from ggrc.login import noop
 
 
 class ModelFactory(factory.Factory, object):
@@ -36,7 +37,6 @@ class ModelFactory(factory.Factory, object):
 
   @classmethod
   def _log_event(cls, instance, action="POST"):
-    indexer = get_indexer()
     db.session.flush()
     user = cls._get_user()
     revision = models.Revision(
@@ -50,16 +50,28 @@ class ModelFactory(factory.Factory, object):
     )
     db.session.add(revision)
     db.session.add(event)
-    indexer.delete_record(instance.id, instance.type, commit=False)
-    indexer.create_record(instance, commit=False)
+
+    indexer = get_indexer()
+    if cls._is_reindex_needed(instance):
+      indexer.delete_record(instance.id, instance.type, commit=False)
+      indexer.create_record(instance, commit=False)
+
+  @staticmethod
+  def _is_reindex_needed(instance):
+    # Snapshots are a special case cause they are indexed only if their
+    # child_type is indexed.
+    return (
+        issubclass(instance.__class__, mixin.Indexed) and
+        instance.REQUIRED_GLOBAL_REINDEX
+    ) or isinstance(instance, models.all_models.Snapshot)
 
   @staticmethod
   def _get_user():
     user = models.Person.query.first()
     if not user:
       user = models.Person(
-          name=noop.default_user_name,
-          email=noop.default_user_email,
+          name=noop.DEFAULT_USER_NAME,
+          email=noop.DEFAULT_USER_EMAIL,
       )
       db.session.add(user)
       db.session.flush()

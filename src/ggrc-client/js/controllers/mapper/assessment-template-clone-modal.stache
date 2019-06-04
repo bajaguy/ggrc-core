@@ -1,0 +1,11 @@
+{{!
+    Copyright (C) 2019 Google Inc.
+    Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
+}}
+
+<assessment-template-clone
+    type:from="type"
+    join_object_id:from="join_object_id"
+    object:from="object"
+    on:refreshTreeView="refreshTreeView(scope.event)">
+</assessment-template-clone>

@@ -1,21 +1,21 @@
 /*
- Copyright (C) 2018 Google Inc.
+ Copyright (C) 2019 Google Inc.
  Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
  */
 
 import RefreshQueue from '../../models/refresh_queue';
-import template from './person-data.mustache';
+import template from './person-data.stache';
 import {notifier} from '../../plugins/utils/notifiers-utils';
 import Person from '../../models/business-models/person';
 
-const tag = 'person-data';
 /**
  * Person List Item Component
  */
 export default can.Component.extend({
-  tag,
-  template,
-  viewModel: {
+  tag: 'person-data',
+  view: can.stache(template),
+  leakScope: true,
+  viewModel: can.Map.extend({
     define: {
       personId: {
         type: 'number',
@@ -70,5 +70,5 @@ export default can.Component.extend({
         },
       },
     },
-  },
+  }),
 });

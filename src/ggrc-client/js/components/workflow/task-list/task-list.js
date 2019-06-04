@@ -1,15 +1,16 @@
 /*
-  Copyright (C) 2018 Google Inc.
+  Copyright (C) 2019 Google Inc.
   Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 */
 
-import template from './templates/task-list.mustache';
+import template from './templates/task-list.stache';
 import Pagination from '../../base-objects/pagination';
 import Permission from '../../../permission';
 import {REFRESH_RELATED} from '../../../events/eventTypes';
 import TaskGroupTask from '../../../models/business-models/task-group-task';
 
 const viewModel = can.Map.extend({
+  TaskGroupTask,
   define: {
     paging: {
       value() {
@@ -67,12 +68,12 @@ const viewModel = can.Map.extend({
 });
 
 const events = {
-  '{CMS.Models.TaskGroupTask} destroyed'(model, event, instance) {
+  '{TaskGroupTask} destroyed'(model, event, instance) {
     if (instance instanceof TaskGroupTask) {
       this.viewModel.updatePagingAfterDestroy();
     }
   },
-  '{CMS.Models.TaskGroupTask} created'(model, event, instance) {
+  '{TaskGroupTask} created'(model, event, instance) {
     if (instance instanceof TaskGroupTask) {
       this.viewModel.updatePagingAfterCreate();
     }
@@ -81,7 +82,8 @@ const events = {
 
 export default can.Component.extend({
   tag: 'task-list',
-  template,
+  view: can.stache(template),
+  leakScope: true,
   viewModel,
   events,
 });

@@ -1,19 +1,20 @@
 /*
- Copyright (C) 2018 Google Inc.
+ Copyright (C) 2019 Google Inc.
  Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
  */
 
 import '../related-objects/related-people-access-control';
 import '../related-objects/related-people-access-control-group';
 import '../people/deletable-people-group';
-import '../autocomplete/autocomplete';
+import '../autocomplete/autocomplete-component';
 import '../external-data-autocomplete/external-data-autocomplete';
-import template from './templates/custom-roles-modal.mustache';
+import template from './templates/custom-roles-modal.stache';
 
 export default can.Component.extend({
   tag: 'custom-roles-modal',
-  template,
-  viewModel: {
+  view: can.stache(template),
+  leakScope: true,
+  viewModel: can.Map.extend({
     instance: {},
     updatableGroupId: null,
     isNewInstance: false,
@@ -25,5 +26,5 @@ export default can.Component.extend({
     readOnly: false,
     showGroupTooltip: false,
     groupTooltip: null,
-  },
+  }),
 });

@@ -1,16 +1,16 @@
 /*
- Copyright (C) 2018 Google Inc.
+ Copyright (C) 2019 Google Inc.
  Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
  */
 
-import template from './templates/sub-tree-models.mustache';
+import template from './templates/sub-tree-models.stache';
 import childModelsMap from '../tree/child-models-map';
 import {
   getModelsForSubTier,
 } from '../../plugins/utils/tree-view-utils';
 import {
   getWidgetConfig,
-} from '../../plugins/utils/object-versions-utils';
+} from '../../plugins/utils/widgets-utils';
 
 let viewModel = can.Map.extend({
   define: {
@@ -18,12 +18,15 @@ let viewModel = can.Map.extend({
       type: Boolean,
       value: false,
     },
-    uniqueModelsList: {
+    displayModelsList: {
       get: function () {
-        return this.attr('modelsList').map(function (model) {
-          model.attr('inputId', 'stm-' +
-            (Date.now() * Math.random()).toFixed());
+        return this.attr('modelsList').map((model) => {
+          const displayName =
+            model.attr('name').split(/(?=[A-Z])/).join(' ');
+          model.attr('displayName', displayName);
           return model;
+        }).sort((a, b) => {
+          return a.displayName > b.displayName ? 1 : -1;
         });
       },
     },
@@ -71,8 +74,10 @@ let viewModel = can.Map.extend({
     let displayList;
 
     displayList = defaultModels.available.map(function (model) {
+      let config = getWidgetConfig(model);
+
       return {
-        widgetName: getWidgetConfig(model).widgetName,
+        widgetName: config.widgetName,
         name: model,
         display: selectedModels.indexOf(model) !== -1,
       };
@@ -105,7 +110,8 @@ let events = {
 
 export default can.Component.extend({
   tag: 'sub-tree-models',
-  template: template,
+  view: can.stache(template),
+  leakScope: true,
   viewModel: viewModel,
   events: events,
 });

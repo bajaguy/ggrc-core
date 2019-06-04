@@ -1,0 +1,73 @@
+{{!
+    Copyright (C) 2019 Google Inc.
+    Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
+}}
+
+{{#instance}}
+<div class="ggrc-form">
+  <form action="javascript://">
+    <div class="ggrc-form-item">
+      <div class="ggrc-form-item__multiple-row">
+        <label class="form-label ggrc-form-item__label">State</label>
+        <dropdown-component optionsList:from="model.statuses"
+                  name:bind="instance.status">
+        </dropdown-component>
+      </div>
+      <div class="ggrc-form-item__multiple-row">
+        <label class="form-label ggrc-form-item__label">Document Type</label>
+        <dropdown-component optionsList:from="model.kinds"
+                  name:bind="instance.kind"
+                  {{^if new_object_form}}isDisabled:from="true"{{/if}}>
+        </dropdown-component>
+      </div>
+    </div>
+
+    <div class="ggrc-form-item">
+      <div class="ggrc-form-item__row">
+        <label class="form-label ggrc-form-item__label form-label__extended">
+          {{#is(instance.kind, "FILE")}}
+            Attachment
+          {{else}}
+            Url
+          {{/is}}
+          <i class="fa fa-asterisk"></i>
+        </label>
+        <document-object-list-item
+          instance:from="instance">
+        </document-object-list-item>
+      </div>
+    </div>
+
+    <div class="ggrc-form-item">
+      <div class="ggrc-form-item__row">
+        <label class="ggrc-form-item__label">
+          Description
+          <i class="fa fa-question-circle" rel="tooltip" title="Enter Description"></i>
+        </label>
+        <div class="rich-text">
+          <rich-text
+            tabindex="3"
+            hiddenToolbar:from="true"
+            placeholder:from="'Enter Description'"
+            content:bind="instance.description">
+          </rich-text>
+        </div>
+      </div>
+    </div>
+
+    <access-control-list-roles-helper
+      instance:from="{.}"
+      isNewInstance:from="new_object_form">
+    </access-control-list-roles-helper>
+
+    <div class="ggrc-form-item">
+      <div class="ggrc-form-item__multiple-row">
+        <label class="ggrc-form-item__label">
+          Code
+        </label>
+        <input disabled class="input-block-level" name="slug" placeholder="DOCUMENT-XXX" type="text" value:from="slug">
+      </div>
+    </div>
+  </form>
+</div>
+{{/instance}}

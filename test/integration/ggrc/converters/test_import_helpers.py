@@ -1,7 +1,9 @@
-# Copyright (C) 2018 Google Inc.
+# Copyright (C) 2019 Google Inc.
 # Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 
 """Module for CSV column definition tests."""
+# pylint: disable=too-many-lines
+
 from copy import deepcopy
 
 import ddt
@@ -156,6 +158,9 @@ class TestCustomAttributesDefinitions(TestCase):
         "Last Updated Date",
         "Last Updated By",
         "Folder",
+        "Send by default",
+        "Recipients",
+        "Comments",
     }
     expected_names = element_names.union(mapping_names)
     self.assertEqual(expected_names, display_names)
@@ -348,6 +353,9 @@ class TestGetObjectColumnDefinitions(TestCase):
         "Last Updated Date",
         "Last Updated By",
         "Folder",
+        "Send by default",
+        "Recipients",
+        "Comments",
     }
     expected_fields = {
         "mandatory": {
@@ -385,6 +393,13 @@ class TestGetObjectColumnDefinitions(TestCase):
         "Last Updated By",
         "Folder",
         "Last Deprecated Date",
+        "Component ID",
+        "Hotlist ID",
+        "Severity",
+        "Priority",
+        "Issue Type",
+        "Ticket Tracker Integration",
+        "Sync people with Ticket Tracker",
     }
     expected_fields = {
         "mandatory": {
@@ -408,7 +423,7 @@ class TestGetObjectColumnDefinitions(TestCase):
         "Audit",
         "Object Under Assessment",
         "Use Control Assessment Procedure",
-        "Default Test Plan",
+        "Default Assessment Procedure",
         "Default Assignees",
         "Default Verifiers",
         "Custom Attributes",
@@ -419,6 +434,12 @@ class TestGetObjectColumnDefinitions(TestCase):
         "Last Updated By",
         "Delete",
         "State",
+        "Component ID",
+        "Hotlist ID",
+        "Severity",
+        "Priority",
+        "Issue Type",
+        "Ticket Tracker Integration",
     }
     expected_fields = {
         "mandatory": {
@@ -482,7 +503,7 @@ class TestGetObjectColumnDefinitions(TestCase):
         "Severity",
         "Priority",
         "Issue Type",
-        "Issue Title",
+        "Ticket Title",
         "Ticket Tracker Integration",
     }
     expected_fields = {
@@ -534,14 +555,15 @@ class TestGetObjectColumnDefinitions(TestCase):
         "Severity",
         "Priority",
         "Issue Type",
-        "Issue Title",
+        "Ticket Title",
         "Ticket Tracker Integration",
     }
     expected_fields = {
         "mandatory": {
             "Title",
             "Admin",
-            "Code"
+            "Code",
+            "Due Date"
         },
         "unique": {
             "Code",
@@ -630,8 +652,7 @@ class TestGetObjectColumnDefinitions(TestCase):
         "Categories",
         "State",
         "Last Assessment Date",
-        "Review State",
-        "Reviewers",
+        "Review Status",
         "Document File",
         "Delete",
         "Control Operators",
@@ -639,9 +660,6 @@ class TestGetObjectColumnDefinitions(TestCase):
         "Other Contacts",
         "Principal Assignees",
         "Secondary Assignees",
-        "Recipients",
-        "Send by default",
-        "Comments",
         "Created Date",
         "Last Updated Date",
         "Last Updated By",
@@ -650,7 +668,7 @@ class TestGetObjectColumnDefinitions(TestCase):
 
     # Control has additional mandatory field - Assertions
     control_expected = deepcopy(self.COMMON_EXPECTED)
-    control_expected["mandatory"].add("Assertions")
+    control_expected["unique"].remove("Title")
     self._test_single_object(all_models.Control, names, control_expected)
 
   def test_objective_definitions(self):
@@ -812,15 +830,10 @@ class TestGetObjectColumnDefinitions(TestCase):
         "Admin",
         "Reference URL",
         "State",
-        "Review State",
-        "Reviewers",
         "Last Deprecated Date",
         "Title",
-        "Primary Contacts",
-        "Secondary Contacts",
-        "Recipients",
-        "Send by default",
-        "Comments",
+        "Risk Owners",
+        "Other Contacts",
         "Assessment Procedure",
         "Created Date",
         "Last Updated Date",
@@ -830,6 +843,7 @@ class TestGetObjectColumnDefinitions(TestCase):
         "Vulnerability",
         "Threat Event",
         "Risk Type",
+        "Review State",
     }
     expected_fields = {
         "mandatory": {
@@ -837,7 +851,6 @@ class TestGetObjectColumnDefinitions(TestCase):
             "Description",
             "Admin",
             "Title",
-            "Risk Type",
         },
         "unique": {
             "Code",

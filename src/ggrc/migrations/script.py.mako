@@ -1,4 +1,4 @@
-# Copyright (C) 2018 Google Inc.
+# Copyright (C) 2019 Google Inc.
 # Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 
 """
@@ -25,4 +25,4 @@ def upgrade():
 
 def downgrade():
     """Downgrade database schema and/or data back to the previous revision."""
-    ${downgrades if downgrades else ""}
+    raise NotImplementedError("Downgrade is not supported")

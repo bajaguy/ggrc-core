@@ -1,18 +1,19 @@
 /*
- Copyright (C) 2018 Google Inc.
+ Copyright (C) 2019 Google Inc.
  Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
  */
 
-import '../spinner/spinner';
-import template from './autocomplete-results.mustache';
+import '../spinner-component/spinner-component';
+import template from './autocomplete-results.stache';
 
 /**
  * The component is used to show autocomplete results and handle user's clicks.
  */
 export default can.Component.extend({
   tag: 'autocomplete-results',
-  template,
-  viewModel: {
+  view: can.stache(template),
+  leakScope: true,
+  viewModel: can.Map.extend({
     define: {
       /**
        * Collection containing a list of results.
@@ -74,5 +75,5 @@ export default can.Component.extend({
         data: item,
       });
     },
-  },
+  }),
 });

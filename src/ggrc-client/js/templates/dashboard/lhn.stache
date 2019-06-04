@@ -1,0 +1,129 @@
+{{!
+    Copyright (C) 2019 Google Inc.
+    Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
+}}
+
+<div class="lhs-holder">
+  <div class="lhn-type">
+    <a href="javascript://" data-test-id="my_objects_6fa95ae1" data-name="work_type" data-value="my_work">My objects</a>
+    <a href="javascript://" data-test-id="all_objects_e0345ec4" data-name="work_type" data-value="all">All objects</a>
+  </div>
+  <div class="affix-holder">
+    <button type="button" class="bar-v"></button>
+    <div id="lhs" class="lhs accordion">
+      <a href="javascript://" class="lhn-pin"><i class="fa fa-thumb-tack"></i></a>
+      <form class="form-search">
+        <div class="lhs-search">
+          <input type="text" class="widgetsearch" placeholder="Filter my objects..."
+                 el:value:bind="search_text"/>
+          <button type="submit" class="widgetsearch-submit" value="">
+            <i class="fa fa-search"></i>
+          </button>
+
+          <div class="filter-off">
+            <a href="javascript:void(0)" rel="tooltip" data-title="Clear filters" data-original-title="" title="">
+              <i class="fa fa-times red"></i>
+            </a>
+          </div>
+        </div>
+      </form>
+
+      <h4 class="search-title">Showing filtered results</h4>
+
+      <div class="lhs-nav">
+        <ul class="top-level">
+          {{{renderLive "dashboard/lhn_search" type="Program" title_plural="Programs" template_view="programs/search_result"}}}
+          {{{renderLive "dashboard/lhn_search" type="Workflow" title_plural="Workflows" template_view="workflows/search_result" tooltip_view="/workflows/extended_info.stache"}}}
+          {{{renderLive "dashboard/lhn_search" type="Audit" title_plural="Audits" template_view="audits/search_result" tooltip_view="/audits/extended_info.stache"}}}
+          {{{renderLive "dashboard/lhn_search" type="Assessment" title_plural="Assessments" tooltip_view="/assessments/assignable_extended_info.stache" actions="base_objects/empty"}}}
+          {{{renderLive "dashboard/lhn_search" type="Issue" title_plural="Issues" actions="base_objects/search_actions"}}}
+        </ul>
+      </div>
+
+      <div class="bar-h"></div>
+
+      <div class="lhs-nav">
+        <h2>Objects</h2>
+
+        <ul class="top-level">
+          <li class="governance accordion-group">
+            <a data-test-id="directives_66116337" class="governance list-toggle top" href="javascript:void(0)">
+              <i class="fa fa-caret-right"></i>
+              Directives
+            </a>
+            <div class="content">
+              <ul class="mid-level">
+                {{{renderLive "dashboard/lhn_search" type="Contract" title_plural="Contracts" li_class="governance"}}}
+                {{{renderLive "dashboard/lhn_search" type="Policy" title_plural="Policies" li_class="governance"}}}
+                {{{renderLive "dashboard/lhn_search" type="Regulation" title_plural="Regulations" li_class="governance"}}}
+                {{{renderLive "dashboard/lhn_search" type="Requirement" title_plural="Requirements" li_class="governance"}}}
+                {{{renderLive "dashboard/lhn_search" type="Standard" title_plural="Standards" li_class="governance"}}}
+              </ul>
+            </div>
+          </li>
+
+          <li class="governance accordion-group">
+            <a data-test-id="controls/objectives_66116337" class="governance list-toggle top" href="javascript:void(0)">
+              <i class="fa fa-caret-right"></i>
+              Controls/Objectives
+            </a>
+            <div class="content">
+              <ul class="mid-level">
+                {{{renderLive "dashboard/lhn_search" type="Control" title_plural="Controls" li_class="controls"}}}
+                {{{renderLive "dashboard/lhn_search" type="Objective" title_plural="Objectives" li_class="objectives"}}}
+              </ul>
+            </div>
+          </li>
+
+          <li class="entities accordion-group">
+            <a data-test-id="people/groups_66116337" class="entities list-toggle top" href="javascript:void(0)">
+              <i class="fa fa-caret-right"></i>
+              People/Groups
+            </a>
+            <div class="content">
+              <ul class="mid-level">
+                {{{renderLive "dashboard/lhn_search" type="Person" title_plural="People" li_class="entities" template_view="people/search_result"}}}
+              </ul>
+            </div>
+          </li>
+
+          <li class="business accordion-group">
+            <a data-test-id="scope_66116337" class="business list-toggle top" href="javascript:void(0)">
+              <i class="fa fa-caret-right"></i>
+              Scope
+            </a>
+            <div class="content">
+              <ul class="mid-level">
+                {{{renderLive "dashboard/lhn_search" type="AccessGroup" title_plural="Access Groups" li_class="business"}}}
+                {{{renderLive "dashboard/lhn_search" type="AccountBalance" title_plural="Account Balances" li_class="business"}}}
+                {{{renderLive "dashboard/lhn_search" type="DataAsset" title_plural="Data Assets" li_class="business"}}}
+                {{{renderLive "dashboard/lhn_search" type="Facility" title_plural="Facilities" li_class="business"}}}
+                {{{renderLive "dashboard/lhn_search" type="KeyReport" title_plural="Key Reports" li_class="business"}}}
+                {{{renderLive "dashboard/lhn_search" type="Market" title_plural="Markets" li_class="business"}}}
+                {{{renderLive "dashboard/lhn_search" type="Metric" title_plural="Metrics" li_class="business"}}}
+                {{{renderLive "dashboard/lhn_search" type="OrgGroup" title_plural="Org Groups" li_class="business"}}}
+                {{{renderLive "dashboard/lhn_search" type="Process" title_plural="Processes" li_class="business"}}}
+                {{{renderLive "dashboard/lhn_search" type="Product" title_plural="Products" li_class="business"}}}
+                {{{renderLive "dashboard/lhn_search" type="ProductGroup" title_plural="Product Groups" li_class="business"}}}
+                {{{renderLive "dashboard/lhn_search" type="Project" title_plural="Projects" li_class="business"}}}
+                {{{renderLive "dashboard/lhn_search" type="System" title_plural="Systems" li_class="business"}}}
+                {{{renderLive "dashboard/lhn_search" type="TechnologyEnvironment" title_plural="Technology Environments" li_class="business"}}}
+                {{{renderLive "dashboard/lhn_search" type="Vendor" title_plural="Vendors" li_class="business"}}}
+              </ul>
+            </div>
+          </li>
+
+          {{> /static/templates/dashboard/lhn_risks.stache}}
+        </ul>
+      </div>
+
+      <div class="bar-h"></div>
+
+      <div class="lhs-nav">
+        <h2>Recently Viewed</h2>
+        <recently-viewed></recently-viewed>
+      </div>
+
+    </div>
+  </div>
+</div>

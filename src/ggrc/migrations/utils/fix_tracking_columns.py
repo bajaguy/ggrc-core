@@ -1,4 +1,4 @@
-# Copyright (C) 2018 Google Inc.
+# Copyright (C) 2019 Google Inc.
 # Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 
 # disable Invalid constant name pylint warning for mandatory Alembic variables.
@@ -86,7 +86,6 @@ tables = {
         "risk_assessments",
     ],
     "ggrc_workflows": [
-        "cycle_task_entries",
         "cycle_task_group_object_tasks",
         "cycle_task_group_objects",
         "cycle_task_groups",

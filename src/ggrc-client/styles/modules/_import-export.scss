@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2018 Google Inc.
+ * Copyright (C) 2019 Google Inc.
  * Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
  */
 
@@ -18,6 +18,10 @@ $historyBlockWidth: 350px;
 #csv_import {
   margin: 0 40px;
   background: $white;
+}
+
+.margin-top-20 {
+  margin-top: 20px;
 }
 
 .csv-import {
@@ -133,10 +137,6 @@ $historyBlockWidth: 350px;
     }
   }
 
-  .margin-top-20 {
-    margin-top: 20px;
-  }
-
   .btn-fixed {
     float: left;
     i {
@@ -187,13 +187,13 @@ $historyBlockWidth: 350px;
 
 .import-buttons {
   position: relative;
-  margin-bottom: 15px;
+  margin-bottom: 8px;
 
   > .state-reset {
     margin-left: 10px;
   }
 
-  > spinner {
+  > spinner-component {
     position: absolute;
     left: 10px;
     top: 5px;
@@ -221,6 +221,10 @@ $historyBlockWidth: 350px;
       }
     }
   }
+}
+
+.import-notice {
+  margin-bottom: 18px;
 }
 
 .relevant-filter-group {
@@ -291,10 +295,6 @@ $historyBlockWidth: 350px;
       padding: 20px 30px;
       border-bottom: 1px solid $itemBorder;
 
-      .btn-stop {
-        margin-left: 10px;
-      }
-
       &.disabled {
         @include opacity(0.5);
       }
@@ -308,14 +308,14 @@ $historyBlockWidth: 350px;
       }
     }
 
-    &__in-progress {
+    &__instruction {
       padding: 20px 30px 10px;
     }
 
     &__actions {
       align-items: center;
 
-      spinner {
+      spinner-component {
         margin-left: 10px;
       }
     }
@@ -468,7 +468,7 @@ $historyBlockWidth: 350px;
       @include opacity(0.5);
       pointer-events: none;
 
-      spinner {
+      spinner-component {
         margin: 6px 0 0 0;
       }
     }

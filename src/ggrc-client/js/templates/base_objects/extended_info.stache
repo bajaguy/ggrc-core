@@ -1,0 +1,82 @@
+{{!
+    Copyright (C) 2019 Google Inc.
+    Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
+}}
+{{#instance}}
+
+  <div class="row-fluid">
+    <div class="span12">
+      {{^if class.isChangeableExternally}}
+        <a class="main-title {{class.category}} oneline" href="{{viewLink}}">
+          {{title}}
+        </a>
+      {{else}}
+        <h5 class="main-title oneline">{{title}}</h5>
+      {{/if}}
+    </div>
+  </div>
+
+  <div class="row-fluid">
+    <div class="span12">
+      <h6>Description</h6>
+      <div class="rtf">
+        {{{firstnonempty description '<span class="empty-message">None</span>'}}}
+      </div>
+    </div>
+  </div>
+
+  {{> /static/templates/base_objects/contacts.stache}}
+
+<div class="row-fluid">
+  <div class="span5">
+    <div class="tiny-data">
+      <mapped-counter instance:from="instance"
+                      type:from="'Control'"
+                      isSpinnerVisible:from="true"
+                      isTitleVisible:from="false"
+                      extraCssClass:from="'color'">
+      </mapped-counter>
+      <mapped-counter instance:from="instance"
+                      type:from="'Process'"
+                      isSpinnerVisible:from="true"
+                      isTitleVisible:from="false"
+                      extraCssClass:from="'color'">
+      </mapped-counter>
+      <mapped-counter instance:from="instance"
+                      type:from="'System'"
+                      isSpinnerVisible:from="true"
+                      isTitleVisible:from="false"
+                      extraCssClass:from="'color'">
+      </mapped-counter>
+    </div>
+  </div>
+</div>
+
+  <div class="row-fluid">
+    <div class="span12">
+      <div class="code">
+        Code: {{slug}}
+      </div>
+    </div>
+  </div>
+
+  <div class="links">
+    <div class="row-fluid">
+        {{^if class.isChangeableExternally}}
+          <div class="span6">
+            <a class="secondary" href="{{viewLink}}">
+              View {{class.title_singular}}
+            </a>
+          </div>
+        {{else}}
+          <a class="secondary" href="{{viewLink}}">
+            Open Original {{class.title_singular}}
+          </a>
+          <questionnaire-link instance:from="instance" cssClasses:from="'secondary'">
+            Open {{class.title_singular}} in new frontend
+          </questionnaire-link>
+        {{/if}}
+    </div>
+  </div>
+
+{{/instance}}

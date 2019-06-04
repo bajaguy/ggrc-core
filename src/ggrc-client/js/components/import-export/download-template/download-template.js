@@ -1,15 +1,14 @@
 /*
-  Copyright (C) 2018 Google Inc.
+  Copyright (C) 2019 Google Inc.
   Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 */
 
 import '../../dropdown/multiselect-dropdown';
-import template from './download-template.mustache';
+import template from './download-template.stache';
 import {downloadTemplate, download} from '../../../plugins/utils/import-export-utils';
 import {backendGdriveClient} from '../../../plugins/ggrc-gapi-client';
 import {confirm} from '../../../plugins/utils/modals';
 
-const tag = 'download-template';
 const CSV_FILE_NAME = 'import_template.csv';
 const CSV_FORMAT = 'csv';
 const SHEET_FORMAT = 'gdrive';
@@ -100,7 +99,7 @@ const viewModel = can.Map.extend({
         modal_description: `GDrive file is generated successfully.
          Click button below to view the file.`,
         gDriveLink: link,
-        button_view: `${GGRC.mustache_path}/modals/open_sheet.mustache`,
+        button_view: `${GGRC.templates_path}/modals/open_sheet.stache`,
       });
     }).always(() => {
       this.attr('isLoading', false);
@@ -110,7 +109,8 @@ const viewModel = can.Map.extend({
 });
 
 export default can.Component.extend({
-  tag,
-  template,
+  tag: 'download-template',
+  view: can.stache(template),
+  leakScope: true,
   viewModel,
 });

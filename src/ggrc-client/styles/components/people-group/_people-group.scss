@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2018 Google Inc.
+ * Copyright (C) 2019 Google Inc.
  * Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
  */
 
@@ -53,13 +53,7 @@
     }
 
     .people-group__title-spinner {
-      position: absolute;
-      width: 28px;
-      height: 28px;
-      left: -28px;
-      display: flex;
-      justify-content: center;
-      align-items: center;
+      @extend %field-spinnerable;
     }
 
     &__count {
@@ -116,7 +110,7 @@
       &:hover {
         .fa {
           opacity: 1;
-        }    
+        }
       }
     }
 

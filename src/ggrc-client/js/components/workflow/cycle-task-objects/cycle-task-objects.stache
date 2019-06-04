@@ -1,0 +1,40 @@
+{{!
+    Copyright (C) 2019 Google Inc.
+    Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
+}}
+
+<div class="action-toolbar">
+  <spinner-component
+    class="action-toolbar__loading-icon"
+    toggle:from="isLoading">
+  </spinner-component>
+  <h6 class="action-toolbar__header">
+      Mapped objects
+  </h6>
+</div>
+
+<ul class="tree-structure new-tree mapped-objects-tree">
+  {{#each mappedObjects}}
+    <li class="tree-item task-item">
+      <div class="item-main">
+        <div class="item-wrap">
+          <div class="select">
+            <span class="status-label status-draft"></span>
+            <div class="item-data">
+              <div class="row-fluid">
+                <div class="span8">
+                  <div class="cycle-task-objects__content">
+                    <i class="fa {{iconClass}} color"></i>
+                    <a href="{{object.viewLink}}" target="_blank" class="cycle-task-objects__object-link">
+                      {{object.title}}
+                    </a>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </li>
+  {{/each}}
+</ul>

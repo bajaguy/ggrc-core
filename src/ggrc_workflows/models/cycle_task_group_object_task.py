@@ -1,4 +1,4 @@
-# Copyright (C) 2018 Google Inc.
+# Copyright (C) 2019 Google Inc.
 # Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 
 """Module containing Cycle tasks.
@@ -8,6 +8,7 @@ from logging import getLogger
 from sqlalchemy import orm
 import sqlalchemy as sa
 from sqlalchemy.ext import hybrid
+from sqlalchemy.ext.declarative import declared_attr
 from werkzeug.exceptions import BadRequest
 
 from ggrc import builder
@@ -54,7 +55,7 @@ class CycleTaskGroupObjectTask(roleable.Roleable,
 
   IMPORTABLE_FIELDS = (
       'slug', 'title', 'description', 'start_date',
-      'end_date', 'finished_date', 'verified_date',
+      'end_date', 'finished_date', 'verified_date', 'comments',
       'status', '__acl__:Task Assignees', '__acl__:Task Secondary Assignees',
   )
 
@@ -92,9 +93,6 @@ class CycleTaskGroupObjectTask(roleable.Roleable,
       ft_attributes.DateFullTextAttr("cycle due date",
                                      lambda x: x.cycle.next_due_date,
                                      with_template=False),
-      ft_attributes.MultipleSubpropertyFullTextAttr("comments",
-                                                    "cycle_task_entries",
-                                                    ["description"]),
       ft_attributes.BooleanFullTextAttr("needs verification",
                                         "is_verification_needed",
                                         with_template=False,
@@ -102,10 +100,20 @@ class CycleTaskGroupObjectTask(roleable.Roleable,
       "folder",
   ]
 
-  AUTO_REINDEX_RULES = [
-      ft_mixin.ReindexRule("CycleTaskEntry",
-                           lambda x: x.cycle_task_group_object_task),
-  ]
+  # The app should not pass to the json representation of
+  # relationships to the internal models
+  IGNORED_RELATED_TYPES = ["CalendarEvent"]
+
+  _custom_publish = {
+      "related_sources": lambda obj: [
+          rel.log_json() for rel in obj.related_sources
+          if rel.source_type not in obj.IGNORED_RELATED_TYPES
+      ],
+      "related_destinations": lambda obj: [
+          rel.log_json() for rel in obj.related_destinations
+          if rel.destination_type not in obj.IGNORED_RELATED_TYPES
+      ]
+  }
 
   cycle_id = db.Column(
       db.Integer,
@@ -129,10 +137,8 @@ class CycleTaskGroupObjectTask(roleable.Roleable,
                                         nullable=False,
                                         default=[])
 
-  sort_index = db.Column(db.String(length=250), default="", nullable=False)
-
-  finished_date = db.Column(db.DateTime)
-  verified_date = db.Column(db.DateTime)
+  finished_date = db.Column(db.Date)
+  verified_date = db.Column(db.Date)
 
   # This parameter is overridden by cycle task group backref, but is here to
   # ensure pylint does not complain
@@ -190,8 +196,6 @@ class CycleTaskGroupObjectTask(roleable.Roleable,
       'cycle',
       'cycle_task_group',
       'task_group_task',
-      'cycle_task_entries',
-      'sort_index',
       'task_type',
       'response_options',
       'selected_response_options',
@@ -220,7 +224,7 @@ class CycleTaskGroupObjectTask(roleable.Roleable,
 
   _aliases = {
       "title": "Summary",
-      "description": "Task Details",
+      "description": "Task Description",
       "finished_date": {
           "display_name": "Actual Finish Date",
           "description": ("Make sure that 'Actual Finish Date' isn't set, "
@@ -315,19 +319,23 @@ class CycleTaskGroupObjectTask(roleable.Roleable,
     ).exists()
 
   @classmethod
-  def eager_query(cls):
-    """Add cycle task entries to cycle task eager query
-
-    This function adds cycle_task_entries as a join option when fetching cycles
-    tasks, and makes sure that with one query we fetch all cycle task related
-    data needed for generating cycle taks json for a response.
-
-    Returns:
-      a query object with cycle_task_entries added to joined load options.
+  def eager_query(cls, **kwargs):
     """
-    query = super(CycleTaskGroupObjectTask, cls).eager_query()
+    Add related objects to eager query.
+
+    This function makes sure that with one query we fetch all cycle task
+    related data needed for generating cycle task json for a response.
+    """
+
+    # Ensure that related_destinations and related_sources will be loaded
+    # in subquery. It allows reduce a number of requests to DB when these attrs
+    # are used
+    LOGGER.debug("%s.eager_query(): setting flag to load related_sources "
+                 " and related_destinations", cls.__name__)
+    kwargs['load_related'] = True
+
+    query = super(CycleTaskGroupObjectTask, cls).eager_query(**kwargs)
     return query.options(
-        orm.subqueryload('cycle_task_entries'),
         orm.joinedload('cycle')
            .undefer_group('Cycle_complete'),
         orm.joinedload('cycle')
@@ -373,10 +381,6 @@ class CycleTaskGroupObjectTask(roleable.Roleable,
         ).load_only(
             "email",
             "name",
-            "id"
-        ),
-        orm.Load(cls).subqueryload("cycle_task_entries").load_only(
-            "description",
             "id"
         ),
         orm.Load(cls).joinedload("cycle").joinedload("workflow").undefer_group(
@@ -439,32 +443,45 @@ class CycleTaskGroupObjectTask(roleable.Roleable,
 
 
 class CycleTaskable(object):
-  """ Requires the Relatable mixin, otherwise cycle_task_group_object_tasks
-  fails to fetch related objects
-  """
-  @builder.simple_property
-  def cycle_task_group_object_tasks(self):
-    """ Lists all the cycle tasks related to a certain object
-    """
-    sources = [r.CycleTaskGroupObjectTask_source
-               for r in self.related_sources
-               if r.CycleTaskGroupObjectTask_source is not None]
-    destinations = [r.CycleTaskGroupObjectTask_destination
-                    for r in self.related_destinations
-                    if r.CycleTaskGroupObjectTask_destination is not None]
-    return sources + destinations
+  """CycleTaskable mixin"""
+
+  # The following attribute will be used to add sqlalchemy properties
+  # to mapper after Mixin is injected to existing Model class.
+  # Do not forget add new sqlalchemy attrs to the list. These aatrs will be
+  # added to mapper after mixin injection
+  _mapper_inject_properties = [
+      'cycle_task_group_object_tasks',
+  ]
+
+  @declared_attr
+  def cycle_task_group_object_tasks(cls):  # pylint: disable=no-self-argument
+    return db.relationship(
+        CycleTaskGroupObjectTask,
+        primaryjoin=lambda: sa.or_(
+            sa.and_(
+                cls.id == relationship.Relationship.source_id,
+                relationship.Relationship.source_type == cls.__name__,
+                relationship.Relationship.destination_type ==
+                "CycleTaskGroupObjectTask",
+            ),
+            sa.and_(
+                cls.id == relationship.Relationship.destination_id,
+                relationship.Relationship.destination_type == cls.__name__,
+                relationship.Relationship.source_type ==
+                "CycleTaskGroupObjectTask",
+            )
+        ),
+        secondary=relationship.Relationship.__table__,
+        secondaryjoin=lambda: CycleTaskGroupObjectTask.id == sa.case(
+            [(relationship.Relationship.source_type == cls.__name__,
+              relationship.Relationship.destination_id)],
+            else_=relationship.Relationship.source_id
+        ),
+        viewonly=True
+    )
 
   @classmethod
-  def eager_query(cls):
+  def eager_query(cls, **kwargs):
     """Eager query for objects with cycle tasks."""
-    query = super(CycleTaskable, cls).eager_query()
-    return query.options(
-        orm.subqueryload('related_sources')
-           .joinedload('CycleTaskGroupObjectTask_source')
-           .undefer_group('CycleTaskGroupObjectTask_complete')
-           .joinedload('cycle'),
-        orm.subqueryload('related_destinations')
-           .joinedload('CycleTaskGroupObjectTask_destination')
-           .undefer_group('CycleTaskGroupObjectTask_complete')
-           .joinedload('cycle')
-    )
+    query = super(CycleTaskable, cls).eager_query(**kwargs)
+    return query.options(orm.subqueryload('cycle_task_group_object_tasks'))

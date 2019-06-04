@@ -1,5 +1,5 @@
 /*
-    Copyright (C) 2018 Google Inc.
+    Copyright (C) 2019 Google Inc.
     Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 */
 
@@ -17,11 +17,11 @@ import {
 import * as businessModels from '../models/business-models';
 import Relationship from '../models/service-models/relationship';
 import '../components/recently-viewed/recently-viewed';
+import '../components/questionnaire-create-link/questionnaire-create-link';
+import {InfiniteScrollControl, LhnTooltipsControl} from '../controllers/infinite-scroll-controller';
+import * as canBatch from 'can-event/batch/batch';
 
-can.Control.extend({
-  pluginName: 'cms_controllers_lhn',
-  defaults: {},
-}, {
+const LhnControl = can.Control.extend({}, {
   init: function () {
     this.obs = new can.Map();
 
@@ -156,14 +156,12 @@ can.Control.extend({
     }
     this.obs.attr('my_work', myWorkTab);
 
-    $lhs
-      .cms_controllers_lhn_search({
-        observer: this.obs,
-      })
-      .control('cms_controllers_lhn_search')
-      .display();
+    let searchControl = new LhnSearchControl($lhs, {
+      observer: this.obs,
+    });
+    searchControl.display();
 
-    $lhs.cms_controllers_lhn_tooltips();
+    new LhnTooltipsControl($lhs);
 
     let checked = this.obs.attr('my_work');
     let value = checked ? 'my_work' : 'all';
@@ -204,7 +202,7 @@ can.Control.extend({
   // it ain't pretty, but it works
   initial_lhn_render: function () {
     let self = this;
-    if (!$('.lhs-holder').size() || !$('.lhn-trigger').size()) {
+    if (!$('.lhs-holder').length || !$('.lhn-trigger').length) {
       window.requestAnimationFrame(this.initial_lhn_render.bind(this));
       return;
     }
@@ -224,14 +222,13 @@ can.Control.extend({
   hide_lhn: function () {
     // UI-revamp
     // Here we should hide the button ||| also
-    let $area = $('.area');
     let $lhsHolder = $('.lhs-holder');
     let $bar = $('.bar-v');
     let $lhnTrigger = $('.lhn-trigger');
 
     this.element.hide();
     $lhsHolder.css('width', 0);
-    $area.css('margin-left', 0);
+    $('.page-content').css('margin-left', 0);
     $bar.hide();
     $lhnTrigger.hide();
     $lhnTrigger.addClass('hide');
@@ -354,11 +351,10 @@ can.Control.extend({
   },
 });
 
-can.Control.extend({
-  pluginName: 'cms_controllers_lhn_search',
+const LhnSearchControl = can.Control.extend({
   defaults: {
-    list_view: GGRC.mustache_path + '/base_objects/search_result.mustache',
-    actions_view: GGRC.mustache_path + '/base_objects/search_actions.mustache',
+    list_view: 'base_objects/search_result',
+    actions_view: 'base_objects/search_actions',
     list_selector: 'ul.top-level > li, ul.mid-level > li',
     list_toggle_selector: 'li > a.list-toggle',
     model_attr_selector: null,
@@ -375,24 +371,26 @@ can.Control.extend({
   },
 }, {
   display: function () {
-    let templatePath = GGRC.mustache_path + this.element.data('template');
     let lhnPrefs = getLHNState();
 
-    // 2-way binding is set up in the view using can-value, directly connecting the
+    // 2-way binding is set up in the view using value:bind, directly connecting the
     //  search box and the display prefs to save the search value between page loads.
     //  We also listen for this value in the controller
     //  to trigger the search.
-    let frag = can.view(templatePath, lhnPrefs);
+    let view = GGRC.Templates[this.element.data('template')];
+    let frag = can.stache(view)(lhnPrefs);
+    this.element.html(frag);
+
     let initialParams = {};
     let savedFilters = lhnPrefs.filter_params || new can.Map();
 
-    this.element.html(frag);
     this.post_init();
-    this.element.find('.sub-level')
-      .cms_controllers_infinite_scroll()
-      .on('scroll', _.debounce(function () {
-        setLHNState({category_scroll: this.scrollTop});
-      }, 250));
+
+    let subLevelElements = this.element.find('.sub-level');
+    new InfiniteScrollControl(subLevelElements);
+    subLevelElements.on('scroll', _.debounce(function () {
+      setLHNState({category_scroll: this.scrollTop});
+    }, 250));
 
     let initialTerm = lhnPrefs.search_text || '';
     if (this.options.observer.my_work) {
@@ -446,9 +444,9 @@ can.Control.extend({
         this.options._hasPendingRefresh = true;
         return;
       }
-      modelNames = can.map(
-        this.get_visible_lists(), this.proxy('get_list_model'));
-      modelName = instance.constructor.shortName;
+      modelNames = _.filteredMap(
+        this.get_visible_lists(), ($list) => this.get_list_model($list));
+      modelName = instance.constructor.model_singular;
 
       if (modelNames.indexOf(modelName) > -1) {
         this.options.visible_lists[modelName].unshift(instance);
@@ -469,7 +467,7 @@ can.Control.extend({
       .find('a.list-toggle.top');
     let $ul = $toggle.parent('li').find(this.options.list_mid_level_selector);
 
-    if ($toggle.size() && !$toggle.hasClass('active')) {
+    if ($toggle.length && !$toggle.hasClass('active')) {
       this.open_list($toggle, $ul, null, true);
     }
   },
@@ -480,7 +478,7 @@ can.Control.extend({
     let $parent = el.parent('li');
     let selector;
 
-    if ($parent.find(midSelector).size()) {
+    if ($parent.find(midSelector).length) {
       selector = midSelector;
     } else {
       selector = subSelector;
@@ -709,25 +707,26 @@ can.Control.extend({
         }),
       };
 
-      can.view($list.data('template') || self.options.list_view, context,
-        (frag, xhr) => {
-          $list.find(self.options.list_content_selector).html(frag);
+      let listView = GGRC.Templates[
+        $list.data('template') || self.options.list_view];
+      let listItem = can.stache(listView)(context);
+      $list.find(self.options.list_content_selector).html(listItem);
 
-          // If this category we're rendering is the one that is open, wait for the
-          //  list to finish rendering in the content pane, then set the scrolltop
-          //  of the category to the stored value in display prefs.
-          if (modelName === getLHNState().open_category) {
-            $list.one('list_displayed', function () {
-              $(this).find(self.options.list_content_selector).scrollTop(
-                getLHNState().category_scroll || 0
-              );
-            });
-          }
+      // If this category we're rendering is the one that is open, wait for the
+      //  list to finish rendering in the content pane, then set the scrolltop
+      //  of the category to the stored value in display prefs.
+      if (modelName === getLHNState().open_category) {
+        $list.one('list_displayed', function () {
+          $(this).find(self.options.list_content_selector).scrollTop(
+            getLHNState().category_scroll || 0
+          );
         });
-      can.view($list.data('actions') || self.options.actions_view, context,
-        function (frag, xhr) {
-          $list.find(self.options.actions_content_selector).html(frag);
-        });
+      }
+
+      let actionView = GGRC.Templates[
+        $list.data('actions') || self.options.actions_view];
+      let actions = can.stache(actionView)(context);
+      $list.find(self.options.actions_content_selector).html(actions);
     });
   },
   get_list_model: function ($list, count) {
@@ -806,10 +805,10 @@ can.Control.extend({
       });
 
       function finishDisplay(results) {
-        can.Map.startBatch();
+        canBatch.start();
         self.options.visible_lists[modelName].attr('is_loading', false);
         self.options.visible_lists[modelName].replace(results);
-        can.Map.stopBatch();
+        canBatch.stop();
         setTimeout(function () {
           $list.trigger('list_displayed', modelName);
         }, 1);
@@ -833,9 +832,10 @@ can.Control.extend({
     }
 
 
-    models = can.map(this.get_lists(), this.proxy('get_list_model'));
-    extraModels = can.map(
-      this.get_lists(), this.proxy('get_extra_list_model'));
+    models = _.filteredMap(this.get_lists(),
+      ($list) => this.get_list_model($list));
+    extraModels = _.filteredMap(
+      this.get_lists(), ($list) => this.get_extra_list_model($list));
 
     this.options._hasPendingRefresh = false;
     // Retrieve and display counts
@@ -852,14 +852,14 @@ can.Control.extend({
     let self = this;
     let searchId = this.search_id;
     let lists = this.get_visible_lists();
-    let models = can.map(lists, this.proxy('get_list_model'));
+    let models = _.filteredMap(lists, ($list) => this.get_list_model($list));
 
     if (!$('.lhn-trigger').hasClass('active')) {
       this.options._hasPendingRefresh = true;
       return $.Deferred().resolve();
     }
 
-    models = can.map(models, function (modelName) {
+    models = _.filteredMap(models, (modelName) => {
       if (self.options.loaded_lists.indexOf(modelName) === -1) {
         return modelName;
       }
@@ -937,7 +937,7 @@ can.Control.extend({
   },
   get_visible_lists: function () {
     let self = this;
-    return can.map(this.get_lists(), function ($list) {
+    return _.filteredMap(this.get_lists(), ($list) => {
       $list = $($list);
       if ($list.find([self.options.list_content_selector,
         self.options.list_mid_level_selector].join(',')).hasClass('in')) {
@@ -969,3 +969,7 @@ can.Control.extend({
     this.run_search(term, param);
   },
 });
+
+export {
+  LhnControl,
+};

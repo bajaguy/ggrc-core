@@ -1,4 +1,4 @@
-# Copyright (C) 2018 Google Inc.
+# Copyright (C) 2019 Google Inc.
 # Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 
 """Module containing comment model and comment related mixins."""
@@ -18,7 +18,7 @@ from ggrc import db
 from ggrc.models.custom_attribute_definition import CustomAttributeDefinition
 from ggrc.models.deferred import deferred
 from ggrc.models.revision import Revision
-from ggrc.models.mixins import base
+from ggrc.models.mixins import base, synchronizable
 from ggrc.models.mixins import Base
 from ggrc.models.mixins import Described
 from ggrc.models.mixins import Notifiable
@@ -93,7 +93,12 @@ class Commentable(object):
       "send_by_default": "Send by default",
       "comments": {
           "display_name": "Comments",
-          "description": 'DELIMITER=";;" double semi-colon separated values',
+          "description": (
+              u'DELIMITER=";;" double semi-colon separated values. '
+              u'To mention person at the comment use the following format '
+              u'<a href="mailto:some_user@example.com">'
+              u'+some_user@example.com</a>.'
+          ),
       },
   }
   _fulltext_attrs = [
@@ -107,9 +112,9 @@ class Commentable(object):
     )
 
   @classmethod
-  def eager_query(cls):
+  def eager_query(cls, **kwargs):
     """Eager Query"""
-    query = super(Commentable, cls).eager_query()
+    query = super(Commentable, cls).eager_query(**kwargs)
     return query.options(orm.subqueryload('comments'))
 
   @declared_attr
@@ -155,6 +160,35 @@ def reindex_by_relationship(relationship):
   if isinstance(instance, (Indexed, Commentable)):
     return [instance]
   return []
+
+
+def get_objects_to_reindex(obj):
+  """Return list of Commentable objects related to provided comment."""
+  source_qs = db.session.query(
+      Relationship.destination_type, Relationship.destination_id
+  ).filter(
+      Relationship.source_type == obj.type,
+      Relationship.source_id == obj.id
+  )
+  destination_qs = db.session.query(
+      Relationship.source_type, Relationship.source_id
+  ).filter(
+      Relationship.destination_type == obj.type,
+      Relationship.destination_id == obj.id
+  )
+  result_qs = source_qs.union(destination_qs)
+  klass_dict = defaultdict(set)
+  for klass, object_id in result_qs:
+    klass_dict[klass].add(object_id)
+
+  queries = []
+  for klass, object_ids in klass_dict.iteritems():
+    model = inflector.get_model(klass)
+    if not model:
+      continue
+    if issubclass(model, (Indexed, Commentable, ExternalCommentable)):
+      queries.append(model.query.filter(model.id.in_(list(object_ids))))
+  return list(itertools.chain(*queries))
 
 
 class Comment(Roleable, Relatable, Described, Notifiable,
@@ -207,36 +241,8 @@ class Comment(Roleable, Relatable, Described, Notifiable,
       "description",
   ]
 
-  def get_objects_to_reindex(self):
-    """Return list required objects for reindex if comment C.U.D."""
-    source_qs = db.session.query(
-        Relationship.destination_type, Relationship.destination_id
-    ).filter(
-        Relationship.source_type == self.__class__.__name__,
-        Relationship.source_id == self.id
-    )
-    destination_qs = db.session.query(
-        Relationship.source_type, Relationship.source_id
-    ).filter(
-        Relationship.destination_type == self.__class__.__name__,
-        Relationship.destination_id == self.id
-    )
-    result_qs = source_qs.union(destination_qs)
-    klass_dict = defaultdict(set)
-    for klass, object_id in result_qs:
-      klass_dict[klass].add(object_id)
-
-    queries = []
-    for klass, object_ids in klass_dict.iteritems():
-      model = inflector.get_model(klass)
-      if not model:
-        continue
-      if issubclass(model, (Indexed, Commentable)):
-        queries.append(model.query.filter(model.id.in_(list(object_ids))))
-    return list(itertools.chain(*queries))
-
   AUTO_REINDEX_RULES = [
-      ReindexRule("Comment", lambda x: x.get_objects_to_reindex()),
+      ReindexRule("Comment", get_objects_to_reindex),
       ReindexRule("Relationship", reindex_by_relationship),
   ]
 
@@ -252,8 +258,8 @@ class Comment(Roleable, Relatable, Described, Notifiable,
     return ""
 
   @classmethod
-  def eager_query(cls):
-    query = super(Comment, cls).eager_query()
+  def eager_query(cls, **kwargs):
+    query = super(Comment, cls).eager_query(**kwargs)
     return query.options(
         orm.joinedload('revision'),
         orm.joinedload('custom_attribute_definition')
@@ -330,6 +336,90 @@ class Comment(Roleable, Relatable, Described, Notifiable,
       raise ValueError("CA value id expected under 'id': {}"
                        .format(ca_val_dict))
     return ca_val_dict
+
+
+class ExternalComment(
+    synchronizable.Synchronizable,
+    synchronizable.RoleableSynchronizable,
+    Relatable,
+    Described,
+    base.ContextRBAC,
+    Base,
+    Indexed,
+    db.Model
+):
+  """External comment model."""
+  __tablename__ = "external_comments"
+
+  assignee_type = db.Column(db.String, nullable=False, default=u"")
+
+  _api_attrs = reflection.ApiAttributes(
+      "assignee_type",
+  )
+
+  _sanitize_html = [
+      "description",
+  ]
+
+  AUTO_REINDEX_RULES = [
+      ReindexRule("ExternalComment", get_objects_to_reindex),
+      ReindexRule("Relationship", reindex_by_relationship),
+  ]
+
+
+class ExternalCommentable(object):
+  """Mixin for external commentable objects.
+
+  This is a mixin for adding external comments (comments that can be
+  created only by sync service) to the object.
+  """
+  _fulltext_attrs = [
+      MultipleSubpropertyFullTextAttr("comment", "comments", ["description"]),
+  ]
+
+  @classmethod
+  def indexed_query(cls):
+    """Indexed query for ExternalCommentable mixin."""
+    return super(ExternalCommentable, cls).indexed_query().options(
+        orm.Load(cls).subqueryload("comments").load_only("id", "description")
+    )
+
+  @classmethod
+  def eager_query(cls, **kwargs):
+    """Eager query for ExternalCommentable mixin."""
+    query = super(ExternalCommentable, cls).eager_query(**kwargs)
+    return query.options(orm.subqueryload("comments"))
+
+  @declared_attr
+  def comments(cls):  # pylint: disable=no-self-argument
+    """ExternalComment related to self via Relationship table."""
+    return db.relationship(
+        ExternalComment,
+        primaryjoin=lambda: sa.or_(
+            sa.and_(
+                cls.id == Relationship.source_id,
+                Relationship.source_type == cls.__name__,
+                Relationship.destination_type == ExternalComment.__name__,
+            ),
+            sa.and_(
+                cls.id == Relationship.destination_id,
+                Relationship.destination_type == cls.__name__,
+                Relationship.source_type == ExternalComment.__name__,
+            )
+        ),
+        secondary=Relationship.__table__,
+        secondaryjoin=lambda: sa.or_(
+            sa.and_(
+                ExternalComment.id == Relationship.source_id,
+                Relationship.source_type == ExternalComment.__name__,
+            ),
+            sa.and_(
+                ExternalComment.id == Relationship.destination_id,
+                Relationship.destination_type == ExternalComment.__name__,
+            )
+        ),
+        viewonly=True,
+    )
 
 
 class CommentInitiator(object):  # pylint: disable=too-few-public-methods

@@ -1,4 +1,4 @@
-# Copyright (C) 2018 Google Inc.
+# Copyright (C) 2019 Google Inc.
 # Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 """Elements for LHN."""
 # pylint: disable=duplicate-code
@@ -43,7 +43,7 @@ class _Assessments(lhn.AccordionGroup):
   """Assessments dropdown in LHN."""
   _locator_spinny = locator.LhnMenu.SPINNY_ASSESSMENTS
   # Assessment doesn't have create button
-  _locator_button_create_new = locator.LhnMenu.BUTTON_CREATE_NEW_NO
+  _locator_button_create_new = locator.LhnMenu.BUTTON_CREATE_NEW_ASSESSMENTS
   _locator_accordion_members = locator.LhnMenu.ACCORDION_MEMBERS_ASSESSMENTS
 
 
@@ -240,6 +240,9 @@ class _Scope(lhn.DropdownStatic):
     self.toggle_access_groups = lhn.Toggle(
         self._driver, locator.LhnMenu.TOGGLE_ACCESS_GROUPS,
         locator.LhnMenu.COUNT_ACCESS_GROUPS)
+    self.toggle_account_balances = lhn.Toggle(
+        self._driver, locator.LhnMenu.TOGGLE_ACCOUNT_BALANCES,
+        locator.LhnMenu.COUNT_ACCOUNT_BALANCES)
     self.toggle_org_groups = lhn.Toggle(
         self._driver, locator.LhnMenu.TOGGLE_ORG_GROUPS,
         locator.LhnMenu.COUNT_ORG_GROUPS)
@@ -264,6 +267,9 @@ class _Scope(lhn.DropdownStatic):
     self.toggle_facilities = lhn.Toggle(
         self._driver, locator.LhnMenu.TOGGLE_FACILITIES,
         locator.LhnMenu.COUNT_FACILITIES)
+    self.toggle_key_reports = lhn.Toggle(
+        self._driver, locator.LhnMenu.TOGGLE_KEY_REPORTS,
+        locator.LhnMenu.COUNT_KEY_REPORTS)
     self.toggle_markets = lhn.Toggle(
         self._driver, locator.LhnMenu.TOGGLE_MARKETS,
         locator.LhnMenu.COUNT_MARKETS)
@@ -283,6 +289,13 @@ class _Scope(lhn.DropdownStatic):
     """
     self.toggle_access_groups.toggle()
     return _AccessGroups(self._driver)
+
+  def select_account_balances(self):
+    """
+    Return: _AccountBalances
+    """
+    self.toggle_account_balances.toggle()
+    return _AccountBalances(self._driver)
 
   def select_org_groups(self):
     """
@@ -340,6 +353,13 @@ class _Scope(lhn.DropdownStatic):
     self.toggle_facilities.toggle()
     return _Facilities(self._driver)
 
+  def select_key_reports(self):
+    """
+    Return: _KeyReports
+    """
+    self.toggle_key_reports.toggle()
+    return _KeyReports(self._driver)
+
   def select_markets(self):
     """
     Return: _Markets
@@ -374,6 +394,17 @@ class _AccessGroups(lhn.AccordionGroup):
   _locator_button_create_new = locator.LhnMenu.BUTTON_CREATE_NEW_ACCESS_GROUPS
   _locator_spinny = locator.LhnMenu.SPINNY_ACCESS_GROUPS
   _locator_accordion_members = locator.LhnMenu.ACCORDION_MEMBERS_ACCESS_GROUPS
+
+
+class _AccountBalances(lhn.AccordionGroup):
+  """Account Balances dropdown in LHN."""
+  _locator_button_create_new = (
+      locator.LhnMenu.BUTTON_CREATE_NEW_ACCOUNT_BALANCES
+  )
+  _locator_spinny = locator.LhnMenu.SPINNY_ACCOUNT_BALANCES
+  _locator_accordion_members = (
+      locator.LhnMenu.ACCORDION_MEMBERS_ACCOUNT_BALANCES
+  )
 
 
 class _OrgGroups(lhn.AccordionGroup):
@@ -430,6 +461,13 @@ class _Facilities(lhn.AccordionGroup):
   _locator_button_create_new = locator.LhnMenu.BUTTON_CREATE_NEW_FACILITIES
   _locator_spinny = locator.LhnMenu.SPINNY_FACILITIES
   _locator_accordion_members = locator.LhnMenu.ACCORDION_MEMBERS_FACILITIES
+
+
+class _KeyReports(lhn.AccordionGroup):
+  """Key Reports dropdown in LHN."""
+  _locator_button_create_new = locator.LhnMenu.BUTTON_CREATE_NEW_KEY_REPORTS
+  _locator_spinny = locator.LhnMenu.SPINNY_KEY_REPORTS
+  _locator_accordion_members = locator.LhnMenu.ACCORDION_MEMBERS_KEY_REPORTS
 
 
 class _Markets(lhn.AccordionGroup):

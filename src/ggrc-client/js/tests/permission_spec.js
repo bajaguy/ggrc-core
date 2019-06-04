@@ -1,5 +1,5 @@
 /*
-    Copyright (C) 2018 Google Inc.
+    Copyright (C) 2019 Google Inc.
     Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 */
 
@@ -615,9 +615,10 @@ describe('Permission', function () {
       GGRC.permissions = GGRC_PERMISSIONS;
     });
     it('updates permissions', function (done) {
-      Permission.refresh();
-      expect(GGRC.permissions).toEqual('permissions');
-      done();
+      Permission.refresh().then(() => {
+        expect(GGRC.permissions).toEqual('permissions');
+        done();
+      });
     });
   });
 });

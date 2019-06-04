@@ -1,4 +1,4 @@
-# Copyright (C) 2018 Google Inc.
+# Copyright (C) 2019 Google Inc.
 # Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 
 """Mixins to add common attributes and relationships. Note, all model classes
@@ -34,6 +34,7 @@ from ggrc.models.deferred import deferred
 from ggrc.models.mixins.customattributable import CustomAttributable
 from ggrc.models.mixins.notifiable import Notifiable
 from ggrc.models.mixins.base import Base
+from ggrc.models.utils import validate_option
 from ggrc.fulltext import attributes
 
 
@@ -51,7 +52,15 @@ class Titled(object):
   def validate_title(self, key, value):
     """Validates and cleans Title that has leading/trailing spaces"""
     # pylint: disable=unused-argument,no-self-use
-    return value if value is None else value.strip()
+
+    # ensure that value is not None (value was not specified or set to null)
+    # treat empty string or string with spaces as valid - it looks like
+    # such case is valid - some tests check such cases, so empty title might
+    # be valid in production
+    if value is None:
+      raise ValueError("'title' must be specified")
+
+    return value.strip()
 
   @declared_attr
   def title(cls):  # pylint: disable=no-self-argument
@@ -674,7 +683,26 @@ class TestPlanned(object):
     )
 
 
-class Folderable(object):
+# pylint: disable=too-few-public-methods
+class WithProtectedAttributes(object):
+  """Mixin that check if attributes can be setted by external user."""
+
+  # Set of protected attributes
+  PROTECTED_ATTRIBUTES = set()
+
+  @classmethod
+  def get_protected_attributes(cls):
+    """Get set of protected attributes for external user."""
+    protected_attributes = set()
+
+    for base in cls.mro():
+      if hasattr(base, "PROTECTED_ATTRIBUTES"):
+        protected_attributes.update(base.PROTECTED_ATTRIBUTES)
+
+    return protected_attributes
+
+
+class Folderable(WithProtectedAttributes):
   """Mixin adding the ability to attach folders to an object"""
 
   @declared_attr
@@ -691,6 +719,62 @@ class Folderable(object):
   _api_attrs = reflection.ApiAttributes('folder')
   _fulltext_attrs = ['folder']
   _aliases = {"folder": "Folder"}
+
+  PROTECTED_ATTRIBUTES = {"folder"}
+
+
+class WithNetworkZone(object):
+  """Mixin that add network zone option."""
+
+  network_zone_id = db.Column(db.Integer, nullable=True)
+
+  @declared_attr
+  def network_zone(cls):  # pylint: disable=no-self-argument
+    return db.relationship(
+        "Option",
+        primaryjoin="and_(foreign({}.network_zone_id) == Option.id, "
+                    "Option.role == 'network_zone')".format(cls.__name__),
+        uselist=False,
+    )
+
+  _api_attrs = reflection.ApiAttributes(
+      "network_zone",
+  )
+  _fulltext_attrs = [
+      "network_zone",
+  ]
+  _aliases = {
+      "network_zone": {
+          "display_name": "Network Zone",
+      },
+  }
+
+  @orm.validates("network_zone")
+  def validate_network_zone(self, key, option):
+    return validate_option(
+        self.__class__.__name__, key, option, 'network_zone')
+
+  @classmethod
+  def eager_query(cls, **kwargs):
+    query = super(WithNetworkZone, cls).eager_query(**kwargs)
+    return query.options(
+        orm.joinedload(
+            "network_zone"
+        ).undefer_group(
+            "Option_complete",
+        )
+    )
+
+  @classmethod
+  def indexed_query(cls):
+    query = super(WithNetworkZone, cls).indexed_query()
+    return query.options(
+        orm.joinedload(
+            "network_zone",
+        ).undefer_group(
+            "Option_complete",
+        )
+    )
 
 
 def person_relation_factory(relation_name, fulltext_attr=None, api_attr=None):

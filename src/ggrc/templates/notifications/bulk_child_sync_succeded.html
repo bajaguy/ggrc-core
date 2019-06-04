@@ -1,5 +1,5 @@
 {#
-Copyright (C) 2018 Google Inc.
+Copyright (C) 2019 Google Inc.
 Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 #}
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
@@ -18,18 +18,20 @@ Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 </head>
 
 <body {{ style.body_style() }}>
-  <div {{ style.bulk_sync_container() }} >
-    <div {{ style.bulk_sync_block() }}>
+  <div {{ style.notification_container() }} >
+    <div {{ style.notification_block() }}>
       <h1 {{ style.bulk_sync_title() }}>
-        Tickets generation for audit "{{ sync_data.title }}" was completed
+        Tickets generation for audit "{{ sync_data.title|e }}" was completed
         successfully
       </h1>
       <hr>
       <p {{ style.header_color() }}>
         All assessments within this audit have been successfully linked with tickets.
+        Click the button to open the audit assessments list.
       </p>
+      <a href="{{ sync_data.url }}#!assessment" {{ style.notification_btn() }}>Open</a>
     </div>
-    <div {{ style.bulk_sync_footer() }}>Google GRC</div>
+    <div {{ style.notification_footer() }}>Google GRC</div>
   </div>
 </body>
 </html>

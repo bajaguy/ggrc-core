@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2018 Google Inc.
+  Copyright (C) 2019 Google Inc.
   Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 */
 
@@ -20,7 +20,7 @@ describe('TreeViewNode Controller', function () {
 
       ctrlInst = {
         options: new can.Map({
-          show_view: '/foo/bar.mustache',
+          show_view: '/foo/bar.stache',
         }),
         element: $element,
         _draw_node_in_progress: false,
@@ -28,10 +28,11 @@ describe('TreeViewNode Controller', function () {
         add_child_lists_to_child: jasmine.createSpy(),
         _ifNotRemoved: jasmine.createSpy().and.returnValue(ifNotRemovedResult),
         replace_element: jasmine.createSpy(),
+        add_control: jasmine.createSpy(),
       };
 
       method = Ctrl.prototype.draw_node.bind(ctrlInst);
-
+      spyOn($, 'ajax').and.returnValue(Promise.resolve('<div></div>'));
       spyOn(can, 'view');
     });
 
@@ -41,20 +42,14 @@ describe('TreeViewNode Controller', function () {
     });
 
     it('renders the DOM element with the "active" CSS class if node active',
-      function () {
+      async () => {
         let callArgs;
         let callback;
 
         ctrlInst.options.attr('isActive', false);
         $element.addClass('active');
 
-        method();
-
-        expect(can.view).toHaveBeenCalledWith(
-          '/foo/bar.mustache',
-          ctrlInst.options,
-          ifNotRemovedResult
-        );
+        await method();
 
         expect(ctrlInst._ifNotRemoved).toHaveBeenCalled();
         callArgs = ctrlInst._ifNotRemoved.calls.mostRecent().args;
@@ -70,20 +65,14 @@ describe('TreeViewNode Controller', function () {
 
     it('renders the DOM element without the "active" CSS class if ' +
       'node not active',
-    function () {
+    async () => {
       let callArgs;
       let callback;
 
       ctrlInst.options.attr('isActive', false);
       $element.removeClass('active'); // make sure it is indeed inactive
 
-      method();
-
-      expect(can.view).toHaveBeenCalledWith(
-        '/foo/bar.mustache',
-        ctrlInst.options,
-        ifNotRemovedResult
-      );
+      await method();
 
       expect(ctrlInst._ifNotRemoved).toHaveBeenCalled();
       callArgs = ctrlInst._ifNotRemoved.calls.mostRecent().args;
@@ -117,7 +106,7 @@ describe('TreeViewNode Controller', function () {
       ctrlInst = {
         element: $tree,
         options: new can.Map({
-          show_view: '/foo/bar.mustache',
+          show_view: '/foo/bar.stache',
         }),
         _ifNotRemoved: jasmine.createSpy().and.callFake(function (callback) {
           return callback;

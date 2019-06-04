@@ -1,5 +1,5 @@
 /*
- Copyright (C) 2018 Google Inc.
+ Copyright (C) 2019 Google Inc.
  Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 */
 
@@ -14,5 +14,6 @@ export const CONTROL_TYPE = {
   DATE: 'date',
   PERSON: 'person',
   CHECKBOX: 'checkbox',
+  MULTISELECT: 'multiselect',
   DROPDOWN: 'dropdown',
 };

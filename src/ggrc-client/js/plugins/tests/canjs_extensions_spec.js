@@ -1,95 +1,79 @@
 /*
-  Copyright (C) 2018 Google Inc.
+  Copyright (C) 2019 Google Inc.
   Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 */
 
-describe('CanJS extensions', function () {
-  'use strict';
+describe('CanJS extensions', () => {
+  describe('sort extension', () => {
+    it('should sort strings. Do not use predicate', () => {
+      let list = new can.List(['b', 'd', 'a', 'c']);
+      let cid = list._cid;
 
-  describe('using camelCaseToDashCase', function () {
-    let method;
-
-    beforeEach(function () {
-      method = can.camelCaseToDashCase;
-    });
-
-    it('should return dash case from camel case', function () {
-      expect(method('helloWorld')).toBe('hello-world');
-      expect(method('helloWorldHiThere')).toBe('hello-world-hi-there');
-      expect(method('MyNumber4AndNumber5')).toBe('my-number4and-number5');
-    });
-    it('should return same value for one word', function () {
-      expect(method('hello')).toBe('hello');
-      expect(method('Hello')).toBe('hello');
-    });
-    it('should return same value for dash case', function () {
-      expect(method('hello-world')).toBe('hello-world');
-      expect(method('hello-world-hi-there')).toBe('hello-world-hi-there');
-    });
-    it('should return empty string in case of non string', function () {
-      expect(method(42)).toBe('');
-      expect(method({a: 1})).toBe('');
-    });
-  });
-
-  describe('using camelCaseToUnderscore', function () {
-    let method;
-
-    beforeEach(function () {
-      method = can.camelCaseToUnderscore;
+      let sortedList = list.sort();
+      expect(sortedList._cid).toEqual(cid);
+      expect(sortedList.length).toBe(4);
+      expect(sortedList[0]).toEqual('a');
+      expect(sortedList[1]).toEqual('b');
+      expect(sortedList[2]).toEqual('c');
+      expect(sortedList[3]).toEqual('d');
     });
 
-    it('should return snake case from camel case', function () {
-      expect(method('helloWorld')).toBe('hello_world');
-      expect(method('helloWorldHiThere')).toBe('hello_world_hi_there');
-      expect(method('MyNumber4AndNumber5')).toBe('my_number_4_and_number_5');
-    });
-    it('should return same value for one word', function () {
-      expect(method('hello')).toBe('hello');
-      expect(method('Hello')).toBe('hello');
-    });
-    it('should return same value for snake case', function () {
-      expect(method('hello_world')).toBe('hello_world');
-      expect(method('hello_world_hi_there')).toBe('hello_world_hi_there');
-    });
-    it('should throw a type error in case of non string', function () {
-      expect(function () {
-        method(42);
-      }).toThrow(new TypeError('Invalid type, string required.'));
-      expect(function () {
-        method({a: 1});
-      }).toThrow(new TypeError('Invalid type, string required.'));
-    });
-  });
+    it('should sort DESC strings. Use predicate', () => {
+      let list = new can.List(['b', 'd', 'a', 'c']);
+      let cid = list._cid;
+      let predicate = (a, b) => a < b ? 1 : -1;
 
-  describe('using spaceCamelCase', function () {
-    let method;
-
-    beforeEach(function () {
-      method = can.spaceCamelCase;
+      let sortedList = list.sort(predicate);
+      expect(sortedList._cid).toEqual(cid);
+      expect(sortedList.length).toBe(4);
+      expect(sortedList[0]).toEqual('d');
+      expect(sortedList[1]).toEqual('c');
+      expect(sortedList[2]).toEqual('b');
+      expect(sortedList[3]).toEqual('a');
     });
 
-    it('should return camel case from space case', function () {
-      expect(method('hello_world')).toBe('Hello World');
-      expect(method('hello_world_hi_there')).toBe('Hello World Hi There');
-      expect(method('my_number_4_and_number_5')).toBe(
-        'My Number 4 And Number 5');
+    it('should sort ASC objects', () => {
+      let list = new can.List([
+        {
+          id: 3,
+        }, {
+          id: 5,
+        }, {
+          id: 1,
+        },
+      ]);
+
+      let cid = list._cid;
+      let predicate = (a, b) => a.id > b.id ? 1 : -1;
+
+      let sortedList = list.sort(predicate);
+      expect(sortedList._cid).toEqual(cid);
+      expect(sortedList.length).toBe(3);
+      expect(sortedList[0].id).toEqual(1);
+      expect(sortedList[1].id).toEqual(3);
+      expect(sortedList[2].id).toEqual(5);
     });
-    it('should return same value for one word', function () {
-      expect(method('hello')).toBe('Hello');
-      expect(method('Hello')).toBe('Hello');
-    });
-    it('should return properly capitalized for camelCase input', function () {
-      expect(method('helloWorld')).toBe('Hello World');
-      expect(method('helloWorldHiThere')).toBe('Hello World Hi There');
-    });
-    it('should throw a type error in case of non string', function () {
-      expect(function () {
-        method(42);
-      }).toThrow(new TypeError('Invalid type, string required.'));
-      expect(function () {
-        method({a: 1});
-      }).toThrow(new TypeError('Invalid type, string required.'));
+
+    it('should sort DESC objects', () => {
+      let list = new can.List([
+        {
+          id: 3,
+        }, {
+          id: 5,
+        }, {
+          id: 1,
+        },
+      ]);
+
+      let cid = list._cid;
+      let predicate = (a, b) => a.id < b.id ? 1 : -1;
+
+      let sortedList = list.sort(predicate);
+      expect(sortedList._cid).toEqual(cid);
+      expect(sortedList.length).toBe(3);
+      expect(sortedList[0].id).toEqual(5);
+      expect(sortedList[1].id).toEqual(3);
+      expect(sortedList[2].id).toEqual(1);
     });
   });
 });

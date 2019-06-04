@@ -1,9 +1,9 @@
-# Copyright (C) 2018 Google Inc.
+# Copyright (C) 2019 Google Inc.
 # Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 
 """Views for email notifications."""
 
-from ggrc.notifications import common, fast_digest
+from ggrc.notifications import common, fast_digest, unsubscribe
 
 from ggrc.login import login_required
 
@@ -15,8 +15,8 @@ def init_notification_views(app):
     app: current flask app.
   """
   app.add_url_rule(
-      "/_notifications/send_daily_digest", "send_daily_digest_notifications",
-      view_func=common.send_daily_digest_notifications)
+      "/_notifications/send_daily_digest", "create_daily_digest_bg",
+      view_func=common.create_daily_digest_bg)
 
   app.add_url_rule(
       "/_notifications/show_pending", "show_pending_notifications",
@@ -34,3 +34,8 @@ def init_notification_views(app):
   app.add_url_rule(
       "/_notifications/send_calendar_events", "send_calendar_events",
       view_func=login_required(common.send_calendar_events))
+
+  app.add_url_rule(
+      "/_notifications/unsubscribe/<int:user_id>",
+      "unsubscribe_from_notifications",
+      view_func=login_required(unsubscribe.unsubscribe_from_notifications))

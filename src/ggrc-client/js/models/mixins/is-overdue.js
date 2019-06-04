@@ -1,5 +1,5 @@
 /*
-    Copyright (C) 2018 Google Inc.
+    Copyright (C) 2019 Google Inc.
     Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 */
 
@@ -8,7 +8,7 @@ import Mixin from './mixin';
 /**
  * Specific Model mixin to check overdue status
  */
-export default Mixin({
+export default Mixin.extend({
 }, {
   'after:init': function () {
     this.attr('isOverdue', this._isOverdue());

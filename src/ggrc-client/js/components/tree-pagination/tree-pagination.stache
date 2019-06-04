@@ -1,0 +1,59 @@
+{{!
+    Copyright (C) 2019 Google Inc.
+    Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
+}}
+
+<div class="tree-pagination flex-box">
+  <div class="pagination dropdown-container">
+    <div class="dropdown-container__wrapper">
+      <simple-popover buttonText:from="paging.pageSize"
+                      extraCssClass:from="'simple-popover_pagination_items'"
+                      placement:from="placement">
+        <div>Items per page:</div>
+        <div class="dropdown-container__items-list flex-box flex-row">
+          {{#paging.pageSizeSelect}}
+          <div class="dropdown-container__item flex-size-1
+                     {{#is(paging.pageSize, .)}}dropdown-container__item_selected{{/is}}"
+            on:el:click="setPageSize(.)">{{.}}</div>
+          {{/paging.pageSizeSelect}}
+        </div>
+      </simple-popover>
+    </div>
+  </div>
+  <div class="pagination">
+    <div class="pagination-item {{#is(paging.current, 1)}}disabled{{/is}}">
+      <a on:el:click="setFirstPage">
+        <i class="fa fa-angle-double-left" aria-hidden="true"></i>
+      </a>
+    </div>
+    <div class="pagination-item {{#is(paging.current, 1)}}disabled{{/is}}">
+      <a on:el:click="setPrevPage">
+        <i class="fa fa-angle-left" aria-hidden="true"></i>
+      </a>
+    </div>
+    <div class="pagination-item pagination-item_list">
+      <simple-popover buttonText:from="getPaginationInfo"
+                      extraCssClass:from="'simple-popover_pagination_pages'"
+                      placement:from="placement">
+          {{#pagesList}}
+            <div class="pagination-item__popover-item single-line
+                       {{#is(paging.current, .)}}pagination-item__popover-item_selected{{/is}}"
+                 title="{{getPageTitle(.)}}"
+                 on:el:click="setCurrentPage(.)">
+              {{getPageTitle(.)}}
+            </div>
+          {{/pagesList}}
+      </simple-popover>
+    </div>
+    <div class="pagination-item {{#is(paging.current, paging.count)}}disabled{{/is}}">
+      <a on:el:click="setNextPage">
+        <i class="fa fa-angle-right" aria-hidden="true"></i>
+      </a>
+    </div>
+    <div class="pagination-item {{#is(paging.current, paging.count)}}disabled{{/is}}">
+      <a on:el:click="setLastPage">
+        <i class="fa fa-angle-double-right" aria-hidden="true"></i>
+      </a>
+    </div>
+  </div>
+</div>

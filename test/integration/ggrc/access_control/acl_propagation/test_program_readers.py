@@ -1,4 +1,4 @@
-# Copyright (C) 2018 Google Inc.
+# Copyright (C) 2019 Google Inc.
 # Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 
 """Test Access Control roles Program Readers propagation"""
@@ -326,7 +326,7 @@ class TestProgramReadersPropagation(base.TestACLPropagation):
               "create_and_map": True,
               "read": True,
               "update": True,
-              "delete": False,
+              "delete": True,
               "add_comment": True,
               "read_comments": True
           },
@@ -334,7 +334,7 @@ class TestProgramReadersPropagation(base.TestACLPropagation):
               "create_and_map": True,
               "read": True,
               "update": True,
-              "delete": False,
+              "delete": True,
               "add_comment": True,
               "read_comments": True
           },

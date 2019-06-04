@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2018 Google Inc.
+  Copyright (C) 2019 Google Inc.
   Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 */
 
@@ -19,29 +19,16 @@ describe('mapper-results component', function () {
   let viewModel;
 
   beforeEach(function () {
-    let init = Component.prototype.viewModel.init;
-    Component.prototype.viewModel.init = undefined;
+    let init = Component.prototype.viewModel.prototype.init;
+    Component.prototype.viewModel.prototype.init = undefined;
     viewModel = getComponentVM(Component);
     viewModel.attr('mapper', {
       type: 'Control',
     });
-    viewModel.attr('submitCbs', $.Callbacks());
     viewModel.attr('paging',
       new Pagination({pageSizeSelect: [5, 10, 15]}));
-    Component.prototype.viewModel.init = init;
+    Component.prototype.viewModel.prototype.init = init;
     viewModel.init = init;
-  });
-
-  describe('destroy() method', function () {
-    beforeEach(function () {
-      spyOn(viewModel.attr('submitCbs'), 'remove');
-    });
-
-    it('removes function from viewModel.submitCbs', function () {
-      viewModel.destroy();
-      expect(viewModel.attr('submitCbs').remove)
-        .toHaveBeenCalledWith(jasmine.any(Function));
-    });
   });
 
   describe('setItems() method', function () {
@@ -58,35 +45,43 @@ describe('mapper-results component', function () {
       viewModel.attr({});
     });
 
-    it('sets loaded items to viewModel.items', function () {
+    it('sets loaded items to viewModel.items', function (done) {
       viewModel.attr('items', []);
-      viewModel.setItems();
-      expect(viewModel.attr('items').length).toEqual(1);
-      expect(viewModel.attr('items')[0])
-        .toEqual(jasmine.objectContaining({
-          data: 'mockData',
-        }));
+      viewModel.setItems().then(() => {
+        expect(viewModel.attr('items').length).toEqual(1);
+        expect(viewModel.attr('items')[0])
+          .toEqual(jasmine.objectContaining({
+            data: 'mockData',
+          }));
+        done();
+      });
     });
 
-    it('sets data of loaded items to viewModel.entries', function () {
+    it('sets data of loaded items to viewModel.entries', function (done) {
       viewModel.attr('entries', []);
-      viewModel.setItems();
-      expect(viewModel.attr('entries').length).toEqual(1);
-      expect(viewModel.attr('entries')[0])
-        .toEqual('mockData');
+      viewModel.setItems().then(() => {
+        expect(viewModel.attr('entries').length).toEqual(1);
+        expect(viewModel.attr('entries')[0])
+          .toEqual('mockData');
+        done();
+      });
     });
 
     it('calls setColumnsConfiguration and setRelatedAssessments',
-      function () {
-        viewModel.setItems();
-        expect(viewModel.setColumnsConfiguration).toHaveBeenCalled();
-        expect(viewModel.setRelatedAssessments).toHaveBeenCalled();
+      function (done) {
+        viewModel.setItems().then(() => {
+          expect(viewModel.setColumnsConfiguration).toHaveBeenCalled();
+          expect(viewModel.setRelatedAssessments).toHaveBeenCalled();
+          done();
+        });
       });
 
-    it('sets viewModel.isBeforeLoad to false', function () {
+    it('sets viewModel.isBeforeLoad to false', function (done) {
       viewModel.attr('isBeforeLoad', true);
-      viewModel.setItems();
-      expect(viewModel.attr('isBeforeLoad')).toEqual(false);
+      viewModel.setItems().then(() => {
+        expect(viewModel.attr('isBeforeLoad')).toEqual(false);
+        done();
+      });
     });
   });
 
@@ -95,6 +90,8 @@ describe('mapper-results component', function () {
 
     beforeEach(function () {
       viewModel.attr('columns', {});
+      viewModel.attr('object', 'Program');
+      viewModel.attr('type', 'Control');
       mockColumns = {
         available: 'mock1',
         selected: 'mock2',
@@ -219,17 +216,17 @@ describe('mapper-results component', function () {
   describe('onSearch() method', function () {
     beforeEach(function () {
       spyOn(viewModel, 'resetSearchParams');
+      spyOn(viewModel, 'setItemsDebounced');
     });
 
-    it('calls resetSearchParams() if resetParams defined', function () {
-      viewModel.onSearch({});
+    it('calls resetSearchParams()', function () {
+      viewModel.onSearch();
       expect(viewModel.resetSearchParams).toHaveBeenCalled();
     });
 
-    it('sets viewModel.refreshItems to true', function () {
-      viewModel.attr('refreshItems', false);
+    it('calls setItemsDebounced()', () => {
       viewModel.onSearch();
-      expect(viewModel.attr('refreshItems')).toEqual(true);
+      expect(viewModel.setItemsDebounced).toHaveBeenCalled();
     });
   });
 
@@ -465,16 +462,6 @@ describe('mapper-results component', function () {
     });
   });
 
-  describe('getModel() method', function () {
-    it('returns model', function () {
-      let result;
-      spyOn(viewModel, 'getModelKey')
-        .and.returnValue('Program');
-      result = viewModel.getModel();
-      expect(result).toEqual(Program);
-    });
-  });
-
   describe('getDisplayModel() method', function () {
     it('returns displayModel', function () {
       let result;
@@ -494,7 +481,11 @@ describe('mapper-results component', function () {
         id: 124,
       },
     }];
-    let relatedIds = [123];
+    let relatedData = {
+      mockType: {
+        ids: [123],
+      },
+    };
     let expectedResult = [{
       data: {
         id: 123,
@@ -506,10 +497,12 @@ describe('mapper-results component', function () {
       },
       isDisabled: false,
     }];
+    let isMegaMapping = false;
+    let type = 'mockType';
 
     it('does nothing if viewModel.searchOnly() is true', function () {
       viewModel.attr('searchOnly', true);
-      viewModel.setDisabledItems(allItems, relatedIds);
+      viewModel.setDisabledItems(isMegaMapping, allItems, relatedData, type);
       expect(allItems).toEqual(allItems);
     });
 
@@ -518,13 +511,13 @@ describe('mapper-results component', function () {
         viewModel.attr({
           objectGenerator: true,
         });
-        viewModel.setDisabledItems(allItems, relatedIds);
+        viewModel.setDisabledItems(isMegaMapping, allItems, relatedData, type);
         expect(allItems).toEqual(allItems);
       });
 
     it('updates disabled items', function () {
       viewModel.attr('searchOnly', false);
-      viewModel.setDisabledItems(allItems, relatedIds);
+      viewModel.setDisabledItems(isMegaMapping, allItems, relatedData, type);
       expect(allItems).toEqual(expectedResult);
     });
   });
@@ -619,6 +612,8 @@ describe('mapper-results component', function () {
     let resultDfd;
 
     beforeEach(function () {
+      viewModel.attr('object', 'Program');
+      viewModel.attr('type', 'Control');
       spyOn(viewModel, 'getModelKey')
         .and.returnValue('program');
       spyOn(viewModel, 'getQuery')
@@ -631,6 +626,7 @@ describe('mapper-results component', function () {
         .and.returnValue('transformedValue');
       spyOn(viewModel, 'setSelectedItems');
       spyOn(viewModel, 'setDisabledItems');
+      spyOn(viewModel, 'disableItself');
       dfdRequest = $.Deferred();
       spyOn(QueryAPI, 'batchRequests');
       spyOn($, 'when')
@@ -651,10 +647,12 @@ describe('mapper-results component', function () {
             ids: 'ids',
           },
         };
+        let megaMapping = false;
+        let type = 'program';
         dfdRequest.resolve(data, relatedData);
         viewModel.load();
         expect(viewModel.setDisabledItems)
-          .toHaveBeenCalledWith(expectedResult, 'ids');
+          .toHaveBeenCalledWith(megaMapping, expectedResult, relatedData, type);
       });
 
     it('updates paging', function () {
@@ -862,38 +860,13 @@ describe('mapper-results component', function () {
         });
       });
       it('calls loadAllItems() if allSelected is truly', function () {
-        handler({}, {}, true);
+        handler([{}], {}, true);
         expect(viewModel.loadAllItems).toHaveBeenCalled();
       });
       it('does not call loadAllItems() if allSelected is falsy', function () {
-        handler({}, {}, false);
+        handler([{}], {}, false);
         expect(viewModel.loadAllItems).not.toHaveBeenCalled();
       });
-    });
-
-    describe('"{viewModel} refreshItems" event', function () {
-      let handler;
-
-      beforeEach(function () {
-        spyOn(viewModel, 'setItemsDebounced');
-        handler = events['{viewModel} refreshItems'].bind({
-          viewModel: viewModel,
-        });
-      });
-      it('calls setItemsDebounced() if refreshItems is truly', function () {
-        handler({}, {}, true);
-        expect(viewModel.setItemsDebounced).toHaveBeenCalled();
-      });
-      it('sets false to viewModel.refreshItems if refreshItems is truly',
-        function () {
-          handler({}, {}, true);
-          expect(viewModel.setItemsDebounced).toHaveBeenCalled();
-        });
-      it('does not call setItemsDebounced() if refreshItems is falsy',
-        function () {
-          handler({}, {}, false);
-          expect(viewModel.setItemsDebounced).not.toHaveBeenCalled();
-        });
     });
 
     describe('"{viewModel.paging} current" event', function () {
@@ -961,21 +934,26 @@ describe('mapper-results component', function () {
     let viewModel;
 
     beforeEach(function () {
-      Component.prototype.viewModel.init = undefined;
+      Component.prototype.viewModel.prototype.init = undefined;
       viewModel = getComponentVM(Component);
       viewModel.attr({});
     });
 
     it('method should return data from "relatedData" array',
       function () {
-        let relatedData = {
-          Snapshot: {
-            ids: [1, 2, 3],
+        let responseArray = [
+          {
+            Snapshot: {
+              ids: [1, 2, 3],
+            },
           },
+        ];
+        let query = {
+          relatedQueryIndex: 0,
         };
 
         let result = viewModel
-          .buildRelatedData(relatedData, 'Snapshot');
+          .buildRelatedData(responseArray, query, 'Snapshot');
         expect(result.Snapshot.ids.length).toEqual(3);
         expect(result.Snapshot.ids[0]).toEqual(1);
       }
@@ -983,10 +961,15 @@ describe('mapper-results component', function () {
 
     it('method should return data from "deferred_list" array',
       function () {
-        let relatedData = {
-          Snapshot: {
-            ids: [1, 2, 3],
+        let responseArray = [
+          {
+            Snapshot: {
+              ids: [1, 2, 3],
+            },
           },
+        ];
+        let query = {
+          relatedQueryIndex: 0,
         };
         let result;
 
@@ -996,7 +979,7 @@ describe('mapper-results component', function () {
         ]);
 
         result = viewModel
-          .buildRelatedData(relatedData, 'Snapshot');
+          .buildRelatedData(responseArray, query, 'Snapshot');
         expect(result.Snapshot.ids.length).toEqual(2);
         expect(result.Snapshot.ids[0]).toEqual(5);
       }
@@ -1005,6 +988,9 @@ describe('mapper-results component', function () {
     it('return data from "deferred_list" array. RelatedData is undefined',
       function () {
         let result;
+        let query = {
+          relatedQueryIndex: 0,
+        };
 
         viewModel.attr('deferredList', [
           {id: 5, type: 'Snapshot'},
@@ -1012,7 +998,7 @@ describe('mapper-results component', function () {
         ]);
 
         result = viewModel
-          .buildRelatedData(undefined, 'Snapshot');
+          .buildRelatedData([], query, 'Snapshot');
         expect(result.Snapshot.ids.length).toEqual(2);
         expect(result.Snapshot.ids[0]).toEqual(5);
       }

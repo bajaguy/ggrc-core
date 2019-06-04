@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2018 Google Inc.
+  Copyright (C) 2019 Google Inc.
   Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 */
 
@@ -10,8 +10,8 @@ class RouterConfig {
     routes.forEach((route) => {
       can.route(route.template, route.defaults);
     });
-    can.route.map(router);
-    can.route.ready();
+    can.route.data = router;
+    can.route.start();
   }
 }
 

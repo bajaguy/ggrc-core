@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2018 Google Inc.
+ * Copyright (C) 2019 Google Inc.
  * Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
  */
 
@@ -8,10 +8,16 @@
   margin-bottom: 10px;
 
   h3 {
-    margin-top: 2px;
-    margin-right: 8px;
     word-wrap: break-word;
     overflow: hidden;
+  }
+
+  &__title-item {
+    margin-left: 8px;
+  }
+
+  &__title-name {
+    margin-top: 2px;
   }
 
   .sticky-info-panel & {
@@ -38,7 +44,7 @@
     top: 0 !important;
     transform: translateY(-100%);
   }
-  
+
   &_visible {
     top: 0 !important;
     box-shadow: 0px 0px 5px rgba(0, 0, 0, 0.5);
@@ -56,6 +62,7 @@
 
   &__title-details {
     display: flex;
+    align-items: center;
   }
 
   &__toolbar {
@@ -163,8 +170,7 @@
           @include transition(opacity 0.2s ease);
           margin: 7px 4px 0 0;
         }
-        &:hover,
-        &.clipboard-is-hover {
+        &:hover {
           background: $headerBgnd;
           color: $black;
           cursor: pointer;
@@ -179,7 +185,7 @@
       .fa-link,
       .fa-google {
         margin-right: 8px;
-      } 
+      }
       &.border {
         border-top: 1px solid $headerBgnd;
         padding-top: 5px;
@@ -189,6 +195,10 @@
         border-bottom: 1px solid $headerBgnd;
         padding-bottom: 5px;
         margin-bottom: 5px;
+      }
+
+      .issue-unmap-item {
+        display: block;
       }
     }
   }

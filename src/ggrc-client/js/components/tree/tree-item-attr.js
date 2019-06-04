@@ -1,9 +1,11 @@
 /*
- Copyright (C) 2018 Google Inc.
+ Copyright (C) 2019 Google Inc.
  Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
  */
 import {formatDate} from '../../plugins/utils/date-utils';
-import template from './templates/tree-item-attr.mustache';
+import {getUserRoles} from '../../plugins/utils/user-utils';
+import template from './templates/tree-item-attr.stache';
+import {convertMarkdownToHtml} from '../../plugins/utils/markdown-utils';
 
 // attribute names considered "default" and representing a date
 const DATE_ATTRS = Object.freeze({
@@ -31,15 +33,29 @@ const RICH_TEXT_ATTRS = Object.freeze({
 
 export default can.Component.extend({
   tag: 'tree-item-attr',
-  template,
-  viewModel: {
+  view: can.stache(template),
+  leakScope: true,
+  viewModel: can.Map.extend({
     instance: null,
     name: '',
     define: {
+      // workaround an issue: "instance.is_mega" is not
+      // handled properly in template
+      isMega: {
+        get() {
+          return this.attr('instance.is_mega');
+        },
+      },
       defaultValue: {
         type: String,
         get() {
           return this.getDefaultValue();
+        },
+      },
+      userRoles: {
+        type: String,
+        get() {
+          return getUserRoles(this.attr('instance')).join(', ');
         },
       },
     },
@@ -71,6 +87,9 @@ export default can.Component.extend({
           return formatDate(result, true);
         }
         if (attrName in RICH_TEXT_ATTRS) {
+          if (this.isMarkdown()) {
+            result = convertMarkdownToHtml(result);
+          }
           return result
             .replace(regexNewLines, '\n').replace(regexTags, ' ').trim();
         }
@@ -78,5 +97,8 @@ export default can.Component.extend({
       }
       return '';
     },
-  },
+    isMarkdown() {
+      return !!this.attr('instance').constructor.isChangeableExternally;
+    },
+  }),
 });

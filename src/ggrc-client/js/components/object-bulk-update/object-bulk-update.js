@@ -1,5 +1,5 @@
 /*
- Copyright (C) 2018 Google Inc.
+ Copyright (C) 2019 Google Inc.
  Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
  */
 
@@ -11,13 +11,14 @@ import '../../components/collapsible-panel/collapsible-panel';
 import './bulk-update-target-state';
 import {getBulkStatesForModel} from '../../plugins/utils/state-utils';
 import ObjectOperationsBaseVM from '../view-models/object-operations-base-vm';
-import template from './object-bulk-update.mustache';
+import template from './object-bulk-update.stache';
 import tracker from '../../tracker';
 import Mappings from '../../models/mappers/mappings';
 
 export default can.Component.extend({
   tag: 'object-bulk-update',
-  template: template,
+  view: can.stache(template),
+  leakScope: true,
   viewModel: function (attrs, parentViewModel) {
     let type = attrs.type;
     let targetStates = getBulkStatesForModel(type);
@@ -55,7 +56,7 @@ export default can.Component.extend({
   },
   events: {
     inserted: function () {
-      this.viewModel.attr('submitCbs').fire();
+      this.viewModel.onSubmit();
     },
     closeModal: function () {
       if (this.element) {

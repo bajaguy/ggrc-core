@@ -1,15 +1,16 @@
-# Copyright (C) 2018 Google Inc.
+# Copyright (C) 2019 Google Inc.
 # Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 """A facade for RestService.
 Reasons for a facade:
 * It is not very convenient to use
 * More high level functions are often needed
 """
-from lib import factory
-from lib.constants import roles
+from lib import factory, decorator, users
+from lib.constants import roles, objects, element
 from lib.entities import entities_factory
 from lib.entities.entity import Representation
 from lib.service import rest_service
+from lib.utils import date_utils
 
 
 def create_program(**attrs):
@@ -22,9 +23,22 @@ def create_objective(program=None, **attrs):
   return _create_obj_in_program_scope("Objectives", program, **attrs)
 
 
-def create_control(program=None, **attrs):
+def create_control(**attrs):
+  """Create an control."""
+  return _create_obj_in_program_scope("Controls", None, **attrs)
+
+
+def create_product(**attrs):
+  """Create a product."""
+  return _create_obj_in_program_scope("Products", None, **attrs)
+
+
+def create_control_mapped_to_program(program, **attrs):
   """Create a control (optionally map to a `program`)"""
-  return _create_obj_in_program_scope("Controls", program, **attrs)
+  # pylint: disable=invalid-name
+  control = create_control(**attrs)
+  map_objs(program, control)
+  return control
 
 
 def create_audit(program, **attrs):
@@ -40,26 +54,42 @@ def create_asmt(audit, **attrs):
   return rest_service.AssessmentsService().create_obj(factory_params=attrs)
 
 
-def create_asmt_template(audit, **attrs):
+def create_asmt_template(audit, all_cad_types=False, **attrs):
   """Create assessment template."""
+  from lib.constants.element import AdminWidgetCustomAttributes
   obj_attrs, cad_attrs = _split_attrs(
       attrs, ["cad_type", "dropdown_types_list"])
+  cads = []
+  if all_cad_types:
+    for cad_type in AdminWidgetCustomAttributes.ALL_CA_TYPES:
+      cads.append(entities_factory.AssessmentTemplatesFactory.generate_cad(
+          cad_type=cad_type))
   if "cad_type" in cad_attrs:
     cads = [entities_factory.AssessmentTemplatesFactory.generate_cad(
         **cad_attrs)]
-    obj_attrs["custom_attribute_definitions"] = cads
+  obj_attrs["custom_attribute_definitions"] = cads
   obj_attrs["audit"] = audit.__dict__
   return rest_service.AssessmentTemplatesService().create_obj(
       factory_params=obj_attrs)
 
 
-def create_asmt_from_template(audit, asmt_template, obj_to_map):
-  """Create an assessment from template"""
-  snapshots = [Representation.convert_repr_to_snapshot(
-      objs=obj_to_map, parent_obj=audit)]
+def convert_obj_to_snapshot(audit, obj):
+  """Convert object to snapshot."""
+  return Representation.convert_repr_to_snapshot(
+      obj=obj, parent_obj=audit)
+
+
+def create_asmt_from_template(audit, asmt_template, objs_to_map):
+  """Create an assessment from template."""
+  return create_asmts_from_template(audit, asmt_template, objs_to_map)[0]
+
+
+def create_asmts_from_template(audit, asmt_template, objs_to_map):
+  """Create assessments from template."""
+  snapshots = [convert_obj_to_snapshot(audit, obj_to_map) for obj_to_map
+               in objs_to_map]
   return rest_service.AssessmentsFromTemplateService().create_assessments(
-      audit=audit, template=asmt_template, snapshots=snapshots
-  )[0]
+      audit=audit, template=asmt_template, snapshots=snapshots)
 
 
 def create_gcad(**attrs):
@@ -68,19 +98,33 @@ def create_gcad(**attrs):
       factory_params=attrs)
 
 
-def create_issue(program=None):
-  """Create a issue (optionally map to a `program`)"""
+def create_gcads_for_control():
+  """Creates global CADs for all types."""
+  return [create_gcad(definition_type="control",
+                      attribute_type=ca_type)
+          for ca_type in element.AdminWidgetCustomAttributes.ALL_GCA_TYPES]
+
+
+def create_issue(obj=None):
+  """Create a issue (optionally map to a `obj`)"""
   issue = rest_service.IssuesService().create_obj()
-  if program:
-    map_objs(program, issue)
+  if obj:
+    map_objs(obj, issue)
   return issue
 
 
+def create_risk(**attrs):
+  """Create an risk."""
+  return _create_obj_in_program_scope("Risks", None, **attrs)
+
+
+@decorator.check_that_obj_is_created
 def create_user():
   """Create a user"""
   return rest_service.PeopleService().create_obj()
 
 
+@decorator.check_that_obj_is_created
 def create_user_with_role(role_name):
   """Create user a role `role_name`"""
   user = create_user()
@@ -98,8 +142,22 @@ def create_access_control_role(**attrs):
 
 def map_objs(src_obj, dest_obj):
   """Map two objects to each other"""
-  rest_service.RelationshipsService().map_objs(
-      src_obj=src_obj, dest_objs=dest_obj)
+
+  def _is_external(src_obj, dest_obj):
+    """Check if one of objects to map is external."""
+    singular_title_external_objs = [
+        objects.get_singular(x, title=True) for x in objects.EXTERNAL_OBJECTS]
+    objects_list = [src_obj, ]
+    dest_ojbect_list = dest_obj if isinstance(dest_obj,
+                                              (tuple, list)) else [dest_obj, ]
+    objects_list.extend(dest_ojbect_list)
+    if [x for x in objects_list if x.type in singular_title_external_objs]:
+      return True
+    return False
+
+  return rest_service.RelationshipsService().map_objs(
+      src_obj=src_obj, dest_objs=dest_obj,
+      is_external=_is_external(src_obj, dest_obj))
 
 
 def get_obj(obj):
@@ -141,3 +199,72 @@ def _split_attrs(attrs, second_part_keys=None):
   dict_1 = {k: v for k, v in attrs.iteritems() if k not in second_part_keys}
   dict_2 = {k: v for k, v in attrs.iteritems() if k in second_part_keys}
   return dict_1, dict_2
+
+
+def update_control(control, **attrs):
+  """Update control."""
+  # pylint: disable=no-else-return
+  if not attrs:
+    attrs["title"] = "EDITED_" + control.title
+    return (factory.get_cls_rest_service(
+        objects.get_plural(control.type))().update_obj(
+        obj=control,
+        title=attrs["title"]))
+  else:
+    return (factory.get_cls_rest_service(
+        objects.get_plural(control.type))().update_obj(
+        obj=control, **attrs))
+
+
+def delete_control(control):
+  """Delete control."""
+  return (factory.get_cls_rest_service(
+      objects.get_plural(control.type))().delete_objs(control))
+
+
+def delete_control_cas(cas):
+  """Delete control cas."""
+  from lib.service.rest_service import CustomAttributeDefinitionsService
+  return CustomAttributeDefinitionsService().delete_objs(cas)
+
+
+def get_last_review_date(obj):
+  """Get last review date as string in (mm/dd/yyyy hh:mm:ss AM/PM) format."""
+  return date_utils.iso8601_to_ui_str_with_zone(
+      get_obj_review(obj).last_reviewed_at)
+
+
+def get_obj_review(obj):
+  """Get obj review instance."""
+  rest_obj = get_obj(obj)
+  return get_obj(entities_factory.ReviewsFactory().create(**rest_obj.review))
+
+
+def request_obj_review(obj, reviewer):
+  """Returns obj with requested review."""
+  rest_service.ReviewService().create_obj(
+      {"reviewers": reviewer,
+       "reviewable": obj.repr_min_dict()})
+  exp_review = entities_factory.ReviewsFactory().create(
+      is_add_rest_attrs=True,
+      status=element.ReviewStates.UNREVIEWED,
+      reviewers=reviewer)
+  obj.review = exp_review.convert_review_to_dict()
+  obj.review_status = exp_review.status
+  return obj
+
+
+def approve_obj_review(obj):
+  """Returns obj with approved review."""
+  rest_review = get_obj_review(obj)
+  rest_service.ReviewService().update_obj(
+      obj=rest_review, status=element.ReviewStates.REVIEWED)
+  exp_review = entities_factory.ReviewsFactory().create(
+      is_add_rest_attrs=True,
+      status=element.ReviewStates.REVIEWED,
+      reviewers=users.current_user(),
+      last_reviewed_by=users.current_user().email,
+      last_reviewed_at=rest_review.last_reviewed_at)
+  obj.review = exp_review.convert_review_to_dict()
+  obj.review_status = exp_review.status
+  return obj

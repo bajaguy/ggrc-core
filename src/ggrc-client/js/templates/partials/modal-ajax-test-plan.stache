@@ -1,0 +1,22 @@
+{{!
+    Copyright (C) 2019 Google Inc.
+    Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
+}}
+
+<div class="row-fluid">
+  <div data-id="test_plan_hidden" class="span6 hidable">
+    <label>
+      Assessment Procedure
+      <i class="fa fa-question-circle" rel="tooltip" title="Provide an assessment procedure for this {{model.title_singular}}."></i>
+    </label>
+    <a data-id="hide_description_lk" href="javascript://" class="field-hide" tabindex="-1">hide</a>
+    <div class="rich-text">
+      <rich-text
+        tabindex="3"
+        hiddenToolbar:from="true"
+        placeholder:from="'Enter Assessment Procedure'"
+        content:bind="instance.test_plan">
+      </rich-text>
+    </div>
+  </div>
+</div>

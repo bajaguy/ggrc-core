@@ -1,5 +1,5 @@
 /*
- Copyright (C) 2018 Google Inc.
+ Copyright (C) 2019 Google Inc.
  Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
  */
 
@@ -10,7 +10,7 @@ import './advanced-search-filter-state';
 import AdvancedSearchContainer from '../view-models/advanced-search-container-vm';
 import * as StateUtils from '../../plugins/utils/state-utils';
 import * as AdvancedSearch from '../../plugins/utils/advanced-search-utils';
-import template from './advanced-search-filter-container.mustache';
+import template from './advanced-search-filter-container.stache';
 
 /**
  * Filter Container view model.
@@ -30,7 +30,11 @@ let viewModel = AdvancedSearchContainer.extend({
       get: function (items) {
         if (this.attr('defaultStatusFilter') && items && !items.length &&
           StateUtils.hasFilter(this.attr('modelName'))) {
-          items.push(AdvancedSearch.create.state());
+          const statusItem = new can.Map(AdvancedSearch.create.state());
+          statusItem.value = AdvancedSearch.setDefaultStatusConfig(
+            statusItem.value, this.attr('modelName')
+          );
+          items.push(statusItem);
         }
         return items;
       },
@@ -94,6 +98,7 @@ let viewModel = AdvancedSearchContainer.extend({
  */
 export default can.Component.extend({
   tag: 'advanced-search-filter-container',
-  template: template,
+  view: can.stache(template),
+  leakScope: true,
   viewModel: viewModel,
 });

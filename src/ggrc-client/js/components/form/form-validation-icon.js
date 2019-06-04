@@ -1,9 +1,8 @@
 /*
- Copyright (C) 2018 Google Inc.
+ Copyright (C) 2019 Google Inc.
  Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
  */
 
-const tag = 'form-validation-icon';
 /**
  * State object to present possible icons for validation
  */
@@ -18,9 +17,12 @@ const icons = {
  * Form validation icon component
  */
 export default can.Component.extend({
-  tag,
-  template: '<i class="fa form-validation-icon__body {{iconCls}}"></i>',
-  viewModel: {
+  tag: 'form-validation-icon',
+  view: can.stache(
+    '<i class="fa form-validation-icon__body {{iconCls}}"></i>'
+  ),
+  leakScope: true,
+  viewModel: can.Map.extend({
     define: {
       validation: {},
       iconCls: {
@@ -42,5 +44,5 @@ export default can.Component.extend({
         },
       },
     },
-  },
+  }),
 });

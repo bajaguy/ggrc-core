@@ -1,15 +1,16 @@
 /*
- Copyright (C) 2018 Google Inc.
+ Copyright (C) 2019 Google Inc.
  Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
  */
 
-import '../../rich_text/rich_text';
-import template from './rich-text-form-field.mustache';
+import '../../rich-text/rich-text';
+import template from './rich-text-form-field.stache';
 
 export default can.Component.extend({
   tag: 'rich-text-form-field',
-  template,
-  viewModel: {
+  view: can.stache(template),
+  leakScope: true,
+  viewModel: can.Map.extend({
     _value: '',
     _oldValue: null,
     placeholder: '',
@@ -30,7 +31,7 @@ export default can.Component.extend({
         set(newValue) {
           let oldValue = this.attr('_oldValue');
           if (newValue === oldValue ||
-              newValue.length && !can.trim(newValue).length) {
+              newValue.length && !_.trim(newValue).length) {
             return;
           }
 
@@ -70,7 +71,7 @@ export default can.Component.extend({
     onBlur: function () {
       this.checkValueChanged();
     },
-  },
+  }),
   events: {
     '.ql-editor blur': function () {
       this.viewModel.onBlur();

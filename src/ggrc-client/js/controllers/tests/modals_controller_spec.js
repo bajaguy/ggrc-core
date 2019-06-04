@@ -1,11 +1,12 @@
 /*
-  Copyright (C) 2018 Google Inc.
+  Copyright (C) 2019 Google Inc.
   Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 */
 
 import ModalsController from '../modals/modals_controller';
 import * as NotifiersUtils from '../../plugins/utils/notifiers-utils';
 import Person from '../../models/business-models/person';
+import * as ReifyUtils from '../../plugins/utils/reify-utils';
 
 describe('ModalsController', function () {
   let Ctrl; // the controller under test
@@ -44,7 +45,7 @@ describe('ModalsController', function () {
     });
 
     it('waits until current user is pre-fetched if not yet in cache',
-      function () {
+      function (done) {
         let userId = GGRC.current_user.id;
         let dfdFetch = new $.Deferred();
         let fetchedUser = new can.Map({id: userId, email: 'john@doe.com'});
@@ -55,13 +56,15 @@ describe('ModalsController', function () {
         init();
 
         expect(ctrlInst.after_preload).not.toHaveBeenCalled();
-        dfdFetch.resolve(fetchedUser);
-        expect(ctrlInst.after_preload).toHaveBeenCalled();
+        dfdFetch.resolve(fetchedUser).then(() => {
+          expect(ctrlInst.after_preload).toHaveBeenCalled();
+          done();
+        });
       }
     );
 
     it('waits until current user is pre-fetched if only partially in cache',
-      function () {
+      function (done) {
         let userId = GGRC.current_user.id;
         let dfdRefresh = new $.Deferred();
         let fetchedUser = new can.Map({id: userId, email: 'john@doe.com'});
@@ -72,19 +75,23 @@ describe('ModalsController', function () {
           refresh: jasmine.createSpy().and.returnValue(dfdRefresh.promise()),
         });
 
-        spyOn(partialUser, 'reify').and.returnValue(partialUser);
+        spyOn(ReifyUtils, 'reify').and.returnValue(partialUser);
         Person.cache[userId] = partialUser;
 
         init();
 
         expect(ctrlInst.after_preload).not.toHaveBeenCalled();
-        dfdRefresh.resolve(fetchedUser);
-        expect(ctrlInst.after_preload).toHaveBeenCalled();
+        dfdRefresh.resolve(fetchedUser).then(() => {
+          expect(ctrlInst.after_preload).toHaveBeenCalled();
+          done();
+        });
       }
     );
 
     it('does not wait for fetching the current user if already in cache',
       function () {
+        jasmine.clock().install();
+
         let dfdRefresh = new $.Deferred();
         let userId = GGRC.current_user.id;
 
@@ -94,13 +101,16 @@ describe('ModalsController', function () {
           refresh: jasmine.createSpy().and.returnValue(dfdRefresh.promise()),
         });
 
-        spyOn(fullUser, 'reify').and.returnValue(fullUser);
+        spyOn(ReifyUtils, 'reify').and.returnValue(fullUser);
         Person.cache[userId] = fullUser;
 
         init();
 
+        jasmine.clock().tick(1);
         // after_preload should have been called immediately
         expect(ctrlInst.after_preload).toHaveBeenCalled();
+
+        jasmine.clock().uninstall();
       }
     );
   });
@@ -119,22 +129,23 @@ describe('ModalsController', function () {
       spyOn(window, 'clearTimeout');
       method = Ctrl.prototype.save_error.bind(ctrlInst);
     });
-    it('calls notifier with responseText' +
+    it('calls notifierXHR with response' +
     ' if error status is not 409', function () {
-      method({}, {status: 400, responseText: 'mockText'});
-      expect(NotifiersUtils.notifier).toHaveBeenCalledWith('error', 'mockText');
+      const response = {status: 400, responseText: 'mockText'};
+      method({}, response);
+      expect(NotifiersUtils.notifierXHR)
+        .toHaveBeenCalledWith('error', response);
     });
     it('clears timeout of error warning if error status is 409', function () {
       method({}, {status: 409, warningId: 999});
       expect(clearTimeout).toHaveBeenCalledWith(999);
     });
-    it('calls notifier with specified text' +
+    it('calls notifierXHR with response' +
     ' if error status is 409', function () {
       let error = {status: 409};
       method({}, error);
       expect(NotifiersUtils.notifierXHR)
-        .toHaveBeenCalledWith('warning');
-      expect(foo).toHaveBeenCalledWith(error);
+        .toHaveBeenCalledWith('warning', error);
     });
 
     it('calls "disableEnableContentUI" method', () => {
@@ -205,14 +216,14 @@ describe('ModalsController', function () {
         });
 
         it('calls instance.backup() when resolved', (done) => {
-          method(instance);
+          let methodChain = method(instance);
 
-          formPreloadDfd.done(() => {
-            expect(instance.backup).toHaveBeenCalled();
-            done();
+          formPreloadDfd.resolve().then(() => {
+            methodChain.then(() => {
+              expect(instance.backup).toHaveBeenCalled();
+              done();
+            });
           });
-
-          formPreloadDfd.resolve();
         });
 
         it('returns formPreloadDfd', () => {
@@ -261,7 +272,9 @@ describe('ModalsController', function () {
           .returnValue(newInstance),
         reset_form: jasmine.createSpy('reset_form').and
           .returnValue(resetFormDfd),
-        proxy: jasmine.createSpy('proxy'),
+        apply_object_params: jasmine.createSpy('apply_object_params'),
+        serialize_form: jasmine.createSpy('serialize_form'),
+        autocomplete: jasmine.createSpy('autocomplete'),
         restore_ui_status: jasmine.createSpy('restore_ui_status'),
         options: new can.Map(),
       };
@@ -290,28 +303,43 @@ describe('ModalsController', function () {
       resetFormDfd.resolve();
     });
 
-    it('calls proxy() with "apply_object_params"', (done) => {
+    it('calls apply_object_params()', (done) => {
+      jasmine.clock().install();
+
       resetFormDfd.resolve();
       method();
 
-      expect(ctrlInst.proxy).toHaveBeenCalledWith('apply_object_params');
+      jasmine.clock().tick(1);
+      expect(ctrlInst.apply_object_params).toHaveBeenCalled();
       done();
+
+      jasmine.clock().uninstall();
     });
 
-    it('calls proxy() with "serialize_form"', (done) => {
+    it('calls serialize_form()', (done) => {
+      jasmine.clock().install();
+
       resetFormDfd.resolve();
       method();
 
-      expect(ctrlInst.proxy).toHaveBeenCalledWith('serialize_form');
+      jasmine.clock().tick(1);
+      expect(ctrlInst.serialize_form).toHaveBeenCalled();
       done();
+
+      jasmine.clock().uninstall();
     });
 
-    it('calls proxy() with "autocomplete"', (done) => {
+    it('calls autocomplete()', (done) => {
+      jasmine.clock().install();
+
       resetFormDfd.resolve();
       method();
 
-      expect(ctrlInst.proxy).toHaveBeenCalledWith('autocomplete');
+      jasmine.clock().tick(1);
+      expect(ctrlInst.autocomplete).toHaveBeenCalled();
       done();
+
+      jasmine.clock().uninstall();
     });
   });
 });

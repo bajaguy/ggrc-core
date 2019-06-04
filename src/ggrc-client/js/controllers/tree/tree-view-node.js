@@ -1,17 +1,11 @@
 /*
- Copyright (C) 2018 Google Inc.
+ Copyright (C) 2019 Google Inc.
  Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
  */
 
-import {
-  isSnapshot,
-} from '../../plugins/utils/snapshot-utils';
-import {
-  related,
-  isObjectContextPage,
-  getPageType,
-} from '../../plugins/utils/current-page-utils';
+import TreeViewControl from './tree-view';
 import TreeViewOptions from './tree-view-options';
+import {reify} from '../../plugins/utils/reify-utils';
 
 function _firstElementChild(el) {
   let i;
@@ -27,7 +21,6 @@ function _firstElementChild(el) {
 }
 
 export default can.Control.extend({
-  pluginName: 'cms_controllers_tree_view_node',
   defaults: {
     model: null,
     parent: null,
@@ -62,15 +55,6 @@ export default can.Control.extend({
   init: function () {
     this._draw_node_deferred = $.Deferred();
 
-    if (this.options.child_options) {
-      this.options.child_options.each(function (option) {
-        option.attr({
-          parent: this,
-          parent_instance: this.options.instance,
-        });
-      }.bind(this));
-    }
-
     // this timeout is required because the invoker will access the control via
     // the element synchronously so we must not replace the element just yet
     setTimeout(function () {
@@ -81,31 +65,13 @@ export default can.Control.extend({
   '{instance} custom_attribute_values':
     function (object, ev, newVal, oldVal) {
       function getValues(cav) {
-        return _.map(cav.reify(), 'attribute_value');
+        return _.map(reify(cav), 'attribute_value');
       }
       if ((!oldVal || !newVal) || (oldVal.length === newVal.length &&
         _.difference(getValues(oldVal), getValues(newVal)).length)) {
         this.draw_node();
       }
     },
-  ' updateCount'(el, ev, count, updateCount) {
-    // prevents updating counts for widget after openning tree-view-node
-    ev.stopPropagation();
-  },
-
-  markNotRelatedItem: function () {
-    let instance = this.options.instance;
-    let relatedInstances = related.attr(instance.type);
-    let instanceId = isSnapshot(instance) ?
-      instance.snapshot.child_id :
-      instance.id;
-    if (!relatedInstances || relatedInstances &&
-      !relatedInstances[instanceId]) {
-      this.element.addClass('not-directly-related');
-    } else {
-      this.element.addClass('directly-related');
-    }
-  },
 
   /**
    * Trigger rendering the tree node in the DOM.
@@ -126,20 +92,19 @@ export default can.Control.extend({
     // determine it from the presemce of the corresponding CSS class
     let isActive = this.element.hasClass('active');
 
-    can.view(
-      this.options.show_view,
-      this.options,
-      this._ifNotRemoved(function (frag) {
-        this.replace_element(frag);
-
-        if (isActive) {
-          this.element.addClass('active');
-        }
-
-        this._draw_node_deferred.resolve();
-      }.bind(this))
-    );
-
+    $.ajax({
+      url: this.options.show_view,
+      dataType: 'text',
+    }).then((view) => {
+      return can.stache(view)(this.options);
+    }).then(this._ifNotRemoved((frag) => {
+      this.replace_element(frag);
+      this.add_control();
+      if (isActive) {
+        this.element.addClass('active');
+      }
+      this._draw_node_deferred.resolve();
+    }));
     this._draw_node_in_progress = false;
   },
 
@@ -165,7 +130,6 @@ export default can.Control.extend({
       this.add_child_list(this.options, options);
       options.attr({
         options_property: this.options.options_property,
-        single_object: false,
         parent: this,
         parent_instance: this.options.instance,
       });
@@ -176,10 +140,17 @@ export default can.Control.extend({
     this.options.attr('_added_child_list', true);
   },
 
+  add_control: function () {
+    const subTree = this.element.find('.tree-view-control');
+    if (subTree && subTree.length) {
+      return new TreeViewControl(subTree[0], subTree.data('options'));
+    }
+  },
+
   // data is an entry from child options.  if child options is an array, run once for each.
   add_child_list: function (item, data) {
     let findParams;
-    data.attr({start_expanded: false});
+
     if (_.isFunction(item.instance[data.property])) {
       // Special case for handling mappings which are functions until
       // first requested, then set their name via .attr('...')
@@ -196,7 +167,6 @@ export default can.Control.extend({
         data.attr('original_list', findParams);
         findParams = findParams.slice(0);
       }
-      data.attr('list', findParams);
     } else {
       findParams = data.attr('find_params');
       if (findParams) {
@@ -230,14 +200,9 @@ export default can.Control.extend({
     oldEl.data('controls', []);
     this.off();
     oldEl.replaceWith(el);
-    this.element = firstchild.addClass(this.constructor.pluginName)
+    this.element = firstchild.addClass('tree-view-node')
       .data(oldData);
 
-    if (this.options.is_subtree &&
-      isObjectContextPage() &&
-      getPageType() !== 'Workflow') {
-      this.markNotRelatedItem();
-    }
     this.on();
   },
 
@@ -249,21 +214,24 @@ export default can.Control.extend({
     let childTreeDfds = [];
     let that = this;
 
-    this.element.find('.cms_controllers_tree_view')
+    this.element.find('.tree-view-control')
       .each(function (_, el) {
         let $el = $(el);
         let childTreeControl;
 
         //  Ensure this targets only direct child trees, not sub-tree trees
-        if ($el.closest('.' + that.constructor.pluginName).is(that.element)) {
+        if ($el.closest('.tree-view-node').is(that.element)) {
           childTreeControl = $el.control();
-          if (childTreeControl) {
-            that.options.attr('subTreeLoading', true);
-            childTreeDfds.push(childTreeControl.display()
-              .then(function () {
-                that.options.attr('subTreeLoading', false);
-              }));
+
+          if (!childTreeControl) {
+            childTreeControl = that.add_control();
           }
+
+          that.options.attr('subTreeLoading', true);
+          childTreeDfds.push(childTreeControl.display()
+            .then(function () {
+              that.options.attr('subTreeLoading', false);
+            }));
         }
       });
 
@@ -307,7 +275,7 @@ export default can.Control.extend({
 
   '.openclose:not(.active) click': function (el, ev) {
     // Ignore unless it's a direct child
-    if (el.closest('.' + this.constructor.pluginName).is(this.element)) {
+    if (el.closest('.tree-view-node').is(this.element)) {
       this.expand();
     }
   },

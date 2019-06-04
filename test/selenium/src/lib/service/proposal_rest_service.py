@@ -1,4 +1,4 @@
-# Copyright (C) 2018 Google Inc.
+# Copyright (C) 2019 Google Inc.
 # Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 """Services for create and manipulate Proposal objects via Rest."""
 from dateutil import parser, tz
@@ -18,7 +18,6 @@ class ProposalsService(rest_service.HelpRestService):
   def get_obj_proposals(self, obj):
     """Get and return object proposals according to obj type and id."""
     # double waiting for this rest method
-    double_timeout = constants.ux.MAX_USER_WAIT_SECONDS * 2
     return rest_service.BaseRestService.get_items_from_resp(
         self.client.create_object(
             type=self.endpoint,
@@ -27,20 +26,14 @@ class ProposalsService(rest_service.HelpRestService):
             order_by=[
                 {"name": "status", "desc": True},
                 {"name": "created_at", "desc": True}]),
-        timeout=double_timeout).get("values")
+        timeout=constants.ux.TWO_MIN_USER_WAIT)
 
   def get_proposal_creation_date(self, obj, proposal):
     """Get proposal creation date."""
     proposals = self.get_obj_proposals(obj)
     prop_value = string_utils.escape_html(
         proposal.changes[0]["proposed_value"])
-    try:
-      actual_proposal = next(
-          prop for prop in proposals
-          if prop_value in prop["content"]["fields"]["description"])
-    except StopIteration as exception:
-      print proposals
-      print prop_value
-      raise exception
+    actual_proposal = proposals if prop_value in proposals["content"][
+        "fields"]["description"] else None
     return parser.parse(actual_proposal["created_at"]).replace(
         tzinfo=tz.tzutc())

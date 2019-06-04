@@ -1,8 +1,10 @@
-# Copyright (C) 2018 Google Inc.
+# Copyright (C) 2019 Google Inc.
 # Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 """Locators for all elements."""
 # pylint: disable=too-few-public-methods
 # pylint: disable=too-many-lines
+# pylint: disable=invalid-name
+# pylint: disable=super-init-not-called
 
 from selenium.webdriver.common.by import By
 
@@ -60,7 +62,7 @@ class Common(object):
   CONTENT = ".content"
   OPTION = "option"
   # panel locator
-  PANEL_CSS = (By.CSS_SELECTOR, ".pin-content.cms_controllers_info_pin")
+  PANEL_CSS = (By.CSS_SELECTOR, ".pin-content.pin-content")
   OBJECT_AREA_CSS = (By.CSS_SELECTOR, ".object-area")
   # widgets
   WDG_NOT_HIDDEN = ".widget:not(.hidden) "
@@ -128,7 +130,8 @@ class Dashboard(object):
   CREATE_TASK_BTN_CSS = (
       By.CSS_SELECTOR, _GET_LIST +
       ' [data-object-singular="CycleTaskGroupObjectTask"]')
-  CREATE_OBJECT_BTN_CSS = (By.CSS_SELECTOR, _GET_LIST + ' [href="#"]')
+  CREATE_OBJECT_BTN_CSS = (
+      By.CSS_SELECTOR, _GET_LIST + ' [href="javascript:void(0)"]')
   ALL_OBJECTS_BTN_CSS = (
       By.CSS_SELECTOR, _GET_LIST + ' [href="/objectBrowser"]')
 
@@ -144,10 +147,18 @@ class LhnMenu(object):
 
     @staticmethod
     def get_create_new_button(label):
+      # Controls cannot be created from UI.
+      if label == objects.get_singular(objects.CONTROLS, title=True):
+        return(By.CSS_SELECTOR,
+               ('[data-model-name="{}"] '
+                'ul.sub-actions li.add-new a').format(label))
+      if label == objects.get_singular(objects.ASSESSMENTS, title=True):
+        return(By.CSS_SELECTOR,
+               ('[data-model-name="{}"] '
+                '[data-object-singular="{}"]').format(label, label))
       return (
           By.CSS_SELECTOR,
-          '[data-model-name="{}"] [data-test-id='
-          '"button_lhn_create_new_program_522c563f"]'.format(label))
+          '[data-model-name="{}"] [class="add-new oneline"]'.format(label))
 
     @staticmethod
     def get_accordion_count(label):
@@ -255,7 +266,8 @@ class CommonModalUnifiedMapper(object):
   MODAL_CSS = (By.CSS_SELECTOR, MODAL)
   MODAL_FILTER = Common.MODAL_FILTER
   FILTER_TOGGLE_CSS = (By.CSS_SELECTOR,
-                       MODAL_FILTER + " collapse-panel-click-area")
+                       MODAL_FILTER +
+                       " button.collapsible-panel-header__toggle-button")
   FILTER_ADD_ATTRIBUTE_BTN = (By.XPATH, "//button[text()='Add Attribute']")
   FILTER_ROW_CSS = (By.CSS_SELECTOR, ".filter-container__attribute")
   FILTER_OPERATOR = (By.CSS_SELECTOR, ".filter-operator__content select")
@@ -269,6 +281,7 @@ class CommonModalUnifiedMapper(object):
   # user input elements
   OBJ_TYPE_DROPDOWN = (By.CSS_SELECTOR, MODAL + " .input-block-level")
   BUTTON_SEARCH = (By.CSS_SELECTOR, MODAL + " button[type='submit']")
+  FOUND_MAPPER_RESULTS_CSS = "mapper-results .list-object-item"
   FOUND_OBJECTS_TITLES = (
       By.CSS_SELECTOR, MODAL + " .flex-box .attr:first-child")
   FOUND_OBJECTS_CHECKBOXES = (By.CSS_SELECTOR,
@@ -276,7 +289,7 @@ class CommonModalUnifiedMapper(object):
   BUTTON_MAP_SELECTED = (By.CSS_SELECTOR, MODAL + Common.MODAL_FOOTER +
                          " .btn-map")
   RESULT_TOGGLE_CSS = (By.CSS_SELECTOR, MODAL + Common.MODAL_FOOTER +
-                       " collapse-panel-click-area")
+                       " button.collapsible-panel-header__toggle-button")
   CLOSE_BTN_CSS = (By.CSS_SELECTOR,
                    MODAL + Common.MODAL_HEADER + " a.modal-dismiss")
 
@@ -302,8 +315,6 @@ class ModalCloneOrCreateAssessmentTemplates(CommonModalUnifiedMapper):
   """Locators for clone or create Assessment Templates modal."""
   MODAL = Common.MODAL_MAPPER
   CREATE_ASMT_TMPL_BTN_CSS = (By.CSS_SELECTOR, MODAL + " .create-control")
-  RESULT_TOGGLE_CSS = (By.CSS_SELECTOR, MODAL +
-                       " .modal-footer--trailed collapse-panel-click-area")
 
 
 class BaseModalCreateNew(object):
@@ -486,12 +497,6 @@ class ModalCreateNewAsmt(BaseModalCreateNew, CommonAssessment):
                       BaseModalCreateNew.MODAL + CommonAssessment.MAP_OBJS_BTN)
 
 
-class ModalCreateNewAsmtTmpl(BaseModalCreateNew):
-  """Locators for Create new Assessment Template modals."""
-  ASSIGNEE_DROPDOWN = (
-      By.CSS_SELECTOR, 'select[can-value="instance.default_people.assignees"]')
-
-
 class ModalEditObject(BaseModalCreateNew):
   """Locators for Edit object modals."""
   BUTTON_DELETE = (
@@ -511,7 +516,7 @@ class ModalCustomAttribute(object):
       By.CSS_SELECTOR, Common.MODAL_BODY + " div:nth-child(1)>label")
   ATTR_TYPE_CSS = (By.CSS_SELECTOR, Common.MODAL_HEADER + " h2")
   ATTR_TYPE_SELECTOR_DD_CSS = (
-      By.CSS_SELECTOR, Common.MODAL_BODY + " dropdown select")
+      By.CSS_SELECTOR, Common.MODAL_BODY + " dropdown-component select")
   MANDATORY_LBL_CSS = (By.CSS_SELECTOR, Common.MODAL_BODY + " .span2 label")
   MANDATORY_CB_CSS = (
       By.CSS_SELECTOR, Common.MODAL_BODY + ' [type="checkbox"]')
@@ -586,7 +591,7 @@ class WidgetBar(object):
     @staticmethod
     def get_widget(object_name):
       return (By.CSS_SELECTOR,
-              '.object-nav [href$="#!{}"]'.format(object_name))
+              '#inner-nav [href$="#!{}"]'.format(object_name))
 
   class __metaclass__(type):
     def __init__(cls, *args):
@@ -596,7 +601,7 @@ class WidgetBar(object):
         setattr(cls, object_plural, cls._Locator.get_widget(name))
   BUTTON_ADD = (
       By.CSS_SELECTOR, '[data-test-id="button_widget_add_2c925d94"]')
-  TAB_WIDGET = (By.CSS_SELECTOR, ".object-nav .active")
+  TAB_WIDGET = (By.CSS_SELECTOR, "#inner-nav .active")
   ADMIN_PEOPLE = _Locator.get_widget("people_list")
   ADMIN_ROLES = _Locator.get_widget("roles_list")
   ADMIN_EVENTS = _Locator.get_widget("events_list")
@@ -606,7 +611,6 @@ class WidgetBar(object):
   CUSTOM_ATTRIBUTES = _Locator.get_widget("custom_attribute")
   EVENTS = _Locator.get_widget("events_list")
   ROLES = _Locator.get_widget("roles_list")
-  RISK_ASSESSMENTS = _Locator.get_widget("risk_assessment")
   TASKS = _Locator.get_widget("task")
   DASHBOARD_TAB = _Locator.get_widget("dashboard")
 
@@ -620,7 +624,7 @@ class WidgetBarButtonAddDropdown(object):
       return (
           By.CSS_SELECTOR,
           '[data-test-id="button_widget_add_2c925d94"] '
-          '.object-nav [href$="#{}"]'.format(object_name))
+          '#inner-nav [href$="#{}"]'.format(object_name))
 
   class __metaclass__(type):
     def __init__(cls, *args):
@@ -683,9 +687,7 @@ class ModalCloneAudit(ModalCommonConfirmAction):
   """Locators for Clone object modals."""
   MODAL = Common.MODAL_CONFIRM
   CHECKBOX_CLONE_ASMT_TMPLS = (
-      By.CSS_SELECTOR,
-      '{} [can-value="instance.includeObjects.AssessmentTemplate"]'
-        .format(MODAL))
+      By.CSS_SELECTOR, '{} .modal-body input[type="checkbox"]'.format(MODAL))
 
 
 class CommonWidgetInfo(object):
@@ -910,6 +912,10 @@ class WidgetInfoAccessGroup(WidgetSnapshotsInfoPanel):
   """Locators for Access Group Info widgets."""
 
 
+class WidgetInfoAccountBalance(WidgetSnapshotsInfoPanel):
+  """Locators for Account Balance Info widgets."""
+
+
 class WidgetInfoSystem(WidgetSnapshotsInfoPanel):
   """Locators for System Info widgets."""
 
@@ -924,6 +930,10 @@ class WidgetInfoProduct(WidgetSnapshotsInfoPanel):
 
 class WidgetInfoFacility(WidgetSnapshotsInfoPanel):
   """Locators for Facility Info widgets."""
+
+
+class WidgetInfoKeyReport(WidgetSnapshotsInfoPanel):
+  """Locators for Key Report Info widgets."""
 
 
 class WidgetInfoProject(WidgetSnapshotsInfoPanel):
@@ -982,8 +992,7 @@ class CommonDropdown3bbsInfoWidget(CommonDropdownMenu):
   """
   _INFO_3BBS_DD_XPATH = (
       Common.INFO_WIDGET_XPATH +
-      "//*[contains(@class,'three-dots-list') or "  # old style
-      "contains(@class, 'tree-action-list-items')]")  # new style
+      "//*[contains(@class, 'tree-action-list-items')]")
   INFO_WDG_3BBS_DD_XPATH = (By.XPATH, _INFO_3BBS_DD_XPATH)
 
 
@@ -1079,7 +1088,7 @@ class UnifiedMapperTreeView(TreeView):
   SHOW_FIELDS_BTN_CSS = (By.CSS_SELECTOR, HEADER + " .fa-bars")
   NO_RESULTS_MSG_CSS = (By.CSS_SELECTOR, ".well-small:not(.hidden)")
   MAPPER_TREE_SPINNER_NO_RESULT = (
-      By.CSS_SELECTOR, ".no-items-spinner-wrapper spinner")
+      By.CSS_SELECTOR, ".no-items-spinner-wrapper spinner-component")
   MAPPER_TREE_SPINNER_ITEMS = (
       By.CSS_SELECTOR, ".spinner-section.spinner-section_grid  .spinner-icon")
 
@@ -1122,15 +1131,16 @@ class AdminCustomAttributes(object):
   class __metaclass__(type):
     def __init__(cls, *args):
       items = (
-          objects.WORKFLOWS, objects.RISK_ASSESSMENTS, objects.THREATS,
+          objects.WORKFLOWS, objects.THREATS,
           objects.RISKS, objects.PROGRAMS, objects.AUDITS,
           objects.OBJECTIVES, objects.REQUIREMENTS, objects.CONTROLS,
           objects.ISSUES, objects.ASSESSMENTS, objects.STANDARDS,
           objects.REGULATIONS, objects.POLICIES, objects.CONTRACTS,
           objects.VENDORS, objects.PEOPLE,
-          objects.ACCESS_GROUPS, objects.ORG_GROUPS, objects.PRODUCTS,
-          objects.MARKETS, objects.PROCESSES, objects.FACILITIES,
-          objects.PROJECTS, objects.DATA_ASSETS, objects.SYSTEMS)
+          objects.ACCESS_GROUPS, objects.ACCOUNT_BALANCES, objects.ORG_GROUPS,
+          objects.PRODUCTS, objects.MARKETS, objects.PROCESSES,
+          objects.FACILITIES, objects.KEY_REPORTS, objects.PROJECTS,
+          objects.DATA_ASSETS, objects.SYSTEMS)
       for id_, name in enumerate(items, start=1):
         setattr(cls,
                 Common.TOGGLE + name.upper(),
@@ -1159,11 +1169,11 @@ class AdminCustomAttributes(object):
 class CustomAttributesItemContent(AdminCustomAttributes):
   """Locators for expanded view of custom attribute group
   in admin dashboard."""
-  _TREE_ITEM = ".tree-item.cms_controllers_tree_view_node"
+  _TREE_ITEM = ".tree-item.tree-view-node"
   TREE_ITEM_EL_OPENED_CSS = (By.CSS_SELECTOR, _TREE_ITEM + ".item-open")
   CONTENT_OPEN = ".content-open .tier-2-info-content"
   TREE_STRUCTURE = (
-      CONTENT_OPEN + " .tree-structure .cms_controllers_tree_view_node")
+      CONTENT_OPEN + " .tree-structure .tree-view-node")
   TITLES_ROW_CSS = (By.CSS_SELECTOR, CONTENT_OPEN + " thead tr")
   ROW_CSS = (By.CSS_SELECTOR, TREE_STRUCTURE)
   CELL_IN_ROW_CSS = (By.CSS_SELECTOR, "td")
@@ -1190,10 +1200,6 @@ class MultiInputItem(object):
 
 class CommentsPanel(object):
   """Locators for comments' panel."""
-  HEADER_LBL_CSS = (By.CSS_SELECTOR, ".info-pane__section-title")
-  INPUT_TXT_CSS = (By.CSS_SELECTOR, ".ql-editor")
-  CB_SEND_CSS = (By.CSS_SELECTOR, ".comment-add-form__toolbar-item")
-  ADD_BTN_CSS = (By.CSS_SELECTOR, "comment-add-button")
   ITEMS_CSS = (By.CSS_SELECTOR, "comment-list-item")
 
 

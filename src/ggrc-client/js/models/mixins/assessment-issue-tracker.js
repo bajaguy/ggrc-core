@@ -1,5 +1,5 @@
 /*
-    Copyright (C) 2018 Google Inc.
+    Copyright (C) 2019 Google Inc.
     Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 */
 
@@ -10,8 +10,9 @@ import {
   batchRequests,
 } from '../../plugins/utils/query-api-utils';
 import {getPageInstance} from '../../plugins/utils/current-page-utils';
+import {reify} from '../../plugins/utils/reify-utils';
 
-export default Mixin(
+export default Mixin.extend(
   issueTrackerUtils.issueTrackerStaticFields,
   {
     'after:init': function () {
@@ -29,12 +30,13 @@ export default Mixin(
       issueTrackerUtils.checkWarnings(this);
     },
     trackAuditUpdates() {
-      let audit = this.attr('audit') && this.attr('audit').reify();
+      const audit = this.attr('audit') && reify(this.attr('audit'));
+
       if (!audit) {
         return;
       }
 
-      audit.reify().bind('updated', (event) => {
+      audit.bind('updated', (event) => {
         this.attr('audit', event.target);
         this.initIssueTrackerForAssessment();
       });

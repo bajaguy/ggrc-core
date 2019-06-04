@@ -1,4 +1,4 @@
-# Copyright (C) 2018 Google Inc.
+# Copyright (C) 2019 Google Inc.
 # Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 
 """Default query builder for /query API.
@@ -209,6 +209,41 @@ class QueryHelper(object):
     return self.query
 
   @staticmethod
+  def _get_revision_type_query(model, permission_type):
+    """Filter model based on availability of related objects.
+
+    This method is used only when quering revisions. In such case only
+    revisions of objects user has right permission on should be returned. It
+    means, user must have either right permission on object revision belongs
+    to or in case it is revision of a relationship, user must have right
+    permission on at least one part of the relationship.
+    """
+    allowed_resources = permissions.all_resources(permission_type)
+    if not allowed_resources:
+      return sa.false()
+
+    return sa.or_(
+        sa.tuple_(
+            model.resource_type,
+            model.resource_id,
+        ).in_(
+            allowed_resources,
+        ),
+        sa.tuple_(
+            model.source_type,
+            model.source_id,
+        ).in_(
+            allowed_resources,
+        ),
+        sa.tuple_(
+            model.destination_type,
+            model.destination_id,
+        ).in_(
+            allowed_resources,
+        ),
+    )
+
+  @staticmethod
   def _get_type_query(model, permission_type):
     """Filter by contexts and resources
 
@@ -220,6 +255,11 @@ class QueryHelper(object):
 
     if permission_type == "update" and permissions.has_system_wide_update():
       return None
+
+    if model.__name__ == "Revision":
+      # Since revision contains all object data, query API should query only
+      # revisions of objects user has right permission on.
+      return QueryHelper._get_revision_type_query(model, permission_type)
 
     contexts, resources = permissions.get_context_resource(
         model_name=model.__name__, permission_type=permission_type
@@ -239,7 +279,7 @@ class QueryHelper(object):
 
     object_name = object_query["object_name"]
     object_class = inflector.get_model(object_name)
-    query = object_class.eager_query()
+    query = object_class.eager_query(load_related=False)
     query = query.filter(object_class.id.in_(ids))
 
     with benchmark("Get objects by ids: _get_objects -> obj in query"):

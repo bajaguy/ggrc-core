@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2018 Google Inc.
+  Copyright (C) 2019 Google Inc.
   Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 */
 
@@ -82,7 +82,7 @@ describe('export-panel component', function () {
       it('should call panel changeType method', () => {
         viewModel.attr('item', panel);
 
-        event(viewModel, {}, 'Assessment');
+        event([viewModel], {id: 1, type: 'Assessment'}, 'Assessment');
 
         expect(panel.changeType).toHaveBeenCalledWith('Assessment');
       });
@@ -91,7 +91,7 @@ describe('export-panel component', function () {
         viewModel.attr('item', panel);
         spyOn(viewModel, 'setSelected');
 
-        event(viewModel, {}, 'Assessment');
+        event([viewModel], {}, 'Assessment');
         expect(viewModel.setSelected).toHaveBeenCalled();
       });
     });

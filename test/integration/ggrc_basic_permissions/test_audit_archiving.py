@@ -1,4 +1,4 @@
-# Copyright (C) 2018 Google Inc.
+# Copyright (C) 2019 Google Inc.
 # Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 
 """Test Archived Audit."""
@@ -34,7 +34,8 @@ def _create_obj_dict(obj, audit_id, context_id, assessment_id=None):
           "audit": {
               "id": audit_id,
               "type": "Audit"
-          }
+          },
+          "due_date": "10/10/2019"
       },
       "assessment": {
           "title": "Assessment Title",
@@ -321,6 +322,8 @@ class TestArchivedAudit(TestAuditArchivingBase):
       json = {
           "title": title
       }
+      if obj == "issue":
+        json["due_date"] = "10/10/2019"
       response = self.api.put(obj_instance, json)
       assert response.status_code == status, \
           "{} put returned {} instead of {} for {}".format(

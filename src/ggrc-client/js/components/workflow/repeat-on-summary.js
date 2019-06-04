@@ -1,15 +1,16 @@
 /*
- Copyright (C) 2018 Google Inc.
+ Copyright (C) 2019 Google Inc.
  Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
  */
 
-import template from './templates/repeat-on-summary.mustache';
+import template from './templates/repeat-on-summary.stache';
 import {unitOptions as workflowUnitOptions} from '../../apps/workflow-config';
 
 export default can.Component.extend({
   tag: 'repeat-on-summary',
-  template,
-  viewModel: {
+  view: can.stache(template),
+  leakScope: true,
+  viewModel: can.Map.extend({
     define: {
       unitText: {
         get: function () {
@@ -36,5 +37,5 @@ export default can.Component.extend({
     },
     unit: null,
     repeatEvery: null,
-  },
+  }),
 });

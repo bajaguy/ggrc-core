@@ -1,4 +1,4 @@
-# Copyright (C) 2018 Google Inc.
+# Copyright (C) 2019 Google Inc.
 # Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 
 """
@@ -192,6 +192,7 @@ class TestCreatorAudit(TestCase):
           "issue": {
               "title": random_title,
               "context": None,
+              "due_date": "10/10/2019"
           },
       })
       self.assertEqual(response.status_code, 201)

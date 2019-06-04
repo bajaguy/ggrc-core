@@ -1,19 +1,19 @@
 /*
- Copyright (C) 2018 Google Inc.
+ Copyright (C) 2019 Google Inc.
  Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
  */
 
 import * as businessModels from '../../models/business-models';
-import template from './business-object-list-item.mustache';
+import template from './business-object-list-item.stache';
 
-let tag = 'business-object-list-item';
 /**
  * Mapped objects item view component
  */
 export default can.Component.extend({
-  tag,
-  template,
-  viewModel: {
+  tag: 'business-object-list-item',
+  view: can.stache(template),
+  leakScope: true,
+  viewModel: can.Map.extend({
     instance: {},
     define: {
       type: {
@@ -50,5 +50,5 @@ export default can.Component.extend({
         },
       },
     },
-  },
+  }),
 });

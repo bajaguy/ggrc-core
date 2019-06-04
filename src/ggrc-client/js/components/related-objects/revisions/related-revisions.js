@@ -1,18 +1,18 @@
 /*
- Copyright (C) 2018 Google Inc., authors, and contributors
+ Copyright (C) 2019 Google Inc., authors, and contributors
  Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
  */
 
 import Pagination from '../../base-objects/pagination';
-import template from './templates/related-revisions.mustache';
+import template from './templates/related-revisions.stache';
 import './related-revisions-item';
 import Revision from '../../../models/service-models/revision.js';
-const tag = 'related-revisions';
 
 export default can.Component.extend({
-  tag,
-  template,
-  viewModel: {
+  tag: 'related-revisions',
+  view: can.stache(template),
+  leakScope: true,
+  viewModel: can.Map.extend({
     define: {
       paging: {
         value: function () {
@@ -65,7 +65,7 @@ export default can.Component.extend({
       query[attr + '_id'] = this.attr('instance.id');
       return Revision.findAll(query);
     },
-  },
+  }),
   events: {
     inserted() {
       this.viewModel.loadRevisions();

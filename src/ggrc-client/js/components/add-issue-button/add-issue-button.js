@@ -1,10 +1,10 @@
 /*
- Copyright (C) 2018 Google Inc.
+ Copyright (C) 2019 Google Inc.
  Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
  */
 
 import {REFRESH_RELATED} from '../../events/eventTypes';
-import template from './add-issue-button.mustache';
+import template from './add-issue-button.stache';
 import {
   getPageInstance,
 } from '../../plugins/utils/current-page-utils';
@@ -13,8 +13,9 @@ import Issue from '../../models/business-models/issue';
 
 export default can.Component.extend({
   tag: 'add-issue-button',
-  template,
-  viewModel: {
+  view: can.stache(template),
+  leakScope: true,
+  viewModel: can.Map.extend({
     define: {
       prepareJSON: {
         get: function () {
@@ -34,7 +35,7 @@ export default can.Component.extend({
       },
     },
     relatedInstance: {},
-  },
+  }),
   events: {
     refreshIssueList: function (window, event, instance) {
       let model = 'Issue';

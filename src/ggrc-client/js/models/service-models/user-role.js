@@ -1,5 +1,5 @@
 /*
-    Copyright (C) 2018 Google Inc.
+    Copyright (C) 2019 Google Inc.
     Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 */
 
@@ -7,7 +7,7 @@ import Role from './role';
 import Cacheable from '../cacheable';
 import Stub from '../stub';
 
-export default Cacheable('CMS.Models.UserRole', {
+export default Cacheable.extend({
   root_object: 'user_role',
   root_collection: 'user_roles',
   findAll: 'GET /api/user_roles',

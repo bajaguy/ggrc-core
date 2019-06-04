@@ -1,10 +1,11 @@
 /*
- Copyright (C) 2018 Google Inc.
+ Copyright (C) 2019 Google Inc.
  Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
  */
 
-import template from './gca-controls.mustache';
+import template from './gca-controls.stache';
 import '../custom-attributes/custom-attributes-field';
+import isFunction from 'can-util/js/is-function/is-function';
 import {CUSTOM_ATTRIBUTE_TYPE} from '../../plugins/utils/custom-attribute/custom-attribute-config';
 import {CONTROL_TYPE} from './../../plugins/utils/control-utils';
 
@@ -19,8 +20,9 @@ const errorMessages = {
 
 export default can.Component.extend({
   tag: 'gca-controls',
-  template,
-  viewModel: {
+  view: can.stache(template),
+  leakScope: true,
+  viewModel: can.Map.extend({
     instance: {},
     items: [],
     allowHide: false,
@@ -51,13 +53,14 @@ export default can.Component.extend({
       instance.customAttr(caId, caValue);
       this.validateControls();
     },
-  },
+  }),
   helpers: {
     errorMessage(type) {
-      type = Mustache.resolve(type);
+      type = isFunction(type) ? type() : type;
       return errorMessages[type] || errorMessages.any;
     },
     isHidable(item, options) {
+      item = isFunction(item) ? item() : item;
       const hidable = (this.attr('allowHide') && !item.mandatory);
       return hidable
         ? options.fn()

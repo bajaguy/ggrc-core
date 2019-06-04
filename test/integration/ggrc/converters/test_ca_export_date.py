@@ -1,4 +1,4 @@
-# Copyright (C) 2018 Google Inc.
+# Copyright (C) 2019 Google Inc.
 # Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 
 """Tests export of objects with date CA and import files back."""
@@ -14,7 +14,7 @@ class TestCustomAttributeExportDate(TestCase):
   """Tests date format for CA with date type in exported file.
 
   Test suite for checking date format of CA in the exported
-  file of an object, e.g. Control.
+  file of an object, e.g. Program.
   """
 
   def setUp(self):
@@ -25,25 +25,25 @@ class TestCustomAttributeExportDate(TestCase):
     with factories.single_commit():
       cad1 = factories.CustomAttributeDefinitionFactory(
           title="Test Date",
-          definition_type="control",
+          definition_type="program",
           attribute_type="Date"
       )
       cad2 = factories.CustomAttributeDefinitionFactory(
           title="Test Invalid Date",
-          definition_type="control",
+          definition_type="program",
           attribute_type="Date"
       )
 
-      control = factories.ControlFactory()
+      program = factories.ProgramFactory()
 
       factories.CustomAttributeValueFactory(
-          attributable=control,
+          attributable=program,
           custom_attribute=cad1,
           attribute_value=u"2018-01-19"
       )
 
       factories.CustomAttributeValueFactory(
-          attributable=control,
+          attributable=program,
           custom_attribute=cad2,
           attribute_value=u"Test Value"
       )
@@ -51,12 +51,12 @@ class TestCustomAttributeExportDate(TestCase):
       admin = factories.PersonFactory(email="test@example.com", name='test')
 
       factories.AccessControlPersonFactory(
-          ac_list=control.acr_name_acl_map["Admin"],
+          ac_list=program.acr_name_acl_map["Program Managers"],
           person=admin
       )
 
     self.search_request = [{
-        "object_name": "Control",
+        "object_name": "Program",
         "filters": {
             "expression": {},
         },
@@ -64,8 +64,8 @@ class TestCustomAttributeExportDate(TestCase):
     }]
 
   def test_ca_export_date(self):
-    """Export control with date CA."""
-    exported_data = self.export_parsed_csv(self.search_request)["Control"]
+    """Export program with date CA."""
+    exported_data = self.export_parsed_csv(self.search_request)["Program"]
 
     self.assertTrue(
         len(exported_data) == 1

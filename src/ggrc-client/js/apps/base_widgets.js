@@ -1,13 +1,17 @@
 /*
- Copyright (C) 2018 Google Inc.
+ Copyright (C) 2019 Google Inc.
  Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
  */
+
+import * as businessModels from '../models/business-models';
+import {getRelatedWidgetNames} from '../plugins/utils/mega-object-utils';
 
 /**
  * Tree View Widgets Configuration module
  */
 let allCoreTypes = [
   'AccessGroup',
+  'AccountBalance',
   'Assessment',
   'AssessmentTemplate',
   'Audit',
@@ -18,6 +22,7 @@ let allCoreTypes = [
   'Evidence',
   'Facility',
   'Issue',
+  'KeyReport',
   'Market',
   'Metric',
   'Objective',
@@ -89,6 +94,7 @@ snapshotWidgetsConfig.forEach(function (model) {
 
 baseWidgetsByType = {
   AccessGroup: _.difference(filteredTypes, ['AccessGroup']),
+  AccountBalance: filteredTypes,
   Audit: [].concat(snapshotWidgetsConfig, excludeMappingConfig,
     auditInclusion).sort(),
   Contract: _.difference(filteredTypes, ['Contract']),
@@ -101,6 +107,7 @@ baseWidgetsByType = {
     'Person']),
   Evidence: ['Audit', 'Assessment'],
   Facility: filteredTypes,
+  KeyReport: filteredTypes,
   Issue: objectVersions.concat(filteredTypes),
   Market: filteredTypes,
   Metric: filteredTypes,
@@ -122,6 +129,13 @@ baseWidgetsByType = {
   Threat: filteredTypes,
   Vendor: filteredTypes,
 };
+
+_.each(baseWidgetsByType, (val, widget) => {
+  if (businessModels[widget] && businessModels[widget].isMegaObject) {
+    baseWidgetsByType[widget] = baseWidgetsByType[widget]
+      .concat(getRelatedWidgetNames(widget));
+  }
+});
 
 baseWidgetsByType = _.assign(baseWidgetsByType, objectVersionWidgets);
 

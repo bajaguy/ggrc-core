@@ -1,12 +1,11 @@
 /*
-    Copyright (C) 2018 Google Inc.
+    Copyright (C) 2019 Google Inc.
     Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 */
 
-can.Control.extend({
-  pluginName: 'cms_controllers_infinite_scroll',
-  defaults: {},
-}, {
+const MOUSEENTER_THROTTLE = 300;
+
+const InfiniteScrollControl = can.Control.extend({}, {
   init: function () {},
   ' DOMMouseScroll': 'prevent_overscroll',
   ' mousewheel': 'prevent_overscroll',
@@ -61,10 +60,9 @@ can.Control.extend({
   },
 });
 
-can.Control.extend({
-  pluginName: 'cms_controllers_lhn_tooltips',
+const LhnTooltipsControl = can.Control.extend({
   defaults: {
-    tooltip_view: GGRC.mustache_path + '/base_objects/extended_info.mustache',
+    tooltip_view: GGRC.templates_path + '/base_objects/extended_info.stache',
     trigger_selector: '.show-extended',
     fade_in_delay: 300,
     fade_out_delay: 300,
@@ -79,6 +77,8 @@ can.Control.extend({
             .appendTo('body');
       }
     }
+    this.options.extended = this.options.$extended[0];
+
     if (!this.options.$lhs) {
       this.options.$lhs = $('#lhs');
     }
@@ -89,9 +89,9 @@ can.Control.extend({
   // Tooltip / popover handling
   '{trigger_selector} mouseenter': 'on_mouseenter',
   '{trigger_selector} mouseleave': 'on_mouseleave',
-  '{$extended} mouseleave': 'on_mouseleave',
-  '{$extended} mouseenter': 'on_tooltip_mouseenter',
-  on_mouseenter: function (el, ev) {
+  '{extended} mouseleave': 'on_mouseleave',
+  '{extended} mouseenter': 'on_tooltip_mouseenter',
+  on_mouseenter: _.debounce(function (el) {
     let instance = el.closest('[data-model]').data('model') ||
         el.closest(':data(model)').data('model');
     let delay = this.options.fade_in_delay;
@@ -103,14 +103,14 @@ can.Control.extend({
         delay = 0;
       }
       this.fade_in_timeout = setTimeout(
-        this.proxy('on_fade_in_timeout', el, instance), delay);
+        () => this.on_fade_in_timeout(el, instance), delay);
       clearTimeout(this.fade_out_timeout);
       this.fade_out_timeout = null;
     } else if (this.fade_out_timeout) {
       clearTimeout(this.fade_out_timeout);
       this.fade_out_timeout = null;
     }
-  },
+  }, MOUSEENTER_THROTTLE),
   ensure_tooltip_visibility: function () {
     let offset = this.options.$extended.offset().top;
     let height = this.options.$extended.height();
@@ -138,7 +138,7 @@ can.Control.extend({
       if (tooltipView === 'null') {
         path = null;
       } else {
-        path = GGRC.mustache_path + tooltipView;
+        path = GGRC.templates_path + tooltipView;
       }
     } else {
       path = this.options.tooltip_view;
@@ -147,25 +147,27 @@ can.Control.extend({
     return path;
   },
   on_fade_in_timeout: function (el, instance) {
-    let self = this;
     let tooltipView = this.get_tooltip_view(el);
-
     if (tooltipView) {
       this.fade_in_timeout = null;
-      can.view(tooltipView, {instance: instance}, function (frag) {
-        let tooltipWidth = self.options.$extended.outerWidth();
+      $.ajax({
+        url: tooltipView,
+        dataType: 'text',
+      }).then((view) => {
+        let frag = can.stache(view)({instance: instance});
+        let tooltipWidth = this.options.$extended.outerWidth();
         let offset = el.parent().offset();
         let elLeft = offset ? offset.left : 0;
         let offsetLeft = elLeft - tooltipWidth > 0 ?
           elLeft - tooltipWidth : elLeft + el.parent().width();
 
-        self.options.$extended
+        this.options.$extended
           .html(frag)
           .addClass('in')
           .removeClass('hide')
           .css({top: el.offset().top, left: offsetLeft})
           .data('model', instance);
-        self.ensure_tooltip_visibility();
+        this.ensure_tooltip_visibility();
       });
     }
   },
@@ -190,7 +192,7 @@ can.Control.extend({
     clearTimeout(this.fade_out_timeout);
     this.fade_out_timeout =
       setTimeout(
-        this.proxy('on_fade_out_timeout'),
+        () => this.on_fade_out_timeout(),
         this.options.fade_out_delay);
   },
   destroy: function () {
@@ -198,3 +200,8 @@ can.Control.extend({
     this.on_mouseleave();
   },
 });
+
+export {
+  InfiniteScrollControl,
+  LhnTooltipsControl,
+};

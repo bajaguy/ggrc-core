@@ -1,5 +1,5 @@
 /*
- Copyright (C) 2018 Google Inc.
+ Copyright (C) 2019 Google Inc.
  Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
  */
 
@@ -8,7 +8,7 @@ import '../cycle-task-actions/cycle-task-actions';
 import './tree-item-attr';
 import './tree-item-custom-attribute';
 import BaseTreeItemVM from './tree-item-base-vm';
-import template from './templates/tree-item.mustache';
+import template from './templates/tree-item.stache';
 
 let viewModel = BaseTreeItemVM.extend({
   define: {
@@ -58,7 +58,8 @@ let viewModel = BaseTreeItemVM.extend({
 
 export default can.Component.extend({
   tag: 'tree-item',
-  template,
+  view: can.stache(template),
+  leakScope: true,
   viewModel,
   events: {
     inserted() {

@@ -1,4 +1,4 @@
-# Copyright (C) 2018 Google Inc.
+# Copyright (C) 2019 Google Inc.
 # Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 """Constants and methods for work with objects."""
 
@@ -8,6 +8,7 @@ import inflection
 
 
 # objects
+RELATIONSHIPS = "relationships"
 PROGRAMS = "programs"
 WORKFLOWS = "workflows"
 AUDITS = "audits"
@@ -28,16 +29,17 @@ ACL_ROLES = "access_control_roles"
 ORG_GROUPS = "org_groups"
 VENDORS = "vendors"
 ACCESS_GROUPS = "access_groups"
+ACCOUNT_BALANCES = "account_balances"
 SYSTEMS = "systems"
 PROCESSES = "processes"
 DATA_ASSETS = "data_assets"
 PRODUCTS = "products"
 PROJECTS = "projects"
 FACILITIES = "facilities"
+KEY_REPORTS = "key_reports"
 MARKETS = "markets"
 RISKS = "risks"
 THREATS = "threats"
-RISK_ASSESSMENTS = "risk_assessments"
 CUSTOM_ATTRIBUTES = "custom_attribute_definitions"
 COMMENTS = "comments"
 SNAPSHOTS = "snapshots"
@@ -51,24 +53,33 @@ TECHNOLOGY_ENVIRONMENTS = "technology_environments"
 PRODUCT_GROUPS = "product_groups"
 PROPOSALS = "proposals"
 EVIDENCE = 'evidence'
+REVIEWS = "reviews"
 
-ALL_SNAPSHOTABLE_OBJS = (
-    ACCESS_GROUPS, CONTRACTS, CONTROLS, DATA_ASSETS, FACILITIES,
+EDITABLE_GGRC_OBJ = (
+    ACCESS_GROUPS, CONTRACTS, DATA_ASSETS, FACILITIES,
     METRICS, MARKETS, OBJECTIVES, ORG_GROUPS, POLICIES, PROCESSES, PRODUCTS,
-    REGULATIONS, REQUIREMENTS, STANDARDS, SYSTEMS, VENDORS, RISKS, THREATS,
-    TECHNOLOGY_ENVIRONMENTS, PRODUCT_GROUPS
+    REGULATIONS, REQUIREMENTS, STANDARDS, SYSTEMS, VENDORS, THREATS,
+    TECHNOLOGY_ENVIRONMENTS, PRODUCT_GROUPS, KEY_REPORTS, ACCOUNT_BALANCES,
 )
 
-NOT_YET_SNAPSHOTABLE = (RISK_ASSESSMENTS, PROJECTS)
+EXTERNAL_OBJECTS = (CONTROLS, RISKS)
 
-ALL_CA_OBJS = ALL_SNAPSHOTABLE_OBJS + NOT_YET_SNAPSHOTABLE + (
+ALL_SNAPSHOTABLE_OBJS = EDITABLE_GGRC_OBJ + EXTERNAL_OBJECTS
+
+NOT_YET_SNAPSHOTABLE = (PROJECTS, )
+
+EDITABLE_CA_OBJS = EDITABLE_GGRC_OBJ + NOT_YET_SNAPSHOTABLE + (
     WORKFLOWS, PROGRAMS, AUDITS, ISSUES, ASSESSMENTS, PEOPLE)
+
+ALL_CA_OBJS = EDITABLE_CA_OBJS + EXTERNAL_OBJECTS
 
 ALL_OBJS_WO_STATE_FILTERING = (
     PEOPLE, WORKFLOWS, TASK_GROUPS, CYCLES, CYCLE_TASK_GROUP_OBJECT_TASKS)
 
-ALL_OBJS_W_CUSTOM_ROLES = ALL_SNAPSHOTABLE_OBJS + (
+EDITABLE_OBJS_W_CUSTOM_ROLES = EDITABLE_GGRC_OBJ + (
     PROJECTS, ASSESSMENTS, DOCUMENTS, EVIDENCE, ISSUES, AUDITS, PROGRAMS)
+
+ALL_OBJS_W_CUSTOM_ROLES = EDITABLE_OBJS_W_CUSTOM_ROLES + EXTERNAL_OBJECTS
 
 
 def _get_singular(plurals):
@@ -115,7 +126,7 @@ def _get_plural(singulars):
 
 def get_singular(plural, title=False):
   """Transform object name to singular and lower or title form.
- Example: risk_assessments -> risk_assessment
+ Example: product_groups -> product_group
  """
   _singular = _get_singular([plural])[0]
   if title:
@@ -127,7 +138,7 @@ def get_singular(plural, title=False):
 
 def get_plural(singular, title=False):
   """Transform object name to plural and lower form or title form.
-  Example: risk_assessment -> risk_assessments
+  Example: product_group -> product_groups
   """
   _plural = _get_plural([singular])[0]
   if title:
@@ -139,7 +150,7 @@ def get_plural(singular, title=False):
 
 def get_normal_form(obj_name):
   """Transforms object name to title form
-  (risk_assessments -> Risk Assessments).
+  (product_groups -> Product Groups).
   """
   return obj_name.replace("_", " ").title()
 
@@ -156,3 +167,9 @@ ALL_OBJS = [obj for obj in [getattr(sys.modules[__name__], _obj) for _obj in
 def get_obj_type(obj_name):
   """Get object's type based on object's name."""
   return get_singular(obj_name, title=obj_name != CUSTOM_ATTRIBUTES)
+
+
+SINGULAR_EXTERNAL_OBJS = [get_singular(x) for x in EXTERNAL_OBJECTS]
+
+SINGULAR_TITLE_EXTERNAL_OBJS = [
+    get_singular(x, title=True) for x in EXTERNAL_OBJECTS]

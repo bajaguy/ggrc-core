@@ -1,13 +1,15 @@
-# Copyright (C) 2018 Google Inc.
+# Copyright (C) 2019 Google Inc.
 # Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 
 """Integration tests for Assessment action and status change."""
+import itertools
 import ddt
 
 from ggrc.models import all_models
-
 from integration import ggrc
 from integration.ggrc.models import factories
+from integration.ggrc_basic_permissions.models \
+    import factories as rbac_factories
 
 
 @ddt.ddt
@@ -37,6 +39,26 @@ class TestAssessmentCompleteWithAction(ggrc.TestCase):
         attributable=self.asmt,
         attribute_value="value_2",
     )
+
+  @staticmethod
+  def _map(evid, asmt):
+    """Helper function to map two objects."""
+    with factories.single_commit():
+      factories.RelationshipFactory(
+          source=asmt,
+          destination=evid,
+      )
+
+  @staticmethod
+  def _create_person_with_sys_role(sys_role):
+    """Helper function to create person with specific system role."""
+    with factories.single_commit():
+      person = factories.PersonFactory()
+      system_role = all_models.Role.query.filter(
+          all_models.Role.name == sys_role,
+      ).one()
+      rbac_factories.UserRoleFactory(role=system_role, person=person)
+    return person
 
   @ddt.data(("In Review", "In Review"),
             ("Verified", "Completed"),
@@ -166,3 +188,67 @@ class TestAssessmentCompleteWithAction(ggrc.TestCase):
 
     relationship = all_models.Relationship.query.get(rel_id)
     self.assertIsNone(relationship)
+
+  @ddt.data("Editor")
+  # pylint: disable=invalid-name
+  def test_remove_related_no_acr_allowed(self, system_role):
+    """Test delete evidence for `system_role` without ACR is allowed."""
+    asmt_id = self.asmt.id
+    evid_id = self.evidence.id
+    self._map(self.evidence, self.asmt)
+    person = self._create_person_with_sys_role(system_role)
+
+    self.api.set_user(person)
+    response = self.api.put(all_models.Assessment.query.get(asmt_id), {
+        "actions": {"remove_related": [{"id": evid_id,
+                                        "type": "Evidence"}]},
+    })
+
+    self.assert200(response)
+    evid_removed = all_models.Assessment.query.get(asmt_id).evidences == []
+    self.assertTrue(evid_removed)
+
+  @ddt.data("Creator", "Reader")
+  # pylint: disable=invalid-name
+  def test_remove_related_no_acr_forbidden(self, system_role):
+    """Test delete evidence for `system_role` without ACR is forbidden."""
+    asmt_id = self.asmt.id
+    evid_id = self.evidence.id
+    self._map(self.evidence, self.asmt)
+    person = self._create_person_with_sys_role(system_role)
+
+    self.api.set_user(person)
+    response = self.api.put(all_models.Assessment.query.get(asmt_id), {
+        "actions": {"remove_related": [{"id": evid_id,
+                                        "type": "Evidence"}]},
+    })
+
+    self.assert403(response)
+    evid_removed = all_models.Assessment.query.get(asmt_id).evidences == []
+    self.assertFalse(evid_removed)
+
+  @ddt.data(
+      *itertools.product(("Assignees", "Creators", "Verifiers"),
+                         ("Creator", "Editor", "Reader"))
+  )
+  @ddt.unpack
+  # pylint: disable=invalid-name
+  def test_remove_evidence_allowed(self, role, system_role):
+    """Test `system_role` with ACR `role` is allowed to delete evidence."""
+    asmt_id = self.asmt.id
+    evid_id = self.evidence.id
+    self._map(self.evidence, self.asmt)
+    person = self._create_person_with_sys_role(system_role)
+    factories.AccessControlPersonFactory(
+        ac_list=self.asmt.acr_name_acl_map[role],
+        person=person,
+    )
+
+    self.api.set_user(person)
+    response = self.api.put(all_models.Assessment.query.get(asmt_id), {
+        "actions": {"remove_related": [{"id": evid_id,
+                                        "type": "Evidence"}]},
+    })
+    self.assert200(response)
+    evid_removed = all_models.Assessment.query.get(asmt_id).evidences == []
+    self.assertTrue(evid_removed)

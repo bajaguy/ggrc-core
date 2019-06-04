@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2018 Google Inc.
+  Copyright (C) 2019 Google Inc.
   Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 */
 
@@ -19,7 +19,7 @@ import * as businessModels from '../../models/business-models';
  * Util methods for work with Snapshots.
  */
 
-const inScopeModels = ['Assessment', 'AssessmentTemplate'];
+const auditScopeModels = ['Assessment', 'AssessmentTemplate'];
 
 /**
  * Set extra attrs for snapshoted objects or snapshots
@@ -50,7 +50,7 @@ function isSnapshot(instance) {
 function isSnapshotScope(parentInstance) {
   let instance = parentInstance || getPageInstance();
   return instance ?
-    instance.is_snapshotable || isInScopeModel(instance.type) :
+    instance.is_snapshotable || isAuditScopeModel(instance.type) :
     false;
 }
 
@@ -80,7 +80,7 @@ function isSnapshotModel(modelName) {
  */
 function isSnapshotRelated(parent, child) {
   return isSnapshotParent(parent) && isSnapshotModel(child) ||
-    isInScopeModel(parent) && isSnapshotModel(child);
+    isAuditScopeModel(parent) && isSnapshotModel(child);
 }
 
 /**
@@ -92,8 +92,8 @@ function isSnapshotRelatedType(type) {
   return GGRC.config.snapshot_related.indexOf(type) > -1;
 }
 
-function isInScopeModel(model) {
-  return inScopeModels.indexOf(model) > -1;
+function isAuditScopeModel(model) {
+  return auditScopeModels.indexOf(model) > -1;
 }
 
 /**
@@ -102,10 +102,8 @@ function isInScopeModel(model) {
  * @return {Object} The object
  */
 function toObject(instance) {
-  let object;
-  let model = businessModels[instance.child_type];
-  let content = instance.revision.content;
-  let audit;
+  let content = instance.revision.content instanceof can.Construct ?
+    instance.revision.content.attr() : instance.revision.content;
 
   content.originalLink = getParentUrl(instance);
   content.snapshot = new can.Map(instance);
@@ -120,6 +118,7 @@ function toObject(instance) {
     type: instance.child_type,
     id: instance.child_id,
   });
+  content.updated_at = instance.updated_at;
   content.canGetLatestRevision =
     !instance.is_latest_revision &&
     Permission.is_allowed_for('update', {
@@ -138,12 +137,13 @@ function toObject(instance) {
     content.last_assessment_date = instance.last_assessment_date;
   }
 
-  object = new model(content);
+  let model = businessModels[instance.child_type];
+  let object = new model(content);
   object.attr('originalLink', content.originalLink);
   // Update archived flag in content when audit is archived:
   if (instance.parent &&
     Audit.findInCacheById(instance.parent.id)) {
-    audit = Audit.findInCacheById(instance.parent.id);
+    let audit = Audit.findInCacheById(instance.parent.id);
     audit.bind('change', function () {
       let field = arguments[1];
       let newValue = arguments[3];
@@ -244,12 +244,22 @@ function getSnapshotItemQuery(instance, childId, childType) {
 
 /**
  * get snapshot counts
+ * @param {Array} widgets - available widgets names
  * @param {Object} instance - Object instance
- * @param {Array} data - Array of snapshot names
  * @return {Promise} Promise
  */
-function getSnapshotsCounts(instance) {
+function getSnapshotsCounts(widgets, instance) {
   let url = `${instance.selfLink}/snapshot_counts`;
+
+  let widgetsObject = widgets.filter((widget) => {
+    return isSnapshotRelated(instance.attr('type'), widget.name) ||
+      widget.isObjectVersion;
+  });
+
+  // return empty object as no widgets to update count
+  if (!widgetsObject.length) {
+    return $.Deferred().resolve({});
+  }
 
   const stopFn = tracker.start(
     tracker.FOCUS_AREAS.COUNTS,
@@ -259,7 +269,19 @@ function getSnapshotsCounts(instance) {
   return $.get(url)
     .then((counts) => {
       stopFn();
-      return counts;
+      let countsMap = {};
+      Object.keys(counts).forEach((name) => {
+        let widget = _.find(widgetsObject, (widgetObj) => {
+          return widgetObj.name === name;
+        });
+
+        if (widget) {
+          let countsName = widget.countsName || widget.name;
+          countsMap[countsName] = counts[name];
+        }
+      });
+
+      return countsMap;
     })
     .fail(() => {
       stopFn(true);
@@ -273,7 +295,7 @@ export {
   isSnapshotRelated,
   isSnapshotRelatedType,
   isSnapshotModel,
-  isInScopeModel,
+  isAuditScopeModel,
   toObject,
   toObjects,
   transformQuery,

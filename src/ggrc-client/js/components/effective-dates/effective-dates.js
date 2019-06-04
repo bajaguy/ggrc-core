@@ -1,20 +1,21 @@
 /*
-    Copyright (C) 2018 Google Inc.
+    Copyright (C) 2019 Google Inc.
     Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 */
 
-import '../datepicker/datepicker';
-import template from './effective-dates.mustache';
+import '../datepicker/datepicker-component';
+import template from './effective-dates.stache';
 
 export default can.Component.extend({
   tag: 'effective-dates',
-  template: template,
-  viewModel: {
+  view: can.stache(template),
+  leakScope: true,
+  viewModel: can.Map.extend({
     instance: null,
     configStartDate: {
       label: 'Effective Date',
       helpText: 'Enter the date this object becomes effective.',
       required: false,
     },
-  },
+  }),
 });

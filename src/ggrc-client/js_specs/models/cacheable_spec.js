@@ -1,5 +1,5 @@
 /*
-    Copyright (C) 2018 Google Inc.
+    Copyright (C) 2019 Google Inc.
     Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 */
 
@@ -15,11 +15,13 @@ describe('Cacheable model', () => {
   let origGcaDefs;
   let DummyModel;
   let dummyable;
+  let ajaxSpy;
 
   beforeEach(() => {
     origGcaDefs = GGRC.custom_attr_defs;
-    dummyable = Mixin({}, {});
+    dummyable = Mixin.extend({}, {});
     spyOn(dummyable, 'add_to');
+    ajaxSpy = spyOn($, 'ajax');
 
     DummyModel = makeFakeModel({
       model: Cacheable,
@@ -35,12 +37,50 @@ describe('Cacheable model', () => {
         mixins: [dummyable],
         attributes: {dummy_attribute: 'dummy_convert'},
         is_custom_attributable: true,
+        ajax: $.ajax,
       },
     });
   });
 
   afterEach(() => {
     GGRC.custom_attr_defs = origGcaDefs;
+  });
+
+  describe('display_name method', () => {
+    it("shouldn't contain DELETED in display_name if object isn't deleted",
+      () => {
+        const instance = new DummyModel();
+        spyOn(instance, 'is_deleted').and.returnValue(false);
+        expect(instance.display_name()).not.toContain('DELETED');
+      }
+    );
+
+    it('should contain DELETED in display_name if object is deleted', () => {
+      const instance = new DummyModel();
+      spyOn(instance, 'is_deleted').and.returnValue(true);
+      expect(instance.display_name()).toContain('DELETED');
+    });
+  });
+
+  it("shouldn't contain DELETED in display_name in created_at is set", () => {
+    const instance = new DummyModel({
+      created_at: '02/20/2019 03:19:57 PM +03:00',
+    });
+    expect(instance.display_name()).not.toContain('DELETED');
+  });
+
+  describe('is_deleted method', () => {
+    it('should return true if created_at is undefined', () => {
+      const instance = new DummyModel();
+      expect(instance.is_deleted()).toBe(true);
+    });
+
+    it('should return false if created_at is defined', () => {
+      const instance = new DummyModel({
+        created_at: '02/20/2019 03:19:57 PM +03:00',
+      });
+      expect(instance.is_deleted()).toBe(false);
+    });
   });
 
   describe('::setup', () => {
@@ -116,7 +156,7 @@ describe('Cacheable model', () => {
     it('processes args before sending', function (done) {
       let obj = _obj;
       spyOn(DummyModel, 'process_args');
-      spyOn(can, 'ajax').and.returnValue($.when({}));
+      ajaxSpy.and.returnValue($.when({}));
       DummyModel.update(obj.id, obj).then(() => {
         expect(DummyModel.process_args).toHaveBeenCalledWith(obj);
         done();
@@ -134,13 +174,13 @@ describe('Cacheable model', () => {
     });
 
     it('unboxes collections when passed back from the find', function (done) {
-      spyOn(can, 'ajax').and.returnValue($.when({
+      ajaxSpy.and.returnValue($.when({
         dummy_models_collection: {
           dummy_models: [{id: 1}],
         },
       }));
       DummyModel.findAll().then(function (data) {
-        expect(can.ajax).toHaveBeenCalled();
+        expect($.ajax).toHaveBeenCalled();
         expect(data).toEqual(jasmine.any(can.List));
         expect(data.length).toBe(1);
         expect(data[0]).toEqual(jasmine.any(DummyModel));
@@ -151,9 +191,9 @@ describe('Cacheable model', () => {
 
     it('makes a collection of a single object when passed back ' +
        'from the find', function (done) {
-      spyOn(can, 'ajax').and.returnValue($.when({id: 1}));
+      ajaxSpy.and.returnValue($.when({id: 1}));
       DummyModel.findAll().then(function (data) {
-        expect(can.ajax).toHaveBeenCalled();
+        expect($.ajax).toHaveBeenCalled();
         expect(data).toEqual(jasmine.any(can.List));
         expect(data.length).toBe(1);
         expect(data[0]).toEqual(jasmine.any(DummyModel));
@@ -176,7 +216,7 @@ describe('Cacheable model', () => {
       let dummyInsts = DummyModel.models(dummyModels);
       // we want to see how our observable list gets items over time, so spy on the push method
       spyOn(list, 'push').and.callThrough();
-      spyOn(can, 'ajax').and.returnValue($.when(dummyModels));
+      ajaxSpy.and.returnValue($.when(dummyModels));
       let st = 3; // preload Date.now() because it's called once before we even get to modelizing
       spyOn(Date, 'now').and.callFake(() => {
         // Date.now() is called once per item.
@@ -191,12 +231,9 @@ describe('Cacheable model', () => {
       //  models calls new DummyModel.List() which we're already spying out,
       //  so spy models() out in order to *not* call it.
       spyOn(DummyModel, 'models').and.callFake(function (items) {
-        let ids = can.map(items, function (item) {
-          return item.id;
-        });
-        return can.map(dummyInsts, function (inst) {
-          return _.includes(ids, inst.id) ? inst : undefined;
-        });
+        let ids = _.filteredMap(items, (item) => item.id);
+        return _.filteredMap(dummyInsts, (inst) =>
+          _.includes(ids, inst.id) ? inst : undefined);
       });
       DummyModel.findAll().then(() => {
         // finally, we show that with the 100ms gap between pushing ids 3 and 4, we force a separate push.

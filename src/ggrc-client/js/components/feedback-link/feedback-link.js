@@ -1,9 +1,9 @@
 /*
-    Copyright (C) 2018 Google Inc.
+    Copyright (C) 2019 Google Inc.
     Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 */
 
-import template from './templates/feedback-link.mustache';
+import template from './templates/feedback-link.stache';
 
 const viewModel = can.Map.extend({
   define: {
@@ -14,7 +14,7 @@ const viewModel = can.Map.extend({
     },
     title: {
       get() {
-        return can.capitalize(GGRC.config.CREATE_ISSUE_BUTTON_NAME) ||
+        return _.capitalize(GGRC.config.CREATE_ISSUE_BUTTON_NAME) ||
           'Feedback';
       },
     },
@@ -23,6 +23,7 @@ const viewModel = can.Map.extend({
 
 export default can.Component.extend({
   tag: 'feedback-link',
-  template,
+  view: can.stache(template),
+  leakScope: true,
   viewModel,
 });

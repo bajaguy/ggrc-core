@@ -1,11 +1,19 @@
 /*
- * Copyright (C) 2018 Google Inc.
+ * Copyright (C) 2019 Google Inc.
  * Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
  */
 
 .inline-edit {
   &__text {
     word-break: break-word;
+
+    .fa.fa-circle {
+      display: inline;
+      position: relative;
+      bottom: 2px;
+      font-size: 5px;
+      margin-right: 5px;
+    }
   }
   &__title {
     padding-left: 4px;

@@ -1,5 +1,5 @@
 /*
- Copyright (C) 2018 Google Inc.
+ Copyright (C) 2019 Google Inc.
  Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
  */
 
@@ -25,9 +25,15 @@ import {
 } from './query-api-utils';
 import {
   parentHasObjectVersions,
+} from './object-versions-utils';
+import {
   getWidgetConfigs,
   getWidgetConfig,
-} from './object-versions-utils';
+} from './widgets-utils';
+import {
+  isMegaObjectRelated,
+  transformQueryForMega,
+} from './mega-object-utils';
 import {getRolesForType} from './acl-utils';
 import Mappings from '../../models/mappers/mappings';
 import {caDefTypeName} from './custom-attribute/custom-attribute-config';
@@ -221,6 +227,7 @@ function getColumnsForModel(modelType, modelName) {
   let displayColumns;
 
   let allAttrs = getAvailableAttributes(modelType);
+
   if (disableConfiguration) {
     return {
       available: allAttrs,
@@ -380,6 +387,7 @@ function getModelsForSubTier(modelName) {
  * @param {Object} filter -
  * @param {Object} request - Collection of QueryAPI sub-requests
  * @param {Boolean} transformToSnapshot - Transform query to Snapshot
+ * @param {String|null} operation - Type of operation
  * @return {Promise} Deferred Object
  */
 function loadFirstTierItems(modelName,
@@ -387,13 +395,15 @@ function loadFirstTierItems(modelName,
   pageInfo,
   filter,
   request,
-  transformToSnapshot) {
+  transformToSnapshot,
+  operation) {
   let params = buildParam(
     modelName,
     pageInfo,
-    makeRelevantExpression(modelName, parent.type, parent.id),
+    makeRelevantExpression(modelName, parent.type, parent.id, operation),
     null,
-    filter
+    filter,
+    operation,
   );
   let requestedType;
   let requestData = request.slice() || can.List();
@@ -423,9 +433,10 @@ function loadFirstTierItems(modelName,
  * @param {String} type - Type of parent object.
  * @param {Number} id - ID of parent object.
  * @param {String} filter - Filter.
+ * @param {Object} pageInfo - Information about pagination, sorting and filtering
  * @return {Promise} - Items for sub tier.
  */
-function loadItemsForSubTier(models, type, id, filter) {
+function loadItemsForSubTier(models, type, id, filter, pageInfo) {
   let relevant = {
     type: type,
     id: id,
@@ -446,14 +457,8 @@ function loadItemsForSubTier(models, type, id, filter) {
 
       dfds = loadedModelObjects.map(function (modelObject) {
         let subTreeFields = getSubTreeFields(type, modelObject.name);
-        let pageInfo = {};
-        let params;
 
-        if (countMap[modelObject.name]) {
-          pageInfo.current = 1;
-          pageInfo.pageSize = countMap[modelObject.name];
-        }
-        params = buildParam(
+        let params = buildParam(
           modelObject.name,
           pageInfo,
           relevant,
@@ -461,9 +466,17 @@ function loadItemsForSubTier(models, type, id, filter) {
           filter
         );
 
+        const isMegaRelated = isMegaObjectRelated(modelObject.countsName);
+
+        if (isMegaRelated) {
+          params.object_name = modelObject.countsName;
+        }
+
         if (isSnapshotRelated(relevant.type, params.object_name) ||
           modelObject.isObjectVersion) {
           params = transformQuery(params);
+        } else if (isMegaRelated) {
+          params = transformQueryForMega(params);
         }
 
         return batchRequests(params);
@@ -485,6 +498,7 @@ function loadItemsForSubTier(models, type, id, filter) {
       let directlyRelated = [];
       let notRelated = [];
       let response = can.makeArray(arguments);
+      let total;
 
       loadedModelObjects.forEach(function (modelObject, index) {
         let values;
@@ -492,8 +506,10 @@ function loadItemsForSubTier(models, type, id, filter) {
         if (isSnapshotModel(modelObject.name) &&
           response[index].Snapshot) {
           values = response[index].Snapshot.values;
+          total = response[index].Snapshot.total;
         } else {
           values = response[index][modelObject.name].values;
+          total = response[index][modelObject.name].total;
         }
 
         values.forEach(function (source) {
@@ -511,6 +527,7 @@ function loadItemsForSubTier(models, type, id, filter) {
         directlyItems: directlyRelated,
         notDirectlyItems: notRelated,
         showMore: showMore,
+        total: total,
       };
     });
 }
@@ -520,7 +537,7 @@ function loadItemsForSubTier(models, type, id, filter) {
  * @param {String} requestedType - Type of requested object.
  * @param {String} relevantToType - Type of parent object.
  * @param {Number} relevantToId - ID of parent object.
- * @param {String} [operation] - Type of operation
+ * @param {String|null} operation - Type of operation
  * @return {object} Returns expression for load items for 1st level of tree view.
  */
 function makeRelevantExpression(requestedType,
@@ -622,6 +639,8 @@ function _buildSubTreeCountMap(models, relevant, filter) {
             relevant.type,
             param.object_name)) {
             param = transformQuery(param);
+          } else if (isMegaObjectRelated(param.object_name)) {
+            param = transformQueryForMega(param);
           }
           return param;
         });
@@ -631,9 +650,7 @@ function _buildSubTreeCountMap(models, relevant, filter) {
       .then((...response) => {
         let total = 0;
         let showMore = models.some(function (model, index) {
-          let count = response[index][model] ?
-            response[index][model].total :
-            response[index].Snapshot.total;
+          const count = Object.values(response[index])[0].total;
 
           if (!count) {
             return false;
@@ -695,11 +712,12 @@ function _getTreeViewOperation(objectName, relevantToType) {
   }
 }
 
-function startExport(modelName, parent, filter, request, transformToSnapshot) {
+function startExport(
+  modelName, parent, filter, request, transformToSnapshot, operation) {
   let params = buildParam(
     modelName,
     {},
-    makeRelevantExpression(modelName, parent.type, parent.id),
+    makeRelevantExpression(modelName, parent.type, parent.id, operation),
     'all',
     filter
   );

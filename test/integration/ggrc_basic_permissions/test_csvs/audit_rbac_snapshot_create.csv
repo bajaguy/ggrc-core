@@ -1,6 +1,6 @@
 Object type,,,,,,,,,,,,
-Person,Name,Email*,Role,,,,,,,,,
-,Test User,testuser@example.com,Administrator,,,,,,,,,
+Person,Name,Email*,Role,,,,,,,
+,Test User,user@example.com,Administrator,,,,,,,,,
 ,Admin,admin@test.com,Administrator,,,,,,,,,
 ,Creator PM,creatorpm@test.com,Creator,,,,,,,,,
 ,Creator,creator@test.com,Creator,,,,,,,,,
@@ -23,7 +23,7 @@ Person,Name,Email*,Role,,,,,,,,,
 ,Admin Auditor,adminauditor@test.com,Administrator,,,,,,,,,
 ,,,,,,,,,,,,
 Object type,,,,,,,,,,,,
-Program,Code*,Title*,Program Managers*,Program Editors,Program Readers,State,,,,,,
+Program,Code*,Title*,Program Managers*,Program Editors,Program Readers,State,,,,
 ,PMRBACPROGRAM-1,Program Manager Audit RBAC Test,"user@example.com
 creatorpm@test.com
 readerpm@test.com
@@ -34,15 +34,11 @@ Editorpe@test.com
 adminpe@test.com","creatorpr@test.com
 readerpr@test.com
 editorpr@test.com
-Adminpr@test.com",Draft,,,,,,
-,,,,,,,,,,,,
+Adminpr@test.com",Draft,,,,
+,,,,,,,,,,
 Object type,,,,,,,,,,,,
 Access Group,code*,title*,description,admin,verifier,assignee,Launch Status,map:program,,,,
 ,ag-1,ag-1,test,user@example.com,user@example.com,user@example.com,Draft,PMRBACPROGRAM-1,,,,
-,,,,,,,,,,,,
-Object type,,,,,,,,,,,,
-control,code*,title*,description,admin,state,Assertions*,map:program,,,,,
-,Pmrbaccontrol-1,control-1,test,user@example.com,Draft,Privacy,PMRBACPROGRAM-1,,,,,
 ,,,,,,,,,,,,
 Object type,,,,,,,,,,,,
 Contract,code*,title*,description,admin,state,map:program,,,,,,
@@ -99,10 +95,6 @@ System,code*,title*,description,admin,verifier,assignee,Launch Status,notes,refe
 Object type,,Mandatory field,,,,,,,MM/DD/YYYY,,,
 Vendor,code*,title*,description,admin,verifier,assignee,Launch Status,notes,effective date,reference url,map:program,
 ,ven-1,ven-1,test,user@example.com,user@example.com,user@example.com,Draft,this is a note,7/1/2015,google.com,PMRBACPROGRAM-1,
-,,,,,,,,,,,,
-Object type,,,,,,MM/DD/YYYY,,,,,,
-Risk,code*,title*,description,Risk Type*,notes,Admin*,Effective date,map:program,,,,,
-,ra-1,ra-1,test,test,this is a note,user@example.com,7/1/2015,PMRBACPROGRAM-1,,,,,
 ,,,,,,,,,,,,
 Object type,,,,,,MM/DD/YYYY,,,,,,
 Threat,code*,title*,description,notes,Admin*,Effective date,map:program,,,,,

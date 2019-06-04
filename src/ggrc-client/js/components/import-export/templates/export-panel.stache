@@ -1,0 +1,65 @@
+{{!
+  Copyright (C) 2019 Google Inc.
+  Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
+}}
+
+<div class="flex-box flex-col export-panel">
+  
+  <div class="export-panel__header">
+    <h4> Object {{panelNumber}}
+      {{#if removable}}
+        <i class="fa fa-trash-o" on:el:click="removeFilterGroup(scope.element)"></i>
+      {{/if}}
+    </h4>
+
+    {{^if item.isValidConfiguration}}
+      <span class="status-failed">
+        Exports are currently limited to maximum of {{maxAttributesCount}} columns per file.
+      </span>
+    {{/if}}
+  </div>
+
+  <h6>
+    Object type
+  </h6>
+
+  <div class="single-line-filter">
+    <select el:value:bind="type" class="input-block-level option-type-selector">
+      {{#exportable}}
+        <option value="{{model_singular}}" label="{{title_plural}}"></option>
+      {{/exportable}}
+    </select>
+  </div>
+
+  {{#is(type, "Snapshot")}}
+   <h6>Select snapshot object type</h6>
+   <div class="single-line-filter">
+     <select el:value:bind="item.snapshot_type" class="input-block-level option-type-selector">
+       {{#snapshotable_objects}}
+         <option value="{{.}}" label="{{.}}" ></option>
+       {{/snapshotable_objects}}
+     </select>
+   </div>
+  {{/is}}
+
+  {{> /static/templates/import_export/export/attribute_selector.stache}}
+
+  <div class="filter-query">
+    <h6>Filter Query</h6>
+    <div class="tree-filter__inline-filtering tree-filter__inline-filtering--transparent">
+      <div class="tree-filter__expression-holder{{#isFilterActive}} tree-filter__expression-holder--active{{/isFilterActive}}">
+        <input type="text" class="tree-filter__input tree-filter__input--wide"
+               el:value:bind="item.filter" name="filter_query"/>
+        <span class="tree-filter__expression-holder__is-expression">
+          <i class="fa {{#if isFilterActive}}fa-check-circle green{{else}}fa-check-circle-o{{/if}}"></i>
+        </span>
+      </div>
+    </div>
+  </div>
+
+  <relevant-filter has_parent:from="item.has_parent"
+                   relevant_menu_item:from="'parent'"
+                   panel_index:from="panel_index"
+                   relevant:from="item.relevant">
+  </relevant-filter>
+</div>

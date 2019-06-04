@@ -1,15 +1,23 @@
 /*
- Copyright (C) 2018 Google Inc.
+ Copyright (C) 2019 Google Inc.
  Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
  */
 
 import BaseTreeItemVM from './tree-item-base-vm';
 import './tree-item-extra-info';
-import template from './templates/sub-tree-item.mustache';
+import template from './templates/sub-tree-item.stache';
 import CycleTaskGroupObjectTask from '../../models/business-models/cycle-task-group-object-task';
+import {trigger} from 'can-event';
 
 let viewModel = BaseTreeItemVM.extend({
   define: {
+    // workaround an issue: "instance.is_mega" is not
+    // handled properly in template
+    isMega: {
+      get() {
+        return this.attr('instance.is_mega');
+      },
+    },
     dueDate: {
       type: 'date',
       get: function () {
@@ -61,12 +69,13 @@ let viewModel = BaseTreeItemVM.extend({
     },
   },
   itemSelector: '.sub-item-content',
-  extraCss: '@',
+  extraCss: '',
 });
 
 export default can.Component.extend({
   tag: 'sub-tree-item',
-  template,
+  view: can.stache(template),
+  leakScope: true,
   viewModel,
   events: {
     inserted: function () {
@@ -75,7 +84,7 @@ export default can.Component.extend({
     '{viewModel.instance} destroyed'() {
       const element = $(this.element)
         .closest('tree-widget-container');
-      can.trigger(element, 'refreshTree');
+      trigger.call(element[0], 'refreshTree');
     },
   },
 });

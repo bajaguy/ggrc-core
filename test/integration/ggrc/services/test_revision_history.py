@@ -1,4 +1,4 @@
-# Copyright (C) 2018 Google Inc.
+# Copyright (C) 2019 Google Inc.
 # Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 
 """Test for revision history api."""
@@ -40,7 +40,7 @@ class TestRevisionHistory(TestCase):
       factories.AccessControlRoleFactory(
           name="ACL_Editor",
           object_type="Control"
-      ),
+      )
 
     with factories.single_commit():
       self.control = factories.ControlFactory()
@@ -174,6 +174,26 @@ class TestRevisionHistory(TestCase):
     risk = all_models.Risk.eager_query().get(risk_id)
     self.update_revisions(risk)
 
+  def test_change_log(self):
+    """Test Change log where CAV attribute_object_id is str in revision
+     content"""
+    person = factories.PersonFactory()
+    cad = factories.CustomAttributeDefinitionFactory(
+        definition_type="control",
+        definition_id=self.control.id,
+        attribute_type="Map:Person",
+        title="Local Person CA",
+    )
+    factories.CustomAttributeValueFactory(
+        attributable=self.control,
+        custom_attribute=cad,
+        attribute_value=person.type,
+        attribute_object_id=str(person.id),
+    )
+    self.api.put(self.control, {"title": "new_title"})
+    control = all_models.Control.eager_query().get(self.control.id)
+    self.update_revisions(control)
+
   @ddt.data(True, False)
   def test_get_mandatory_acrs(self, mandatory):
     """ACR and mandatory meta info if mandatory flag is {0}."""
@@ -221,8 +241,8 @@ class TestRevisionHistory(TestCase):
        "fields": ['test_plan', 'status', 'notes',
                   'description', 'title', 'slug', 'folder']},
       {"factory": factories.RiskFactory,
-       "fields": ['test_plan', 'status', 'description',
-                  'notes', 'title', 'slug', 'folder', 'risk_type']},
+       "fields": ['test_plan', 'status', 'description', 'external_id',
+                  'notes', 'title', 'slug', 'folder']},
   )
   @ddt.unpack
   def test_get_mandatory_fields(self, factory, fields):
@@ -241,7 +261,7 @@ class TestRevisionHistory(TestCase):
     self.assertItemsEqual(fields, mandatory_meta["fields"])
 
   @ddt.data(
-      {"factory": factories.ControlFactory, "fields": ["assertions"]},
+      {"factory": factories.ControlFactory, "fields": []},
       {"factory": factories.RiskFactory, "fields": []},
       {"factory": factories.AssessmentFactory, "fields": []},
   )

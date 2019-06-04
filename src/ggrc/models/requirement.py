@@ -1,4 +1,4 @@
-# Copyright (C) 2018 Google Inc.
+# Copyright (C) 2019 Google Inc.
 # Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 
 """Module with Requirement model."""
@@ -56,9 +56,9 @@ class Requirement(Roleable,
   _include_links = []
 
   @classmethod
-  def eager_query(cls):
+  def eager_query(cls, **kwargs):
     """Define fields to be loaded eagerly to lower the count of DB queries."""
-    query = super(Requirement, cls).eager_query()
+    query = super(Requirement, cls).eager_query(**kwargs)
     return query.options(orm.undefer('notes'))
 
   @classmethod

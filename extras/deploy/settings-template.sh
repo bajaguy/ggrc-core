@@ -1,4 +1,4 @@
-# Copyright (C) 2018 Google Inc.
+# Copyright (C) 2019 Google Inc.
 # Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 
 APPENGINE_INSTANCE=some-project
@@ -17,6 +17,7 @@ MIGRATOR="Default Migrator <migrator@example.com>"
 RISK_ASSESSMENT_URL="#"
 ASSESSMENT_SHORT_URL_PREFIX=""
 NOTIFICATION_PREFIX=""
+DAILY_DIGEST_BATCH_SIZE=""
 CUSTOM_URL_ROOT=""
 ABOUT_URL="#"
 ABOUT_TEXT="About GGRC"

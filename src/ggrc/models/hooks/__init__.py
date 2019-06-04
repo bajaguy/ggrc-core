@@ -1,4 +1,4 @@
-# Copyright (C) 2018 Google Inc.
+# Copyright (C) 2019 Google Inc.
 # Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 
 """Import GGRC model hooks."""
@@ -12,7 +12,6 @@ from ggrc.models.hooks import issue
 from ggrc.models.hooks import issue_tracker
 from ggrc.models.hooks import relationship
 from ggrc.models.hooks import acl
-from ggrc.models.hooks import proposal
 from ggrc.models.hooks import access_control_role
 
 
@@ -30,7 +29,6 @@ ALL_HOOKS = [
     # Keep IssueTracker at the end of list to make sure that all other hooks
     # are already executed and all data is final.
     issue_tracker,
-    proposal,
 ]
 
 

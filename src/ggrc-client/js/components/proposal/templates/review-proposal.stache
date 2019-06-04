@@ -1,0 +1,31 @@
+{{!
+  Copyright (C) 2019 Google Inc.
+  Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
+}}
+
+{{#if canReview}}
+  <div class="object-history__actions">
+    <div class="object-history__action">
+      <spinner-component class="revision-history__spinner" toggle:from="isLoading"></spinner-component>
+      <button
+        type="button"
+        on:el:click="prepareComparerConfig()"
+        {{#if isLoading}}disabled{{/if}}
+        class="btn btn-small btn-white">
+          Review &amp; Apply
+      </button>
+    </div>
+  </div>
+
+  <revisions-comparer displayDescriptions:from="true"
+                      rightRevisionDescription:from="'Proposal:'"
+                      leftRevisionDescription:from="'Current version:'"
+                      modalTitle:from="modalTitle"
+                      modalConfirm:from="modalConfirm"
+                      buttonView:from="buttonView"
+                      instance:from="instance"
+                      proposal:from="proposal"
+                      rightRevision:from="rightRevision"
+                      leftRevisionId:from="leftRevisionId">
+  </revisions-comparer>
+{{/if}}

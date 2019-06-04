@@ -1,4 +1,4 @@
-# Copyright (C) 2018 Google Inc.
+# Copyright (C) 2019 Google Inc.
 # Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 
 """JSON resource state representation handler for GGRC models."""
@@ -20,8 +20,13 @@ import ggrc.builder
 import ggrc.models
 import ggrc.services
 from ggrc import db
-from ggrc.login import get_current_user_id
+from ggrc.login import get_current_user_id, is_external_app_user
+from ggrc.models.mixins import WithProtectedAttributes
+from ggrc.models.mixins.synchronizable import Synchronizable
+from ggrc.models.mixins.with_ext_custom_attrs import WithExtCustomAttrsSetter
+from ggrc.models.mixins.with_readonly_access import WithReadOnlyAccess
 from ggrc.models.reflection import AttributeInfo
+from ggrc.models.reflection import SerializableAttribute
 from ggrc.models.types import JsonType
 from ggrc.models.utils import PolymorphicRelationship
 from ggrc.utils import referenced_objects
@@ -115,6 +120,7 @@ class UpdateAttrHandler(object):
     equivalent in ``obj`` and ``json_obj``.
     """
     class_attr = getattr(obj.__class__, attr)
+    attr_reflection = AttributeInfo.get_attr(obj.__class__, "_api_attrs", attr)
     update_raw = attr in AttributeInfo.gather_update_raw(obj.__class__)
     if update_raw:
       # The attribute has a special setter that can handle raw json fields
@@ -122,6 +128,12 @@ class UpdateAttrHandler(object):
       # values
       attr_name = attr
       value = json_obj.get(attr_name)
+    elif isinstance(attr_reflection, SerializableAttribute):
+      attr_name = attr
+      value = json_obj.get(attr)
+
+      if value:
+        value = attr_reflection.deserialize(value)
     elif hasattr(attr, '__call__'):
       # The attribute has been decorated with a callable, grab the name and
       # invoke the callable to get the value
@@ -741,14 +753,78 @@ class Builder(AttributeInfo):
                        attribute_whitelist)
     return json_obj
 
+  @staticmethod
+  def _handle_cav_for_readonly(json_obj, attrs, is_external):
+    """Update custom attribute values sources for WithReadOnlyAccess
+
+    For external user 'custom_attribute_values' is ignored if
+    'external_custom_attributes' is specified
+    For non-external user 'external_custom_attributes' is always ignored
+    """
+
+    has_external = 'external_custom_attributes' in json_obj
+    has_regular = 'custom_attribute_values' in json_obj
+    if is_external and has_external and has_regular:
+      logger.debug("Ignoring 'custom_attribute_values' key for "
+                   "external user, because 'external_custom_attributes' "
+                   "is specified")
+      del json_obj['custom_attribute_values']
+      attrs.discard('custom_attribute_values')
+    elif not is_external and has_external:
+      logger.debug("Ignoring 'external_custom_attributes' key for "
+                   "non-external user")
+      del json_obj['external_custom_attributes']
+      attrs.discard('external_custom_attributes')
+
   def update(self, obj, json_obj):
     """Update the state represented by ``obj`` to be equivalent to the state
     represented by the JSON dictionary ``json_obj``.
     """
-    self.do_update_attrs(obj, json_obj, self._update_attrs)
+    attrs = set(self._update_attrs)
+
+    is_external = is_external_app_user()
+
+    if isinstance(obj, Synchronizable):
+      sync_attrs = obj.get_sync_attrs()
+      attrs.update(sync_attrs)
+
+    if is_external and isinstance(obj, WithProtectedAttributes):
+      attrs.difference_update(obj.get_protected_attributes())
+
+    if not is_external and isinstance(obj, WithReadOnlyAccess):
+      # attribute 'readonly' have to be ignored for non-external users
+      if 'readonly' in json_obj:
+        logger.debug("'readonly=%r' is specified for non-external user in "
+                     "json. Removing this attribute from json to "
+                     "ensure that default value is used")
+        del json_obj['readonly']
+
+    if isinstance(obj, WithExtCustomAttrsSetter):
+      self._handle_cav_for_readonly(json_obj, attrs, is_external)
+
+    self.do_update_attrs(obj, json_obj, attrs)
 
   def create(self, obj, json_obj):
     """Update the state of the new model object ``obj`` to be equivalent to the
     state represented by the JSON dictionary ``json_obj``.
     """
-    self.do_update_attrs(obj, json_obj, self._create_attrs)
+    attrs = set(self._create_attrs)
+
+    is_external = is_external_app_user()
+
+    if isinstance(obj, Synchronizable):
+      sync_attrs = obj.get_sync_attrs()
+      attrs.update(sync_attrs)
+
+    if not is_external and isinstance(obj, WithReadOnlyAccess):
+      # attribute 'readonly' have to be ignored for non-external users
+      if 'readonly' in json_obj:
+        logger.debug("'readonly=%r' is specified for non-external user in "
+                     "json. Removing this attribute from json to "
+                     "ensure that existing value is used")
+        del json_obj['readonly']
+
+    if isinstance(obj, WithExtCustomAttrsSetter):
+      self._handle_cav_for_readonly(json_obj, attrs, is_external)
+
+    self.do_update_attrs(obj, json_obj, attrs)

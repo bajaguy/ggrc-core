@@ -1,10 +1,11 @@
-# Copyright (C) 2018 Google Inc.
+# Copyright (C) 2019 Google Inc.
 # Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 """Mixins for info page objects"""
 # pylint: disable=too-few-public-methods
 
 from lib import base
 from lib.element import page_elements
+from lib.utils import selenium_utils
 
 
 class WithPageElements(base.WithBrowser):
@@ -41,6 +42,10 @@ class WithPageElements(base.WithBrowser):
     """Returns AssessmentFormField page element."""
     return page_elements.AssessmentFormField(self._browser, label)
 
+  def _assertions_dropdown(self):
+    """Returns AssertionsDropdown page element."""
+    return page_elements.AssertionsDropdown(self._browser)
+
 
 class WithAssignFolder(base.WithBrowser):
   """A mixin for `Assign Folder`"""
@@ -54,6 +59,80 @@ class WithAssignFolder(base.WithBrowser):
 class WithObjectReview(base.WithBrowser):
   """A mixin for object reviews"""
 
-  def __init__(self, driver):
+  def __init__(self, driver=None):
     super(WithObjectReview, self).__init__(driver)
-    self.request_review_btn = self._browser.button(text="Request Review")
+
+  @property
+  def _review_root(self):
+    return self._browser.element(class_name="object-review")
+
+  @property
+  def request_review_btn(self):
+    return self._review_root.button(text="Request Review")
+
+  @property
+  def mark_reviewed_btn(self):
+    return self._review_root.element(text="Mark Reviewed")
+
+  @property
+  def floating_message(self):
+    return self._browser.element(text="Review is complete.")
+
+  @property
+  def undo_button(self):
+    return self._browser.element(class_name="object-review__revert")
+
+  @property
+  def review_status(self):
+    return self._review_root.element(class_name="state-value")
+
+  @property
+  def object_review_txt(self):
+    """Return page element with review message."""
+    return self._review_root.element(
+        class_name="object-review__body-description")
+
+  @property
+  def reviewers(self):
+    """Return page element with reviewers emails."""
+    return self._related_people_list("Reviewers", self._review_root)
+
+  def open_submit_for_review_popup(self):
+    """Open submit for control popup by clicking on corresponding button."""
+    self.request_review_btn.click()
+    selenium_utils.wait_for_js_to_load(self._driver)
+
+  def click_approve_review(self):
+    """Click approve review button."""
+    self.mark_reviewed_btn.click()
+
+  def click_undo_button(self):
+    """Click 'Undo' button on floating message."""
+    self.undo_button.click()
+
+  def get_object_review_txt(self):
+    """Return review message on info pane."""
+    return (self.object_review_txt.text if self.object_review_txt.exists
+            else None)
+
+  def get_reviewers_emails(self):
+    """Return reviewers emails if reviewers assigned."""
+    return (self.reviewers.get_people_emails()
+            if self.reviewers.exists() else None)
+
+  def get_review_dict(self):
+    """Return Review as dict."""
+    return {"status": self.get_review_state_txt(),
+            "reviewers": self.get_reviewers_emails(),
+            # Last 7 symbols are the UTC offset. Can not convert to UI
+            # format date due to %z directive doesn't work in Python 2.7.
+            "last_reviewed_by": self.get_object_review_txt()[:-7] if
+            self.get_object_review_txt() else None}
+
+  def has_review(self):
+    """Check if review section exists."""
+    return self._review_root.exists
+
+  def get_review_status(self):
+    """Get review status."""
+    return self.review_status.text.title()

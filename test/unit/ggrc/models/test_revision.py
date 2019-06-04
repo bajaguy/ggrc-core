@@ -1,4 +1,4 @@
-# Copyright (C) 2018 Google Inc.
+# Copyright (C) 2019 Google Inc.
 
 # Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 """Unittests for Revision model """
@@ -185,6 +185,7 @@ class TestCheckPopulatedContent(unittest.TestCase):
 
   @ddt.data(
       [{"status": "Active"}, {"status": "Active"}, "AccessGroup"],
+      [{"status": "Not Launched"}, {"status": "Draft"}, "AccountBalance"],
       [{"status": "Deprecated"}, {"status": "Deprecated"}, "Requirement"],
       [{"status": "Draft"}, {"status": "Draft"}, "Control"],
       [{"status": "Effective"}, {"status": "Active"}, "DataAsset"],
@@ -199,6 +200,7 @@ class TestCheckPopulatedContent(unittest.TestCase):
       [{"status": "Not Launched"}, {"status": "Draft"}, "Project"],
       [{"status": "Not Launched"}, {"status": "Draft"}, "Requirement"],
       [{"status": "Not Launched"}, {"status": "Draft"}, "System"],
+      [{"status": "Not Launched"}, {"status": "Draft"}, "KeyReport"],
       [{"status": "Not Launched"}, {"status": "Draft"}, "Vendor"],
       [{"status": "Not Launched"}, {"status": "Draft"}, "Risk"],
       [{"status": "Not Launched"}, {"status": "Draft"}, "Threat"],
@@ -231,6 +233,79 @@ class TestCheckPopulatedContent(unittest.TestCase):
 
     revision = all_models.Revision(obj, mock.Mock(), mock.Mock(), content)
     self.assertEqual(revision.populate_review_status(), expected_content)
+
+  @ddt.data(
+      [
+          {"review_status": "a"},
+          {"review_status": "a", "review_status_display_name": "a"},
+          "Control"
+      ],
+      [
+          {"review_status": "a", "review_status_display_name": "b"},
+          {"review_status": "a", "review_status_display_name": "b"},
+          "Control"
+      ],
+      [
+          {"review_status": "a", "review_status_display_name": None},
+          {"review_status": "a", "review_status_display_name": None},
+          "Control"
+      ],
+      [
+          {"review_status": "a"},
+          {"review_status": "a"},
+          "Issue"
+      ],
+      [
+          {"xx": "q"},
+          {},
+          "Facility"
+      ],
+  )
+  @ddt.unpack
+  def test_populated_review_status_display_name(self, content,
+                                                expected_result,
+                                                resource_type):
+    """Populated from '{0}' to '{1}' for {2}"""
+    obj = mock.Mock()
+    obj.id = self.object_id
+    obj.__class__.__name__ = resource_type
+
+    revision = all_models.Revision(obj, mock.Mock(), mock.Mock(), content)
+
+    # emulate situation when review_status is already populated if exists
+    populated = dict()
+    if 'review_status' in content:
+      populated['review_status'] = content['review_status']
+
+    # ensure that correct review_status_display_name is added for Control
+    revision.populate_review_status_display_name(populated)
+    self.assertEqual(populated, expected_result)
+
+  @ddt.data(
+      # Test System
+      ["System", {"readonly": True}, {"readonly": True}],
+      ["System", {"readonly": False}, {"readonly": False}],
+      ["System", {}, {"readonly": False}],
+      # Process and System share the same table "systems",
+      # so we need to ensure that no value will be set for Process
+      ["Process", {}, {}],
+      # Test candidates to be extended with WithReadonlyAccess functionality
+      ["Control", {}, {}],
+      ["Risk", {}, {}],
+      ["Process", {}, {}],
+      ["KeyReport", {}, {}],
+      # Test other objects
+      ["Market", {}, {}],
+  )
+  @ddt.unpack
+  def test_populated_readonly(self, resource_type, content, expected_content):
+    """Populated readonly if content={1} for {0}."""
+    obj = mock.Mock()
+    obj.id = self.object_id
+    obj.__class__.__name__ = resource_type
+
+    revision = all_models.Revision(obj, mock.Mock(), mock.Mock(), content)
+    self.assertEqual(revision.populate_readonly(), expected_content)
 
   @ddt.data(
       ({}, {}),

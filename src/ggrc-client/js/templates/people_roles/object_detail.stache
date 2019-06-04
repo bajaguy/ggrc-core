@@ -1,0 +1,18 @@
+{{!
+    Copyright (C) 2019 Google Inc.
+    Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
+}}
+
+<div class="selector-info">
+
+  <div class="selector-person-info">
+    <h4>User</h4>
+    <h3>
+      <span class="name">
+        {{ name }}
+      </span>
+      <person-data person:from="this"></person-data>
+    </h3>
+  </div>
+
+</div>

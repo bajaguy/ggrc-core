@@ -1,4 +1,4 @@
-# Copyright (C) 2018 Google Inc.
+# Copyright (C) 2019 Google Inc.
 # Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 
 """ This module is used for import and export of data with csv files """
@@ -30,18 +30,23 @@ GGRC_IMPORTABLE = {
     "access group": all_models.AccessGroup,
     "access_group": all_models.AccessGroup,
     "accessgroup": all_models.AccessGroup,
+    "account balance": all_models.AccountBalance,
+    "account_balance": all_models.AccountBalance,
+    "accountbalance": all_models.AccountBalance,
     "assessment template": all_models.AssessmentTemplate,
     "assessment": all_models.Assessment,
     "assessment_template": all_models.AssessmentTemplate,
     "audit": all_models.Audit,
     "contract": all_models.Contract,
     "control assessment": all_models.Assessment,
-    "control": all_models.Control,
     "data asset": all_models.DataAsset,
     "data_asset": all_models.DataAsset,
     "dataasset": all_models.DataAsset,
     "facility": all_models.Facility,
     "issue": all_models.Issue,
+    "keyreport": all_models.KeyReport,
+    "key_report": all_models.KeyReport,
+    "key report": all_models.KeyReport,
     "market": all_models.Market,
     "metric": all_models.Metric,
     "objective": all_models.Objective,
@@ -60,7 +65,6 @@ GGRC_IMPORTABLE = {
     "regulation": all_models.Regulation,
     "requirement": all_models.Requirement,
     "risk assessment": all_models.RiskAssessment,
-    "risk": all_models.Risk,
     "risk_assessment": all_models.RiskAssessment,
     "riskassessment": all_models.RiskAssessment,
     "standard": all_models.Standard,
@@ -74,6 +78,8 @@ GGRC_IMPORTABLE = {
 
 GGRC_EXPORTABLE = {
     "snapshot": all_models.Snapshot,
+    "control": all_models.Control,
+    "risk": all_models.Risk,
 }
 
 

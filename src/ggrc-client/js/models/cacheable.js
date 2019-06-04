@@ -1,5 +1,5 @@
 /*
-    Copyright (C) 2018 Google Inc.
+    Copyright (C) 2019 Google Inc.
     Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 */
 // Disabling some minor eslint rules until major refactoring
@@ -93,7 +93,8 @@ function makeDateSerializer(type, key) {
   };
 }
 
-export default can.Model('can.Model.Cacheable', {
+export default can.Model.extend({
+  ajax: $.ajax,
   root_object: '',
   attr_list: [
     {
@@ -128,7 +129,7 @@ export default can.Model('can.Model.Cacheable', {
   findOne: 'GET {href}',
 
   makeDestroy: function (destroy) {
-    return (id) => destroy(id);
+    return (id) => destroy.call(this, id);
   },
 
   makeFindAll: function (finder) {
@@ -160,7 +161,6 @@ export default can.Model('can.Model.Cacheable', {
   setup: function (construct, name, statics, prototypes) {
     let staticProps = statics;
     let protoProps = prototypes; // eslint-disable-line
-    let overrideFindAll = false;
 
     // if name for model was not set
     if (typeof name !== 'string') {
@@ -168,23 +168,21 @@ export default can.Model('can.Model.Cacheable', {
       staticProps = name;
     }
 
-    if (this.fullName === 'can.Model.Cacheable') {
-      this.findAll = function () {
-        throw new Error(
-          'No default findAll() exists for subclasses of Cacheable');
-      };
-      this.findPage = function () {
-        throw new Error(
-          'No default findPage() exists for subclasses of Cacheable');
-      };
-    } else if ((!staticProps || !staticProps.findAll) &&
-      this.findAll === can.Model.Cacheable.findAll) {
-      if (this.root_collection) {
-        this.findAll = 'GET /api/' + this.root_collection;
-      } else {
-        overrideFindAll = true;
+    if (!staticProps || !staticProps.findAll) {
+      if (!this.findAll || !this.root_collection) {
+        this.findAll = () => {
+          throw new Error(
+            'No default findAll() exists for subclasses of Cacheable');
+        };
+        this.findPage = () => {
+          throw new Error(
+            'No default findPage() exists for subclasses of Cacheable');
+        };
+      } else if (this.root_collection) {
+        this.findAll = `GET /api/${this.root_collection}`;
       }
     }
+
     if (this.root_collection) {
       this.model_plural = staticProps.model_plural || this.root_collection
         .replace(/(?:^|_)([a-z])/g, function (s, l) {
@@ -230,9 +228,6 @@ export default can.Model('can.Model.Cacheable', {
     }
 
     let ret = this._super(...arguments);
-    if (overrideFindAll) {
-      this.findAll = can.Model.Cacheable.findAll;
-    }
 
     // set up default attribute converters/serializers for all classes
     Object.assign(this.attributes, {
@@ -268,13 +263,18 @@ export default can.Model('can.Model.Cacheable', {
     //  below when the update endpoint isn't set in the model's static config.
     //  This leads to conflicts not actually rejecting because on the second go-round
     //  the local and remote objects look the same.  --BM 2015-02-06
-    this.update = async function (id, params) {
+    this.update = function (id, params) {
       let ret = _update
         .call(this, id, this.process_args(params))
         .then((obj) => obj,
           (xhr) => {
             if (xhr.status === 409) {
-              let dfd = resolveConflict(xhr, this.findInCacheById(id));
+              let dfd = $.Deferred();
+              resolveConflict(xhr, this.findInCacheById(id))
+                .then(
+                  (obj) => dfd.resolve(obj),
+                  (obj, xhr) => dfd.reject(xhr)
+                );
               return dfd;
             }
             return xhr;
@@ -282,24 +282,12 @@ export default can.Model('can.Model.Cacheable', {
       delete ret.hasFailCallback;
       return ret;
     };
-    this.create = async function (params) {
+    this.create = function (params) {
       let ret = _create
         .call(this, this.process_args(params));
       delete ret.hasFailCallback;
       return ret;
     };
-
-    // Register this type as a custom attributable type if it is one.
-    if (this.is_custom_attributable) {
-      this.validate(
-        '_gca_valid',
-        function () {
-          if (!this._gca_valid) {
-            return 'Missing required global custom attribute';
-          }
-        }
-      );
-    }
   },
 
   findInCacheById: function (id) {
@@ -560,6 +548,15 @@ export default can.Model('can.Model.Cacheable', {
     };
   },
 }, {
+  define: {
+    custom_attribute_values: {
+      validate: {
+        validateGCA: function () {
+          return this;
+        },
+      },
+    },
+  },
   init: function () {
     let cache = this.constructor.cache;
     let idKey = this.constructor.id;
@@ -574,6 +571,17 @@ export default can.Model('can.Model.Cacheable', {
     if (this.isCustomAttributable()) {
       this._customAttributeAccess = new CustomAttributeAccess(this);
     }
+
+    /*
+    * Trigger validation after each "change" event of instance
+    * to have actual "instance.errors" object
+    */
+    this.on('change', (ev, fieldName) => {
+      if (fieldName === 'errors') {
+        return;
+      }
+      this.validate();
+    });
   },
   /**
    * Updates custom attribute objects with help custom
@@ -594,13 +602,13 @@ export default can.Model('can.Model.Cacheable', {
       GGRC.custom_attr_defs = {};
       console.warn('Missing injected custom attribute definitions');
     }
-    definitions = can.map(GGRC.custom_attr_defs, function (def) {
+    definitions = _.filteredMap(GGRC.custom_attr_defs, (def) => {
       let idCheck = !def.definition_id || def.definition_id === this.id;
       if (idCheck &&
           def.definition_type === this.constructor.table_singular) {
         return def;
       }
-    }.bind(this));
+    });
     this.attr('custom_attribute_definitions', definitions);
   },
   /*
@@ -659,15 +667,25 @@ export default can.Model('can.Model.Cacheable', {
   isCustomAttributable() {
     return this.constructor.is_custom_attributable;
   },
+  getInstanceErrors: function () {
+    const errors = this.attr('errors');
+
+    if (!errors) {
+      return null;
+    }
+
+    const serializedErrors = errors.attr();
+    return _.isEmpty(serializedErrors) ? null : serializedErrors;
+  },
   computed_errors: function () {
-    let errors = this.errors();
+    let errors = this.getInstanceErrors();
     if (this.attr('_suppress_errors')) {
       return null;
     }
     return errors;
   },
   computed_unsuppressed_errors: function () {
-    return this.errors();
+    return this.getInstanceErrors();
   },
   refresh: function (params) {
     let dfd;
@@ -691,9 +709,15 @@ export default can.Model('can.Model.Cacheable', {
             type: 'get',
             dataType: 'json',
           })
-            .then($.proxy(that, 'cleanupAcl'))
-            .then($.proxy(that, 'cleanupCollections'))
-            .then($.proxy(that.constructor, 'model'))
+            .then((response) => {
+              if (that.cleanupAcl) {
+                response = that.cleanupAcl(response);
+              }
+              if (that.cleanupCollections) {
+                response = that.cleanupCollections(response);
+              }
+              return that.constructor.model(response);
+            })
             .then((model) => {
               that.after_refresh && that.after_refresh();
               return model;
@@ -740,7 +764,7 @@ export default can.Model('can.Model.Cacheable', {
       } else if (val && _.isFunction(val.save)) {
         serial[name] = (new Stub(val)).serialize();
       } else if (typeof val === 'object' && val !== null && val.length) {
-        serial[name] = can.map(val, function (v) {
+        serial[name] = _.filteredMap(val, (v) => {
           let isModel = v && _.isFunction(v.save);
           return isModel ?
             (new Stub(v)).serialize() :
@@ -759,13 +783,13 @@ export default can.Model('can.Model.Cacheable', {
     return serial;
   },
   display_name: function () {
-    let displayName = this.title || this.name;
-
-    if (_.isUndefined(displayName)) {
-      return '"' + this.type + ' ID: ' + this.id + '" (DELETED)';
+    if (this.is_deleted()) {
+      return `"${this.type} ID: ${this.id}" (DELETED)`;
     }
-
-    return displayName;
+    return this.title || this.name || `"${this.type} ID: ${this.id}"`;
+  },
+  is_deleted: function () {
+    return !(this.created_at);
   },
   display_type: function () {
     return this.type;

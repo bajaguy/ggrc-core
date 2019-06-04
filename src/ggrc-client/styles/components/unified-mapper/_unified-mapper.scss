@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2018 Google Inc.
+ * Copyright (C) 2019 Google Inc.
  * Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
  */
 
@@ -116,7 +116,7 @@ mapper-results {
       }
 
       > .object-list__item:first-child,
-      spinner + .object-list__item {
+      spinner-component + .object-list__item {
         border-top: 1px solid $items-separator-color;
       }
     }
@@ -150,6 +150,7 @@ mapper-results {
   }
 
   .list-object-item {
+    border-top: 1px solid $itemBorder;
     overflow: hidden;
     cursor: default;
     border-radius: 2px;
@@ -178,6 +179,11 @@ mapper-results {
     .related-assessments-button {
       flex: 0 1 $related-assessment-button-width;
     }
+
+  }
+
+  .object-list__items .object-list__item:last-child .list-object-item {
+    border-bottom: 1px solid $itemBorder;
   }
 
   mapper-results-item-details {
@@ -307,6 +313,13 @@ mapper-results-item {
       height: 32px;
       width: $icon-width;
     }
+
+    .mega-object-tree-view-icon {
+      width: auto;
+      font-size: 1em;
+      margin-right: 0.2em;
+      color: $lightBlueBtn;
+    }
   }
 
   object-selection-item {
@@ -342,11 +355,7 @@ mapper-results-item-attrs {
   .attr {
     @include cell-styles();
 
-    white-space: normal;
     height: 33px;
-    display: -webkit-box;
-    -webkit-line-clamp: 1;
-    -webkit-box-orient: vertical;
     tree-field {
       div.tree-field__item {
         display: none;
@@ -539,6 +548,19 @@ mapper-results-columns-configuration {
 
       .control-buttons {
         margin-top: 20px;
+      }
+
+      .external-map {
+        height: 160px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+
+        &__content {
+          margin-bottom: 20px;
+          color: #999;
+        }
       }
     }
   }

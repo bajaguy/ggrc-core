@@ -1,15 +1,35 @@
-# Copyright (C) 2018 Google Inc.
+# Copyright (C) 2019 Google Inc.
 # Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 """Facade for Web UI services"""
 import copy
+import re
 
-from lib import users, base
-from lib.constants import objects
+from lib import url, users, base
+from lib.constants import objects, element
+from lib.entities import entities_factory
+from lib.page import dashboard
+from lib.page.modal import unified_mapper
 from lib.page.widget import generic_widget, object_modal
 from lib.service import webui_service, rest_service, rest_facade
-from lib.utils import selenium_utils, ui_utils
+from lib.service.webui_service import ControlsService
+from lib.utils import selenium_utils, ui_utils, string_utils
 
-from lib.entities import entities_factory
+
+def create_control_in_program_scope(selenium, program):
+  """Create control via UI."""
+  controls_service = webui_service.ControlsService(selenium)
+  controls_service.open_widget_of_mapped_objs(
+      program).tree_view.open_map().click_create_and_map_obj()
+  control = entities_factory.ControlsFactory().create()
+  controls_service.submit_obj_modal(control)
+  return control
+
+
+def open_create_obj_modal(obj_type):
+  """Opens create object modal for selected type."""
+  selenium_utils.open_url(url.dashboard())
+  obj_modal = dashboard.Dashboard().open_create_obj_modal(obj_type=obj_type)
+  return obj_modal
 
 
 def create_asmt(selenium, audit):
@@ -49,7 +69,8 @@ def assert_can_view(selenium, obj):
   obj_copy = copy.deepcopy(obj)
   # Code for working with custom attributes appears to be buggy
   base.Test.general_equal_assert(
-      obj_copy.repr_ui(), actual_obj, "audit", "custom_attributes", "program")
+      obj_copy.repr_ui(), actual_obj, "audit", "custom_attributes",
+      "program", "external_slug", "external_id")
 
 
 def assert_cannot_view(obj):
@@ -71,16 +92,39 @@ def assert_can_edit(selenium, obj, can_edit):
     _assert_title_editable(obj, selenium, info_page)
 
 
+def assert_can_edit_control(selenium, cntrl, can_edit):
+  """Assert that current user cannot edit control via UI."""
+  info_page = ControlsService(selenium).open_info_page_of_obj(cntrl)
+  els_shown_for_editor = info_page.els_shown_for_editor()
+  exp_list = [can_edit] * (len(els_shown_for_editor))
+  # Add comment btn exists on all control pages
+  exp_list[0] = True
+  # Request review button doesn't exist on all control pages
+  exp_list[1] = False
+  # Edit button doesn't exist on all control pages
+  exp_list[2] = False
+  assert [item.exists for item in els_shown_for_editor] == exp_list
+  if info_page.three_bbs.exists:
+    assert info_page.three_bbs.edit_option.exists is False
+
+
 def assert_can_delete(selenium, obj, can_delete):
   """If `can_delete` is True, assert that current user can delete object via UI
   otherwise check that user cannot delete object via UI
   """
   info_page = _get_ui_service(selenium, obj=obj).open_info_page_of_obj(obj)
-  assert info_page.three_bbs.exists == can_delete
+  assert info_page.three_bbs.delete_option.exists == can_delete
   if can_delete:
     info_page.three_bbs.select_delete().confirm_delete()
     selenium_utils.open_url(obj.url)
     assert ui_utils.is_error_404()
+
+
+def assert_cannot_delete_control(selenium, cntrl):
+  """Assert that current user cannot delete control via UI."""
+  cntrl_info_page = ControlsService(selenium).open_info_page_of_obj(cntrl)
+  if cntrl_info_page.three_bbs.exists:
+    assert cntrl_info_page.three_bbs.delete_option.exists is False
 
 
 def _get_ui_service(selenium, obj):
@@ -103,3 +147,129 @@ def _assert_title_editable(obj, selenium, info_page):
   new_ui_obj = _get_ui_service(selenium, obj).get_obj_from_info_page(obj)
   base.Test.general_equal_assert(
       obj.repr_ui(), new_ui_obj, "audit", "custom_attributes")
+
+
+def check_base_objects_have_numbers(lhn_menu):
+  """Check LHN list of the upper objects have numbers in brackets."""
+  for item in element.Lhn.BASE_OBJS:
+    lhn_item = getattr(lhn_menu, 'toggle_' + item)
+    assert re.match(item.upper() + r' \((\d*)\)',
+                    lhn_item.text) is not None
+
+
+def check_objects_have_numbers(lhn_menu):
+  """Check LHN list of the middle objects have numbers in brackets."""
+  for item in element.Lhn.SUB_OBJS:
+    assert getattr(lhn_menu, 'toggle_' + item).text == item.replace(
+        '_or_', '/').upper()
+    lhn_item = getattr(lhn_menu, 'select_' + item)()
+    lhn_item.update_members()
+    for item_sub in getattr(element.Lhn, item.upper() + '_MEMBERS'):
+      lhn_item_sub = getattr(lhn_item, 'toggle_' + item_sub)
+      assert re.match(item_sub.replace('_', ' ').title() + r' \((\d*)\)',
+                      lhn_item_sub.text) is not None
+
+
+def can_base_objects_expand(lhn_menu):
+  """Check LHN list of the upper objects can expand."""
+  for item in element.Lhn.BASE_OBJS:
+    getattr(lhn_menu, 'select_' + item)()
+    assert getattr(lhn_menu, 'toggle_' + item).is_activated is True
+
+
+def can_objects_expand(lhn_menu):
+  """Check LHN list of the middle objects can expand."""
+  for item in element.Lhn.SUB_OBJS:
+    lhn_item = getattr(lhn_menu, 'select_' + item)()
+    for item_sub in getattr(element.Lhn, item.upper() + '_MEMBERS'):
+      getattr(lhn_item, 'select_' + item_sub)()
+      assert getattr(lhn_item, 'toggle_' + item_sub).is_activated is True
+
+
+def check_user_menu_has_icons(user_menu):
+  """Check user menu list has icons."""
+  for item in user_menu.user_menu_items:
+    assert item.element.find_element_by_class_name(
+        'fa').get_attribute('class') != ''
+  assert user_menu.email.text == users.current_user().name
+
+
+def submit_obj_for_review(selenium, obj, reviewer):
+  """Submit object for review scenario.
+  Returns obj with assigned review."""
+  review_comment = string_utils.StringMethods.random_string()
+  _get_ui_service(selenium, obj).submit_for_review(
+      obj, reviewer.email, review_comment)
+  exp_review = entities_factory.ReviewsFactory().create(
+      is_add_rest_attrs=True,
+      reviewers=reviewer,
+      status=element.ReviewStates.UNREVIEWED)
+  obj.review = exp_review.convert_review_to_dict()
+  obj.review_status = exp_review.status
+  exp_comment = entities_factory.CommentsFactory().create(
+      description=element.Common.REVIEW_COMMENT_PATTERN.format(
+          email=reviewer.email, comment=review_comment))
+  exp_comment.created_at = rest_service.ObjectsInfoService().get_comment_obj(
+      paren_obj=obj, comment_description=review_comment).created_at
+  obj.comments = [exp_comment.repr_ui()]
+  return obj
+
+
+def approve_obj_review(selenium, obj):
+  """Approve obj review.
+  Returns obj with approved review."""
+  _get_ui_service(selenium, obj).approve_review(obj)
+  exp_review = entities_factory.ReviewsFactory().create(
+      is_add_rest_attrs=True,
+      status=element.ReviewStates.REVIEWED,
+      last_reviewed_by=users.current_user().email,
+      last_reviewed_at=rest_facade.get_last_review_date(obj),
+      reviewers=users.current_user())
+  obj.review = exp_review.convert_review_to_dict()
+  obj.review_status = exp_review.status
+  return obj
+
+
+def undo_obj_review_approval(selenium, obj):
+  """Cancel approved obj review.
+  Returns obj with reverted to unreviewed status review."""
+  _get_ui_service(selenium, obj).undo_review_approval(obj)
+  exp_review = entities_factory.ReviewsFactory().create(
+      is_add_rest_attrs=True,
+      status=element.ReviewStates.UNREVIEWED,
+      last_reviewed_by=users.current_user().email,
+      last_reviewed_at=rest_facade.get_last_review_date(obj),
+      reviewers=users.current_user())
+  obj.review = exp_review.convert_review_to_dict()
+  obj.review_status = exp_review.status
+  return obj
+
+
+def get_object(selenium, obj):
+  """Get and return object from Info page."""
+  return _get_ui_service(selenium, obj).get_obj_from_info_page(obj)
+
+
+def map_object_via_unified_mapper(
+    selenium, obj_name, dest_objs_type=None, obj_to_map=None,
+    return_tree_items=False, open_in_new_frontend=False,
+    proceed_in_new_tab=False
+):
+  """Maps selected obj to dest_obj_type via Unified Mapper."""
+  assert dest_objs_type or obj_to_map, ("At least one of params "
+                                        "should be provided.")
+  if not dest_objs_type:
+    dest_objs_type = obj_to_map._obj_name()
+  map_modal = unified_mapper.MapObjectsModal(driver=selenium,
+                                             obj_name=obj_name)
+  map_modal.search_dest_objs(dest_objs_type=dest_objs_type,
+                             return_tree_items=return_tree_items)
+  if open_in_new_frontend:
+    map_modal.open_in_new_frontend_btn.click()
+    return map_modal
+  else:
+    if obj_to_map:
+      dest_obj_modal = map_modal.click_create_and_map_obj()
+      dest_obj_modal.submit_obj(obj_to_map)
+    if proceed_in_new_tab:
+      object_modal.WarningModal().proceed_in_new_tab()

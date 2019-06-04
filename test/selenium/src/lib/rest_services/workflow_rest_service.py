@@ -1,4 +1,4 @@
-# Copyright (C) 2018 Google Inc.
+# Copyright (C) 2019 Google Inc.
 # Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 """REST service for Workflow objects (functions take entity objects)."""
 from lib.app_entity import workflow_entity
@@ -89,6 +89,7 @@ class WorkflowCycleRestService(base_rest_service.ObjectRestService):
   def _map_to_rest_for_create_obj(obj):
     """See superclass."""
     return dict(
+        title=obj.title,
         autogenerate=True,
         context=obj.rest_context,
         workflow=rest_convert.to_basic_rest_obj(obj.workflow)

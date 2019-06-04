@@ -1,50 +1,44 @@
 /*
- Copyright (C) 2018 Google Inc.
+ Copyright (C) 2019 Google Inc.
  Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
  */
 
 import './comment-input';
 import './comment-add-button';
-import template from './comment-add-form.mustache';
+import template from './comment-add-form.stache';
 import {COMMENT_CREATED} from '../../events/eventTypes';
 import tracker from '../../tracker';
 import {getAssigneeType} from '../../plugins/ggrc_utils';
 import {notifier} from '../../plugins/utils/notifiers-utils';
-
-const tag = 'comment-add-form';
 
 /**
  * A component that takes care of adding comments
  *
  */
 export default can.Component.extend({
-  tag: tag,
-  template: template,
-  viewModel: {
+  tag: 'comment-add-form',
+  view: can.stache(template),
+  leakScope: true,
+  viewModel: can.Map.extend({
     define: {
       notificationsInfo: {
-        value: 'Send Notifications',
         set(newValue) {
-          return this.attr('instance').class.category === 'scope' ?
+          return this.attr('instance').constructor.category === 'scope' ?
             'Notify Contacts' :
             newValue;
         },
       },
       tooltipTitle: {
         get() {
-          let title;
-          if (this.attr('instance').class.category === 'scope') {
-            title = 'Comments will be sent as a part of daily digest email ' +
-            'notifications to Admins, Assignee, Verifier, ' +
-            'Compliance Contacts, Primary Contacts, Secondary Contacts, ' +
-            'Product Managers, Technical Leads, Technical / Program Managers,' +
-            ' Legal Counsels, System Owners, Line of Defense One Contacts, ' +
-            'Vice Presidents';
-          } else {
-            title = 'Comments will be sent as part of daily digest email ' +
-            'notification.';
+          const title = 'Comments will be sent as part of daily digest email ' +
+          'notification';
+          const category = this.attr('instance').constructor.category;
+          const recipients = this.attr('instance').recipients;
+
+          if (['scope', 'programs'].includes(category)) {
+            return `${title} to ${recipients.replace(/,/g, ', ')}.`;
           }
-          return title;
+          return `${title}.`;
         },
       },
     },
@@ -100,5 +94,5 @@ export default can.Component.extend({
           self.afterCreation(comment, false);
         });
     },
-  },
+  }),
 });

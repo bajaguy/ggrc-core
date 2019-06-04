@@ -1,19 +1,19 @@
 /*
- Copyright (C) 2018 Google Inc.
+ Copyright (C) 2019 Google Inc.
  Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
  */
 
-import template from './document-object-list-item.mustache';
-import '../spinner/spinner';
+import template from './document-object-list-item.stache';
+import '../spinner-component/spinner-component';
 
-const tag = 'document-object-list-item';
 /**
  * Simple component to show Document-like Objects
  */
 export default can.Component.extend({
-  tag,
-  template,
-  viewModel: {
+  tag: 'document-object-list-item',
+  view: can.stache(template),
+  leakScope: true,
+  viewModel: can.Map.extend({
     instance: {},
     define: {
       showIcon: {
@@ -43,5 +43,5 @@ export default can.Component.extend({
         },
       },
     },
-  },
+  }),
 });

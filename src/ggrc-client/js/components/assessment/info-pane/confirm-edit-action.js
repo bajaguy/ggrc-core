@@ -1,14 +1,18 @@
 /*
-    Copyright (C) 2018 Google Inc.
+    Copyright (C) 2019 Google Inc.
     Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 */
 
 import '../../inline/base-inline-control-title';
 import {confirm} from '../../../plugins/utils/modals';
 
+const EDITABLE_STATES = [
+  'In Progress', 'Not Started', 'Rework Needed', 'Deprecated'];
+
 export default can.Component.extend({
   tag: 'confirm-edit-action',
-  viewModel: {
+  leakScope: true,
+  viewModel: can.Map.extend({
     instance: {},
     setInProgress: null,
     editMode: false,
@@ -16,15 +20,14 @@ export default can.Component.extend({
     isConfirmationNeeded: true,
     onStateChangeDfd: $.Deferred().resolve(),
     openEditMode: function (el) {
-      this.attr('onStateChangeDfd').then(function () {
+      return this.attr('onStateChangeDfd').then(function () {
         if (this.isInEditableState()) {
           this.dispatch('setEditMode');
         }
       }.bind(this));
     },
     isInEditableState: function () {
-      let editableStates = ['In Progress', 'Not Started', 'Rework Needed'];
-      return _.includes(editableStates, this.attr('instance.status'));
+      return _.includes(EDITABLE_STATES, this.attr('instance.status'));
     },
     showConfirm: function () {
       let self = this;
@@ -34,7 +37,7 @@ export default can.Component.extend({
         modal_description: 'You are about to move Assessment from "' +
           this.instance.status +
           '" to "In Progress" - are you sure about that?',
-        button_view: GGRC.mustache_path + '/modals/prompt_buttons.mustache',
+        button_view: GGRC.templates_path + '/modals/prompt_buttons.stache',
       }, confirmation.resolve, confirmation.reject);
 
       return confirmation.then(function (data) {
@@ -53,5 +56,5 @@ export default can.Component.extend({
         isLastOpenInline: true,
       });
     },
-  },
+  }),
 });

@@ -1,17 +1,16 @@
 /*
- Copyright (C) 2018 Google Inc.
+ Copyright (C) 2019 Google Inc.
  Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
  */
 
-import '../../numberbox/numberbox';
-import template from './templates/numberbox-form-field.mustache';
+import '../../numberbox/numberbox-component';
+import template from './templates/numberbox-form-field.stache';
 import {TEXT_FORM_FIELD_VM} from './text-form-field';
 
-const tag = 'numberbox-form-field';
-
 export default can.Component.extend({
-  template,
-  tag,
+  tag: 'numberbox-form-field',
+  view: can.stache(template),
+  leakScope: true,
   viewModel: TEXT_FORM_FIELD_VM,
   events: {
     inserted() {

@@ -1,5 +1,5 @@
 /*
- Copyright (C) 2018 Google Inc., authors, and contributors
+ Copyright (C) 2019 Google Inc., authors, and contributors
  Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
  */
 
@@ -10,25 +10,25 @@ import '../../diff/instance-mapping-fields-diff';
 import '../../diff/instance-list-fields-diff';
 import '../../revision-history/restored-revision-comparer-config';
 import {getPersonInfo} from '../../../plugins/utils/user-utils';
-import template from './templates/related-revisions-item.mustache';
-const tag = 'related-revisions-item';
+import template from './templates/related-revisions-item.stache';
 
 export default can.Component.extend({
-  tag,
-  template,
-  viewModel: {
+  tag: 'related-revisions-item',
+  view: can.stache(template),
+  leakScope: true,
+  viewModel: can.Map.extend({
     define: {
       revision: {
-        set(newValue, setValue) {
+        set(newValue) {
           if (!newValue) {
-            return;
+            return this.attr('revision');
           }
 
           getPersonInfo(newValue.modified_by).then((person) => {
             this.attr('modifiedBy', person);
           });
 
-          setValue(newValue);
+          return newValue;
         },
       },
       isCreated: {
@@ -40,5 +40,5 @@ export default can.Component.extend({
     instance: {},
     modifiedBy: {},
     lastRevision: {},
-  },
+  }),
 });

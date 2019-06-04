@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2018 Google Inc.
+  Copyright (C) 2019 Google Inc.
   Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 */
 
@@ -17,12 +17,13 @@ import {
   isSnapshotScope,
 } from '../../plugins/utils/snapshot-utils';
 import Permission from '../../permission';
-import template from './templates/tree-actions.mustache';
+import template from './templates/tree-actions.stache';
 
 export default can.Component.extend({
   tag: 'tree-actions',
-  template,
-  viewModel: {
+  view: can.stache(template),
+  leakScope: true,
+  viewModel: can.Map.extend({
     define: {
       addItem: {
         type: String,
@@ -31,13 +32,13 @@ export default can.Component.extend({
             false :
             this.attr('options').add_item_view ||
             this.attr('model').tree_view_options.add_item_view ||
-            GGRC.mustache_path + '/base_objects/tree_add_item.mustache';
+            'base_objects/tree_add_item';
         },
       },
       show3bbs: {
         type: Boolean,
         get: function () {
-          let modelName = this.attr('model').shortName;
+          let modelName = this.attr('model').model_singular;
           return !isMyAssessments()
             && modelName !== 'Document'
             && modelName !== 'Evidence';
@@ -61,7 +62,7 @@ export default can.Component.extend({
           let model = this.attr('model');
 
           return parentInstance.type === 'Audit' &&
-            model.shortName === 'Assessment';
+            model.model_singular === 'Assessment';
         },
       },
       showBulkUpdate: {
@@ -73,7 +74,7 @@ export default can.Component.extend({
       showChangeRequest: {
         get() {
           const isCycleTask = (
-            this.attr('model').shortName === 'CycleTaskGroupObjectTask'
+            this.attr('model').model_singular === 'CycleTaskGroupObjectTask'
           );
 
           return (
@@ -89,7 +90,9 @@ export default can.Component.extend({
           let instance = this.attr('parentInstance');
           let model = this.attr('model');
           return !this.attr('isSnapshots') &&
-            (Permission.is_allowed('update', model.shortName, instance.context)
+            !model.isChangeableExternally &&
+            (Permission.is_allowed(
+              'update', model.model_singular, instance.context)
               || isAuditor(instance, GGRC.current_user));
         },
       },
@@ -104,7 +107,7 @@ export default can.Component.extend({
     options: null,
     model: null,
     showedItems: [],
-  },
+  }),
   export() {
     this.dispatch('export');
   },

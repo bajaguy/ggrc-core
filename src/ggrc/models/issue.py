@@ -1,4 +1,4 @@
-# Copyright (C) 2018 Google Inc.
+# Copyright (C) 2019 Google Inc.
 # Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 
 """Issue Model."""
@@ -13,6 +13,7 @@ from ggrc.access_control.roleable import Roleable
 from ggrc.fulltext import attributes
 from ggrc.models.comment import Commentable
 from ggrc.models.deferred import deferred
+from ggrc.models import audit
 from ggrc.models import mixins
 from ggrc.models.mixins import issue_tracker
 from ggrc.models.mixins.audit_relationship import AuditRelationship
@@ -68,7 +69,8 @@ class Issue(Roleable,
 
   _aliases = {
       "due_date": {
-          "display_name": "Due Date"
+          "display_name": "Due Date",
+          "mandatory": True,
       },
       "test_plan": {
           "display_name": "Remediation Plan"
@@ -90,6 +92,10 @@ class Issue(Roleable,
   _fulltext_attrs = [
       attributes.DateFullTextAttr('due_date', 'due_date'),
   ]
+
+  _custom_publish = {
+      'audit': audit.build_audit_stub,
+  }
 
   audit_id = deferred(
       db.Column(db.Integer, db.ForeignKey('audits.id'), nullable=True),
@@ -136,5 +142,17 @@ class Issue(Roleable,
     )
 
   @classmethod
-  def eager_query(cls):
-    return cls._populate_query(super(Issue, cls).eager_query())
+  def eager_query(cls, **kwargs):
+    # Ensure that related_destinations and related_sources will be loaded
+    # in subquery. It allows reduce a number of requests to DB when these attrs
+    # are used
+    kwargs['load_related'] = True
+
+    return cls._populate_query(super(Issue, cls).eager_query(**kwargs))
+
+  @orm.validates("due_date")
+  def validate_due_date(self, _, value):  # pylint: disable=no-self-use
+    """Validate due date"""
+    if not value:
+      raise ValueError("Due Date for the issue is not specified")
+    return value

@@ -1,5 +1,5 @@
 /*
- Copyright (C) 2018 Google Inc.
+ Copyright (C) 2019 Google Inc.
  Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
  */
 
@@ -7,18 +7,20 @@ import './mapper-results-item-status';
 import './mapper-results-item-details';
 import './mapper-results-item-attrs';
 import '../object-selection/object-selection-item';
-import template from './templates/mapper-results-item.mustache';
+import template from './templates/mapper-results-item.stache';
 import Snapshot from '../../models/service-models/snapshot';
 import * as businessModels from '../../models/business-models';
 
 export default can.Component.extend({
   tag: 'mapper-results-item',
-  template,
-  viewModel: {
+  view: can.stache(template),
+  leakScope: true,
+  viewModel: can.Map.extend({
     itemData: {},
     searchOnly: false,
     drawRelatedAssessments: false,
     selectedColumns: [],
+    serviceColumns: [],
     showDetails: false,
     title() {
       let displayItem = this.displayItem();
@@ -59,5 +61,5 @@ export default can.Component.extend({
         instance: this.displayItem(),
       });
     },
-  },
+  }),
 });

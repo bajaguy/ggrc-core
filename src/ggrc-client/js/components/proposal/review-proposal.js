@@ -1,5 +1,5 @@
 /*
- Copyright (C) 2018 Google Inc., authors, and contributors
+ Copyright (C) 2019 Google Inc., authors, and contributors
  Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
  */
 
@@ -10,17 +10,17 @@ import {
 } from '../../plugins/utils/object-history-utils';
 import Revision from '../../models/service-models/revision';
 
-import template from './templates/review-proposal.mustache';
-const tag = 'review-proposal';
+import template from './templates/review-proposal.stache';
 
 export default can.Component.extend({
-  tag,
-  template,
-  viewModel: {
+  tag: 'review-proposal',
+  view: can.stache(template),
+  leakScope: true,
+  viewModel: can.Map.extend({
     define: {
       buttonView: {
         get() {
-          return `${GGRC.mustache_path}/modals/review_proposal.mustache`;
+          return `${GGRC.templates_path}/modals/review_proposal.stache`;
         },
       },
       canReview: {
@@ -133,7 +133,7 @@ export default can.Component.extend({
         revisionsComparer.viewModel().compareIt();
       }
     },
-  },
+  }),
   events: {
     inserted() {
       this.viewModel.attr('$el', this.element);

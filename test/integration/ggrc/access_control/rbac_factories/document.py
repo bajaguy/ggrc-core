@@ -1,4 +1,4 @@
-# Copyright (C) 2018 Google Inc.
+# Copyright (C) 2019 Google Inc.
 # Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 
 """Document RBAC Factory."""
@@ -11,12 +11,15 @@ from integration.ggrc.models import factories
 FACTORIES_MAPPING = {
     "Control": factories.ControlFactory,
     "Standard": factories.StandardFactory,
-    "Program": factories.ProgramFactory
+    "Program": factories.ProgramFactory,
+    "KeyReport": factories.KeyReportFactory,
+    "AccountBalance": factories.AccountBalanceFactory,
 }
 
 
 class DocumentReferenceUrlRBACFactory(base.BaseRBACFactory):
   """Document Reference Url RBAC factory class."""
+  # pylint: disable=too-many-instance-attributes
 
   def __init__(self, user_id, acr, parent=None):
     """Set up objects for Document permission tests.

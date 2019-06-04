@@ -1,4 +1,4 @@
-# Copyright (C) 2018 Google Inc.
+# Copyright (C) 2019 Google Inc.
 # Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 
 """Access Control Role model"""
@@ -18,6 +18,7 @@ from ggrc.models import mixins
 from ggrc.models import reflection
 from ggrc.models.mixins import attributevalidator
 from ggrc.models.mixins import base
+from ggrc.utils import validators
 
 
 class AccessControlRole(attributevalidator.AttributeValidator,
@@ -69,9 +70,9 @@ class AccessControlRole(attributevalidator.AttributeValidator,
     )
 
   @classmethod
-  def eager_query(cls):
+  def eager_query(cls, **kwargs):
     """Define fields to be loaded eagerly to lower the count of DB queries."""
-    return super(AccessControlRole, cls).eager_query()
+    return super(AccessControlRole, cls).eager_query(**kwargs)
 
   _api_attrs = reflection.ApiAttributes(
       "name",
@@ -90,9 +91,10 @@ class AccessControlRole(attributevalidator.AttributeValidator,
   def validates_name(self, key, value):  # pylint: disable=no-self-use
     """Validate Custom Role name uniquness.
 
-    Custom Role names need to follow 2 uniqueness rules:
+    Custom Role names need to follow 3 uniqueness rules:
       1) Names must not match any attribute name on any existing object.
       2) Object level CAD names must not match any global CAD name.
+      3) Names should not contains special values (.validate_name_correct)
 
     This validator should check for name collisions for 1st and 2nd rule.
 
@@ -107,6 +109,10 @@ class AccessControlRole(attributevalidator.AttributeValidator,
       value if the name passes all uniqueness checks.
     """
     value = value.strip()
+
+    if key == "name":
+      validators.validate_name_correctness(value)
+
     if key == "name" and self.object_type:
       name = value
       object_type = self.object_type
@@ -124,6 +130,7 @@ class AccessControlRole(attributevalidator.AttributeValidator,
       raise ValueError(u"Global custom attribute '{}' "
                        u"already exists for this object type"
                        .format(name))
+
     return value
 
 
@@ -159,10 +166,41 @@ def invalidate_noneditable_change(session, flush_context, instances):
       raise Forbidden()
 
 
-sa.event.listen(AccessControlRole, "after_insert", invalidate_acr_caches)
-sa.event.listen(AccessControlRole, "after_delete", invalidate_acr_caches)
-sa.event.listen(AccessControlRole, "after_update", invalidate_acr_caches)
-sa.event.listen(Session, 'before_flush', invalidate_noneditable_change)
+sa.event.listen(
+    AccessControlRole,
+    "before_insert",
+    validators.validate_object_type_ggrcq
+)
+sa.event.listen(
+    AccessControlRole,
+    "before_update",
+    validators.modified_only(validators.validate_object_type_ggrcq)
+)
+sa.event.listen(
+    AccessControlRole,
+    "before_delete",
+    validators.validate_object_type_ggrcq
+)
+sa.event.listen(
+    AccessControlRole,
+    "after_insert",
+    invalidate_acr_caches
+)
+sa.event.listen(
+    AccessControlRole,
+    "after_delete",
+    invalidate_acr_caches
+)
+sa.event.listen(
+    AccessControlRole,
+    "after_update",
+    invalidate_acr_caches
+)
+sa.event.listen(
+    Session,
+    "before_flush",
+    invalidate_noneditable_change
+)
 
 
 def get_custom_roles_for(object_type):
@@ -185,6 +223,13 @@ def get_custom_roles_for(object_type):
   return flask.g.global_role_names[object_type]
 
 
+def _merge_roles_if_needed(object_type):
+  """Merge `object_type` objects from global_ac_roles in session if needed."""
+  for role_name, role in flask.g.global_ac_roles[object_type].iteritems():
+    if role not in db.session:
+      flask.g.global_ac_roles[object_type][role_name] = db.session.merge(role)
+
+
 def get_ac_roles_for(object_type):
   """Get all ACRs for the given object type.
 
@@ -193,15 +238,20 @@ def get_ac_roles_for(object_type):
   Returns:
       Dict like {"Access Control Role Name": ACR Instance, ...}
   """
-  if getattr(flask.g, "global_ac_roles", None) is None:
+  if not hasattr(flask.g, "global_ac_roles"):
     flask.g.global_ac_roles = collections.defaultdict(dict)
+
+  if not flask.g.global_ac_roles[object_type]:
     query = AccessControlRole.query.filter(
+        AccessControlRole.object_type == object_type,
         AccessControlRole.internal == sa.sql.expression.false(),
     ).options(
         load_only("id", "name", "object_type", "mandatory")
     )
     for role in query:
       flask.g.global_ac_roles[role.object_type][role.name] = role
+
+  _merge_roles_if_needed(object_type)
   return flask.g.global_ac_roles[object_type]
 
 

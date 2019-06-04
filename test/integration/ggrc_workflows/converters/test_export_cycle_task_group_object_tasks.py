@@ -1,4 +1,4 @@
-# Copyright (C) 2018 Google Inc.
+# Copyright (C) 2019 Google Inc.
 # Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 
 
@@ -118,11 +118,9 @@ class TestExportTasks(TestCase):
     task = all_models.CycleTaskGroupObjectTask.query.filter(
         all_models.CycleTaskGroupObjectTask.id == task_id
     ).one()
-    factories.CycleTaskEntryFactory(
-        cycle_task_group_object_task=task,
-        description=comment_text,
-    )
-    self.assert_slugs("task comments", comment_text, [task.slug])
+    comment = ggrc_factories.CommentFactory(description=comment_text)
+    ggrc_factories.RelationshipFactory(source=task, destination=comment)
+    self.assert_slugs("task comment", comment_text, [task.slug])
 
   @data(
       ("status", ["Task State", "task state", "task status"]),

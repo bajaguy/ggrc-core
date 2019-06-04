@@ -1,19 +1,15 @@
 /*
-    Copyright (C) 2018 Google Inc.
+    Copyright (C) 2019 Google Inc.
     Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 */
 
 import Cacheable from '../cacheable';
-import uniqueTitle from '../mixins/unique-title';
 import caUpdate from '../mixins/ca-update';
-import timeboxed from '../mixins/timeboxed';
-import accessControlList from '../mixins/access-control-list';
 import proposable from '../mixins/proposable';
-import assertionsCategories from '../mixins/assertions-categories';
 import relatedAssessmentsLoader from '../mixins/related-assessments-loader';
-import Stub from '../stub';
+import changeableExternally from '../mixins/changeable-externally';
 
-export default Cacheable('CMS.Models.Control', {
+export default Cacheable.extend({
   root_object: 'control',
   root_collection: 'controls',
   category: 'governance',
@@ -23,33 +19,14 @@ export default Cacheable('CMS.Models.Control', {
   update: 'PUT /api/controls/{id}',
   destroy: 'DELETE /api/controls/{id}',
   mixins: [
-    uniqueTitle,
     caUpdate,
-    timeboxed,
-    accessControlList,
     proposable,
-    assertionsCategories,
     relatedAssessmentsLoader,
+    changeableExternally,
   ],
+  migrationDate: '03/26/2019',
   is_custom_attributable: true,
   isRoleable: true,
-  attributes: {
-    context: Stub,
-    modified_by: Stub,
-    kind: Stub,
-    means: Stub,
-    verify_frequency: Stub,
-  },
-  defaults: {
-    selected: false,
-    title: '',
-    slug: '',
-    description: '',
-    url: '',
-    status: 'Draft',
-    send_by_default: true,
-    recipients: 'Admin,Control Operators,Control Owners,Other Contacts',
-  },
   tree_view_options: {
     attr_list: Cacheable.attr_list.concat([
       {
@@ -78,8 +55,7 @@ export default Cacheable('CMS.Models.Control', {
       },
       {
         attr_title: 'Frequency',
-        attr_name: 'frequency',
-        attr_sort_field: 'verify_frequency',
+        attr_name: 'verify_frequency',
       },
       {attr_title: 'Assertions', attr_name: 'assertions'},
       {attr_title: 'Categories', attr_name: 'categories'},
@@ -96,8 +72,9 @@ export default Cacheable('CMS.Models.Control', {
         attr_name: 'test_plan',
         disable_sorting: true,
       }, {
-        attr_title: 'Review State',
-        attr_name: 'review_status',
+        attr_title: 'Review Status',
+        attr_name: 'external_review_status',
+        attr_sort_field: 'review_status_display_name',
         order: 80,
       }]),
     display_attr_names: ['title', 'status', 'last_assessment_date',
@@ -108,20 +85,4 @@ export default Cacheable('CMS.Models.Control', {
     default_filter: ['Objective'],
   },
   statuses: ['Draft', 'Deprecated', 'Active'],
-  init: function () {
-    this.validateNonBlank('title');
-
-    this.validate('assertions', function () {
-      if (!this.attr('assertions') || !this.attr('assertions.length')) {
-        return 'cannot be blank';
-      }
-    });
-
-    this._super(...arguments);
-  },
-}, {
-  init: function () {
-    this._super(...arguments);
-    this.bind('refreshInstance', this.refresh.bind(this));
-  },
-});
+}, {});

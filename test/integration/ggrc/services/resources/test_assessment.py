@@ -1,4 +1,4 @@
-# Copyright (C) 2018 Google Inc.
+# Copyright (C) 2019 Google Inc.
 # Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 
 """Tests for /api/assessments endpoints."""
@@ -118,3 +118,46 @@ class TestAssessmentResource(TestCase):
       snapshot_counts = json.loads(response.data)
       self.assertEqual(snapshot_counts,
                        expected_snapshot_counts[assessment.id])
+
+  def test_original_object_deleted(self):
+    """
+      Test that original_object_deleted field is in snapshots
+      which are returned when requesting related_objects
+      of assessment (/api/assessments/1/related_objects).
+    """
+
+    with factories.single_commit():
+      assessment = factories.AssessmentFactory()
+      assessment_id = assessment.id
+
+      control = factories.ControlFactory()
+      revision = all_models.Revision.query.filter(
+          all_models.Revision.resource_type == "Assessment",
+          all_models.Revision.resource_id == assessment_id,
+      ).first()
+
+      snapshot = factories.SnapshotFactory(
+          parent=assessment.audit,
+          child_type=control.type,
+          child_id=control.id,
+          revision=revision,
+      )
+      snapshot_id = snapshot.id
+
+      factories.RelationshipFactory(
+          source=assessment,
+          destination=snapshot,
+      )
+
+    response_data = self.client.get(
+        '/api/assessments/{}/related_objects'.format(assessment_id)
+    ).json
+
+    snapshot = all_models.Snapshot.query.get(snapshot_id)
+
+    self.assertIn('original_object_deleted', response_data['Snapshot'][0])
+    self.assertFalse(snapshot.original_object_deleted)
+    self.assertEqual(
+        response_data['Snapshot'][0]['original_object_deleted'],
+        snapshot.original_object_deleted,
+    )

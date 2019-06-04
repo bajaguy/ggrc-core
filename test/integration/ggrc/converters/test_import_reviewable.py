@@ -1,4 +1,4 @@
-# Copyright (C) 2018 Google Inc.
+# Copyright (C) 2019 Google Inc.
 # Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 
 """Tests import reviewable."""
@@ -21,24 +21,24 @@ class TestImportReviewable(TestCase):
 
   def test_simple_import(self):
     """Disallow user to change review state"""
-    control = factories.ControlFactory(title="Test control")
+    program = factories.ProgramFactory()
 
-    resp, _ = generate_review_object(control)
-    control_id = control.id
+    resp, _ = generate_review_object(program)
+    program_id = program.id
     self.assertEqual(201, resp.status_code)
     import_data = OrderedDict(
         [
-            ("object_type", "Control"),
-            ("Code*", control.slug),
+            ("object_type", "Program"),
+            ("Code*", program.slug),
             ("Review State", "REVIEWED"),
         ]
     )
     response = self.import_data(import_data)
     self._check_csv_response(response, {})
 
-    control = all_models.Control.query.get(control_id)
+    program = all_models.Program.query.get(program_id)
     self.assertEqual(
-        all_models.Review.STATES.UNREVIEWED, control.review_status
+        all_models.Review.STATES.UNREVIEWED, program.review_status
     )
 
   def test_change_attribute(self):
@@ -46,26 +46,25 @@ class TestImportReviewable(TestCase):
     Review -> UNREVIEWED
     Email Notification added
     """
-    control = factories.ControlFactory(title="Test control")
+    program = factories.ProgramFactory(title="Test program")
 
     resp, review = generate_review_object(
-        control, state=all_models.Review.STATES.REVIEWED)
-    control_id = control.id
+        program, state=all_models.Review.STATES.REVIEWED)
+    program_id = program.id
     self.assertEqual(201, resp.status_code)
     import_data = OrderedDict(
         [
-            ("object_type", "Control"),
-            ("Code*", control.slug),
+            ("object_type", "Program"),
+            ("Code*", program.slug),
             ("Title*", "Brand new TiTle"),
-            ("Admin*", "user@example.com"),
-            ("Assertions", "Privacy"),
+            ("Program Managers", "user@example.com"),
         ]
     )
     response = self.import_data(import_data)
     self._check_csv_response(response, {})
-    control = all_models.Control.query.get(control_id)
+    program = all_models.Program.query.get(program_id)
     self.assertEqual(
-        all_models.Review.STATES.UNREVIEWED, control.review_status
+        all_models.Review.STATES.UNREVIEWED, program.review_status
     )
     notification = all_models.Notification.query.filter_by(
         object_id=review.id, object_type="Review"
@@ -77,29 +76,29 @@ class TestImportReviewable(TestCase):
     Review -> UNREVIEWED
     Email Notification added
     """
-    control = factories.ControlFactory(
-        title="Test control"
+    program = factories.ProgramFactory(
+        title="Test program"
     )
     product = factories.ProductFactory()
     product_slug = product.slug
 
     resp, review = generate_review_object(
-        control, state=all_models.Review.STATES.REVIEWED)
-    control_id = control.id
+        program, state=all_models.Review.STATES.REVIEWED)
+    program_id = program.id
     self.assertEqual(201, resp.status_code)
     import_data = OrderedDict(
         [
-            ("object_type", "Control"),
-            ("Code*", control.slug),
+            ("object_type", "Program"),
+            ("Code*", program.slug),
             ("map:Product", product_slug)
         ]
     )
     response = self.import_data(import_data)
     self._check_csv_response(response, {})
-    control = all_models.Control.query.get(control_id)
+    program = all_models.Program.query.get(program_id)
     self.assertEqual(
         all_models.Review.STATES.UNREVIEWED,
-        control.review_status
+        program.review_status
     )
     notification = all_models.Notification.query.filter_by(
         object_id=review.id, object_type="Review"
@@ -110,193 +109,126 @@ class TestImportReviewable(TestCase):
     """Don't revert state when comment added.
     Review -> REVIEWED
     """
-    control = factories.ControlFactory(
-        title="Test control"
-    )
+    requirement = factories.RequirementFactory()
     resp, review = generate_review_object(
-        control, state=all_models.Review.STATES.REVIEWED)
+        requirement, state=all_models.Review.STATES.REVIEWED)
     del review
-    control_id = control.id
+    requirement_id = requirement.id
     self.assertEqual(201, resp.status_code)
     import_data = OrderedDict(
         [
-            ("object_type", "Control"),
-            ("Code*", control.slug),
+            ("object_type", "Requirement"),
+            ("Code*", requirement.slug),
             ("comments", "some comments")
         ]
     )
     response = self.import_data(import_data)
     self._check_csv_response(response, {})
-    control = all_models.Control.query.get(control_id)
+    requirement = all_models.Requirement.query.get(requirement_id)
     self.assertEqual(
         all_models.Review.STATES.REVIEWED,
-        control.review_status
+        requirement.review_status
     )
 
   def test_reference_url_import(self):
     """Don't revert state when reference url added.
     Review -> REVIEWED
     """
-    control = factories.ControlFactory(
-        title="Test control"
-    )
+    program = factories.ProgramFactory()
     resp, review = generate_review_object(
-        control, state=all_models.Review.STATES.REVIEWED)
+        program, state=all_models.Review.STATES.REVIEWED)
     del review
-    control_id = control.id
+    program_id = program.id
     self.assertEqual(201, resp.status_code)
     import_data = OrderedDict(
         [
-            ("object_type", "Control"),
-            ("Code*", control.slug),
+            ("object_type", "Program"),
+            ("Code*", program.slug),
             ("reference url", "test@test.com")
         ]
     )
     response = self.import_data(import_data)
     self._check_csv_response(response, {})
-    control = all_models.Control.query.get(control_id)
+    program = all_models.Program.query.get(program_id)
     self.assertEqual(
         all_models.Review.STATES.REVIEWED,
-        control.review_status
+        program.review_status
     )
 
   def test_non_snapshottable_import(self):
     """Reviewable mapped to non snapshotable via import
     Review -> REVIEWED
     """
-    control = factories.ControlFactory(title="Test control")
+    program = factories.ProgramFactory()
     issue = factories.IssueFactory()
     issue_slug = issue.slug
     resp, review = generate_review_object(
-        control, state=all_models.Review.STATES.REVIEWED)
+        program, state=all_models.Review.STATES.REVIEWED)
     del review
-    control_id = control.id
+    program_id = program.id
     self.assertEqual(201, resp.status_code)
     import_data = OrderedDict(
         [
-            ("object_type", "Control"),
-            ("Code*", control.slug),
+            ("object_type", "Program"),
+            ("Code*", program.slug),
             ("map:Issue", issue_slug),
         ]
     )
     response = self.import_data(import_data)
     self._check_csv_response(response, {})
-    control = all_models.Control.query.get(control_id)
+    program = all_models.Program.query.get(program_id)
     self.assertEqual(
-        all_models.Review.STATES.REVIEWED, control.review_status
+        all_models.Review.STATES.REVIEWED, program.review_status
     )
 
   def test_without_changes_import(self):
     """Import snapshotable without changes.
     Review -> REVIEWED
     """
-    control = factories.ControlFactory(
-        title="Test control"
-    )
+    program = factories.ProgramFactory()
     resp, review = generate_review_object(
-        control, state=all_models.Review.STATES.REVIEWED)
+        program, state=all_models.Review.STATES.REVIEWED)
 
     del review
-    control_id = control.id
+    program_id = program.id
     self.assertEqual(201, resp.status_code)
     import_data = OrderedDict(
         [
-            ("object_type", "Control"),
-            ("Code*", control.slug),
+            ("object_type", "Program"),
+            ("Code*", program.slug),
         ]
     )
     response = self.import_data(import_data)
     self._check_csv_response(response, {})
-    control = all_models.Control.query.get(control_id)
+    program = all_models.Program.query.get(program_id)
     self.assertEqual(
         all_models.Review.STATES.REVIEWED,
-        control.review_status
+        program.review_status
     )
 
   def test_change_acl_import(self):
     """Change acl via import
     Review -> REVIEWED
     """
-    control = factories.ControlFactory(
-        title="Test control"
-    )
+    program = factories.ProgramFactory()
     resp, review = generate_review_object(
-        control, state=all_models.Review.STATES.REVIEWED)
+        program, state=all_models.Review.STATES.REVIEWED)
     del review
-    control_id = control.id
+    program_id = program.id
     self.assertEqual(201, resp.status_code)
 
     person = factories.PersonFactory()
     import_data = OrderedDict(
         [
-            ("object_type", "Control"),
-            ("Code*", control.slug),
-            ("admin", person.email)
+            ("object_type", "Program"),
+            ("Code*", program.slug),
+            ("Program Managers", person.email)
         ]
     )
     response = self.import_data(import_data)
     self._check_csv_response(response, {})
-    control = all_models.Control.query.get(control_id)
+    program = all_models.Program.query.get(program_id)
     self.assertEqual(
         all_models.Review.STATES.REVIEWED,
-        control.review_status
-    )
-
-  def test_assertions_import(self):
-    """
-    Change control assertions via import
-    Review -> UNREVIEWED
-    """
-    control = factories.ControlFactory(
-        title="Test control"
-    )
-    resp, review = generate_review_object(
-        control, state=all_models.Review.STATES.REVIEWED)
-    del review
-    control_id = control.id
-    self.assertEqual(201, resp.status_code)
-
-    control_categories = factories.ControlCategoryFactory.create_batch(6)
-    for category in control_categories:
-      factories.CategorizationFactory(
-          category_id=category.id,
-          categorizable_id=control_id,
-          categorizable_type="Control",
-          category_type="ControlAssertion"
-      )
-    import_data = OrderedDict(
-        [
-            ("object_type", "Control"),
-            ("Code*", control.slug),
-            ("Assertions*", "Availability")
-        ]
-    )
-    response = self.import_data(import_data)
-    self._check_csv_response(response, {})
-    control = all_models.Control.query.get(control_id)
-    self.assertEqual(
-        all_models.Review.STATES.UNREVIEWED,
-        control.review_status
-    )
-
-  def test_change_control_folder(self):
-    """Updating folder via import should not change review status."""
-    control = factories.ControlFactory(title="Control")
-    factories.ReviewFactory(
-        reviewable=control,
-        status=all_models.Review.STATES.REVIEWED,
-    )
-    import_data = OrderedDict(
-        [
-            ("object_type", "Control"),
-            ("Code*", control.slug),
-            ("Folder", factories.random_str())
-        ]
-    )
-    response = self.import_data(import_data)
-    self._check_csv_response(response, {})
-    control = all_models.Control.query.get(control.id)
-    self.assertEqual(
-        all_models.Review.STATES.REVIEWED,
-        control.review_status,
+        program.review_status
     )

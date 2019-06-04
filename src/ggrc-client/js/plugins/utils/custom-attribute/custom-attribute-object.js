@@ -1,5 +1,5 @@
 /*
- Copyright (C) 2018 Google Inc.
+ Copyright (C) 2019 Google Inc.
  Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 */
 
@@ -21,6 +21,7 @@ const controlRelationshipType = {
   [caDefTypeName.Date]: CONTROL_TYPE.DATE,
   [caDefTypeName.Input]: CONTROL_TYPE.INPUT,
   [caDefTypeName.Checkbox]: CONTROL_TYPE.CHECKBOX,
+  [caDefTypeName.Multiselect]: CONTROL_TYPE.MULTISELECT,
   [caDefTypeName.Dropdown]: CONTROL_TYPE.DROPDOWN,
 };
 
@@ -92,11 +93,9 @@ export default class CustomAttributeObject {
   set value(newValue) {
     const caValue = this._caValue;
     const attributeObject = this._prepareAttributeObject(newValue);
-    const attributeObjectId = (attributeObject && attributeObject.id) || null;
     const attributeValue = this._prepareAttributeValue(newValue);
     caValue.attr('attribute_object', attributeObject);
     caValue.attr('attribute_value', attributeValue);
-    caValue.attr('attribute_object_id', attributeObjectId);
   }
 
   /**
@@ -243,11 +242,6 @@ export default class CustomAttributeObject {
    *     2) in other cases it must be null.
    * attribute_value - value for custom attribute
    *    for Map:Person - "Person" string
-   * attribute_object_id - (DEPRECATED FIELD, MUST BE REMOVED, is used for
-   * correct work with Proposals, in the future BE should extract this id from
-   * attribute_objects)
-   *   if we have "Map:Person" custom attribute then set id
-   *   of the person.
    * context - must be the same as have Object
    * custom_attribute_id - id from appopriate custom_attribute_definitions
    * Above is specified the necessary MINIMUM for the back-end.
@@ -265,7 +259,6 @@ export default class CustomAttributeObject {
       attribute_value: this._prepareAttributeValue(caAttributeValue),
       context: instance.attr('context'),
       custom_attribute_id: caDefinition.attr('id'),
-      attribute_object_id: caValue.attr('attribute_object.id') || null,
     };
     const caValueKeys = can.Map.keys(caValue);
 
@@ -345,10 +338,10 @@ export default class CustomAttributeObject {
 
     this._validator = validator;
     /*
-     * We use this property due to mustache is rerender
+     * We use this property due to template is rerender
      * itself when we use in code attr method. In this case,
      * after each validation, if this property is changed with help
-     * attr method then mustache will update itself.
+     * attr method then template will update itself.
      */
     this._validationState = new can.Map(validator.validationState);
   }

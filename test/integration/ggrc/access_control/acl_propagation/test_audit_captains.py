@@ -1,4 +1,4 @@
-# Copyright (C) 2018 Google Inc.
+# Copyright (C) 2019 Google Inc.
 # Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 
 """Test Access Control roles Audit Captains propagation."""
@@ -24,7 +24,7 @@ class TestAuditorsPropagation(base.TestACLPropagation):
               "clone": (True, "unimplemented"),
               "read_revisions": True,
               "map_control": True,
-              "map_external_control": (False, "unimplemented"),
+              "map_external_control": False,
               "deprecate": True,
               "archive": False,
               "unarchive": (False, "unimplemented"),
@@ -65,6 +65,7 @@ class TestAuditorsPropagation(base.TestACLPropagation):
           "Snapshot Audit": {
               "read": True,
               "read_original": False,
+              "delete": True,
               "update": True,
               "get_latest_version": (True, "unimplemented"),
           },
@@ -112,7 +113,7 @@ class TestAuditorsPropagation(base.TestACLPropagation):
               "clone": (True, "unimplemented"),
               "read_revisions": True,
               "map_control": True,
-              "map_external_control": (False, "unimplemented"),
+              "map_external_control": False,
               "deprecate": True,
               "archive": False,
               "unarchive": (False, "unimplemented"),
@@ -152,6 +153,7 @@ class TestAuditorsPropagation(base.TestACLPropagation):
           },
           "Snapshot Audit": {
               "read": True,
+              "delete": True,
               "read_original": True,
               "update": True,
               "get_latest_version": True,
@@ -243,6 +245,7 @@ class TestAuditorsPropagation(base.TestACLPropagation):
               "read": True,
               "read_original": True,
               "update": True,
+              "delete": True,
               "get_latest_version": True,
           },
           "Issue Assessment": {
@@ -268,7 +271,7 @@ class TestAuditorsPropagation(base.TestACLPropagation):
               "create_and_map": True,
               "read": True,
               "update": True,
-              "delete": False,
+              "delete": True,
               "read_comments": True,
               "add_comment": True
           },
@@ -276,7 +279,7 @@ class TestAuditorsPropagation(base.TestACLPropagation):
               "create_and_map": True,
               "read": True,
               "update": True,
-              "delete": False,
+              "delete": True,
               "read_comments": True,
               "add_comment": True
           }
@@ -305,4 +308,5 @@ class TestAuditorsPropagation(base.TestACLPropagation):
 
   @helpers.unwrap(PERMISSIONS)
   def test_access(self, role, model, action_name, expected_result):
+    """Audit Captains {0:<7}: On {1:<20} test {2:<20} - Expected {3:<2} """
     self.runtest(role, model, action_name, expected_result)

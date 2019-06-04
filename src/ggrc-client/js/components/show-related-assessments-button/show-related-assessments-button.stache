@@ -1,0 +1,23 @@
+{{!
+  Copyright (C) 2019 Google Inc.
+  Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
+}}
+{{#if instance}}
+  {{#if isAllowedToShow}}
+      <a class="{{cssClasses}}"
+         on:el:click="showRelatedAssessments()"
+         {{#if showTitle}}
+         title="Show Related Assessments"
+         {{/if}}>
+        {{#if showIcon}}<i class="fa fa-assessment"></i>{{/if}}
+        {{title}}
+      </a>
+      <simple-modal instance:from="instance" modalTitle:from="modalTitle" state:from="state" extraCssClass:from="'related-assessments'">
+          <div class="simple-modal__body">
+            <related-assessments
+              instance:from="instance">
+            </related-assessments>
+          </div>
+      </simple-modal>
+  {{/if}}
+{{/if}}

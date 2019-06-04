@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2018 Google Inc.
+  Copyright (C) 2019 Google Inc.
   Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 */
 
@@ -8,6 +8,7 @@ import Permission from '../../permission';
 import Cycle from '../../models/business-models/cycle';
 import Stub from '../../models/stub';
 import {changeHash} from '../../router';
+import Mappings from '../../models/mappers/mappings';
 
 /**
  * A set of properties which describe minimum information
@@ -45,6 +46,15 @@ function redirectToCycle() {
   });
 }
 
+/**
+ * Redirects to history tab.
+ */
+function redirectToHistory() {
+  changeHash({
+    widget: 'history',
+  });
+}
+
 function generateCycle(workflow) {
   let dfd = new $.Deferred();
   let cycle;
@@ -53,10 +63,10 @@ function generateCycle(workflow) {
     modal_title: 'Confirm',
     modal_confirm: 'Proceed',
     skip_refresh: true,
-    button_view: GGRC.mustache_path +
-      '/workflows/confirm_start_buttons.mustache',
-    content_view: GGRC.mustache_path +
-      '/workflows/confirm_start.mustache',
+    button_view: GGRC.templates_path +
+      '/workflows/confirm_start_buttons.stache',
+    content_view: GGRC.templates_path +
+      '/workflows/confirm_start.stache',
     instance: workflow,
   }, (params, option) => {
     let data = {};
@@ -93,10 +103,31 @@ function refreshTGRelatedItems(taskGroup) {
   taskGroup.refresh_all_force('workflow', 'context');
 }
 
+function getRelevantMappingTypes(instance) {
+  const mappingTypes = Mappings.getMappingList(
+    instance.constructor.model_singular
+  );
+  const typesSet = new Set();
+  const relatedObjects = [
+    ...instance.attr('related_destinations'),
+    ...instance.attr('related_sources'),
+  ];
+
+  relatedObjects.forEach(({destination_type: type}) => {
+    if (mappingTypes.includes(type)) {
+      typesSet.add(type);
+    }
+  });
+
+  return [...typesSet];
+}
+
 export {
   createCycle,
   redirectToCycle,
+  redirectToHistory,
   generateCycle,
   updateStatus,
   refreshTGRelatedItems,
+  getRelevantMappingTypes,
 };

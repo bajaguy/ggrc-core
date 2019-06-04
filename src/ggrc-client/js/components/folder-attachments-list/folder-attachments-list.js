@@ -1,5 +1,5 @@
 /*
- Copyright (C) 2018 Google Inc.
+ Copyright (C) 2019 Google Inc.
  Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
  */
 
@@ -11,7 +11,7 @@ import {
   DOCUMENT_CREATE_FAILED,
 } from '../../events/eventTypes';
 import Permission from '../../permission';
-import template from './folder-attachments-list.mustache';
+import template from './folder-attachments-list.stache';
 
 /**
  * Wrapper Component for rendering and managing of folder and
@@ -19,8 +19,9 @@ import template from './folder-attachments-list.mustache';
  */
 export default can.Component.extend({
   tag: 'folder-attachments-list',
-  template: template,
-  viewModel: {
+  view: can.stache(template),
+  leakScope: true,
+  viewModel: can.Map.extend({
     define: {
       showSpinner: {
         type: 'boolean',
@@ -68,7 +69,7 @@ export default can.Component.extend({
     isAttaching: false,
     isUnmapping: false,
     isListLoading: false,
-  },
+  }),
   events: {
     [`{viewModel.instance} ${BEFORE_DOCUMENT_CREATE.type}`]() {
       this.viewModel.attr('isMapping', true);

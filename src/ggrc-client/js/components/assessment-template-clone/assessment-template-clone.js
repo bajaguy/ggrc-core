@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2018 Google Inc.
+  Copyright (C) 2019 Google Inc.
   Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 */
 
@@ -9,22 +9,32 @@ import '../../components/advanced-search/advanced-search-wrapper';
 import '../../components/unified-mapper/mapper-results';
 import '../../components/collapsible-panel/collapsible-panel';
 import ObjectOperationsBaseVM from '../view-models/object-operations-base-vm';
-import template from './assessment-template-clone.mustache';
+import template from './assessment-template-clone.stache';
 import {getPageInstance} from '../../plugins/utils/current-page-utils';
 
 export default can.Component.extend({
   tag: 'assessment-template-clone',
-  template,
+  view: can.stache(template),
+  leakScope: true,
   viewModel: function () {
     return ObjectOperationsBaseVM.extend({
       isAuditPage() {
         return getPageInstance().type === 'Audit';
       },
+      extendInstanceData(instance) {
+        instance = instance().serialize();
+        let audit = _.pick(instance, ['id', 'type', 'title', 'issue_tracker']);
+        let context = {
+          id: instance.context.id,
+          type: instance.context.type,
+        };
+        return JSON.stringify({audit, context});
+      },
     });
   },
   events: {
     inserted() {
-      this.viewModel.attr('submitCbs').fire();
+      this.viewModel.onSubmit();
     },
     closeModal() {
       if (this.element) {
@@ -50,8 +60,8 @@ export default can.Component.extend({
           this.viewModel.attr('is_saving', false);
         })
         .done(() => {
-          this.closeModal();
           this.viewModel.dispatch('refreshTreeView');
+          this.closeModal();
         });
     },
     cloneObjects() {

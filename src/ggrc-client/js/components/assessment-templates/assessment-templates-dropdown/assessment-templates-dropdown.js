@@ -1,20 +1,21 @@
 /*
-    Copyright (C) 2018 Google Inc.
+    Copyright (C) 2019 Google Inc.
     Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 */
 
-import '../../dropdown/dropdown';
+import '../../dropdown/dropdown-component';
 import {
   buildParam,
   batchRequests,
 } from '../../../plugins/utils/query-api-utils';
-import template from './assessment-templates-dropdown.mustache';
+import template from './assessment-templates-dropdown.stache';
 import tracker from '../../../tracker';
 
 export default can.Component.extend({
   tag: 'assessment-templates-dropdown',
-  template,
-  viewModel: {
+  view: can.stache(template),
+  leakScope: true,
+  viewModel: can.Map.extend({
     responses: [],
     instance: null,
     assessmentTemplate: null,
@@ -80,7 +81,7 @@ export default can.Component.extend({
           tracker.USER_ACTIONS.ASSESSMENT.OPEN_ASMT_GEN_MODAL);
       }
     },
-  },
+  }),
   init() {
     const viewModel = this.viewModel;
     const instance = viewModel.attr('instance');

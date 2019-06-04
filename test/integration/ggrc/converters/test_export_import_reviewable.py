@@ -1,4 +1,4 @@
-# Copyright (C) 2018 Google Inc.
+# Copyright (C) 2019 Google Inc.
 # Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 
 """Tests export reviewable."""
@@ -22,11 +22,11 @@ class TestExportReviewable(TestCase):
       self.person1_email = person1.email
       person2 = factories.PersonFactory()
       self.person2_email = person2.email
-      control = factories.ControlFactory(title="Test control")
-      review = factories.ReviewFactory(reviewable=control)
+      program = factories.ProgramFactory(title="Test program")
+      review = factories.ReviewFactory(reviewable=program)
 
-      review.add_person_with_role_name(person1, 'Reviewer')
-      review.add_person_with_role_name(person2, 'Reviewer')
+      review.add_person_with_role_name(person1, 'Reviewers')
+      review.add_person_with_role_name(person2, 'Reviewers')
 
     self.client.get("/login")
 
@@ -36,7 +36,7 @@ class TestExportReviewable(TestCase):
 
     data = [
         {
-            "object_name": "Control",
+            "object_name": "Program",
             "filters": {
                 "expression": {}
             },
@@ -45,7 +45,7 @@ class TestExportReviewable(TestCase):
     ]
     response = self.export_csv(data)
 
-    self.assertIn("Test control", response.data)
+    self.assertIn("Test program", response.data)
     self.assertIn("Review State", response.data)
     self.assertIn("Unreviewed", response.data)
     self.assertIn("Reviewers", response.data)
@@ -86,19 +86,18 @@ class TestImportReviewable(TestCase):
   def test_import_reviewable(self):
     """Review State and Reviewers should be non imported."""
 
-    control = factories.ControlFactory()
-    self.assertIsNone(control.end_date)
+    program = factories.ProgramFactory()
+    self.assertIsNone(program.end_date)
     resp = self.import_data(collections.OrderedDict([
-        ("object_type", "Control"),
-        ("code", control.slug),
-        ("Last Deprecated Date", "06/06/2017"),
+        ("object_type", "Program"),
+        ("code", program.slug),
         ("Review State", 'Reviewed'),
         ("Reviewers", "example1@mail.com\nexample2@mail.com")
     ]))
 
-    control = all_models.Control.query.get(control.id)
+    program = all_models.Program.query.get(program.id)
     self.assertEqual(1, len(resp))
     self.assertEqual(1, resp[0]["updated"])
-    self.assertIsNone(control.end_date)
-    self.assertEqual(control.review_status, 'Unreviewed')
-    self.assertFalse(control.reviewers)
+    self.assertIsNone(program.end_date)
+    self.assertEqual(program.review_status, 'Unreviewed')
+    self.assertFalse(program.reviewers)

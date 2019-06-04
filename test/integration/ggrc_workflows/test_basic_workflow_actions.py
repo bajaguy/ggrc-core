@@ -1,4 +1,4 @@
-# Copyright (C) 2018 Google Inc.
+# Copyright (C) 2019 Google Inc.
 # Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 """
 Tests for the basic Workflows logic and actions
@@ -447,8 +447,8 @@ class TestBasicWorkflowActions(TestCase):
 
     cycle_tasks = db.session.query(CycleTaskGroupObjectTask).join(
         Cycle).join(Workflow).filter(Workflow.id == wflow.id).all()
-    with freeze_time("2015-6-9 13:00:00"):
-      today = dtm.datetime.now()
+    with freeze_time("2015-6-9"):
+      today = dtm.date.today()
       transitions = [
           ("In Progress", None, None),
           ("Finished", today, None),

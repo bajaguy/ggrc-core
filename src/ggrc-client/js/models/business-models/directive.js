@@ -1,5 +1,5 @@
 /*
-    Copyright (C) 2018 Google Inc.
+    Copyright (C) 2019 Google Inc.
     Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 */
 
@@ -7,14 +7,14 @@ import Cacheable from '../cacheable';
 import uniqueTitle from '../mixins/unique-title';
 import timeboxed from '../mixins/timeboxed';
 import caUpdate from '../mixins/ca-update';
-import baseNotifications from '../mixins/base-notifications';
+import baseNotifications from '../mixins/notifications/base-notifications';
 import Stub from '../stub';
 
-export default Cacheable('CMS.Models.Directive', {
+export default Cacheable.extend({
   root_object: 'directive',
   root_collection: 'directives',
   category: 'governance',
-  // `rootModel` overrides `model.shortName` when determining polymorphic types
+  // `rootModel` overrides `model.model_singular` when determining polymorphic types
   root_model: 'Directive',
   findAll: '/api/directives',
   findOne: '/api/directives/{id}',
@@ -62,8 +62,20 @@ export default Cacheable('CMS.Models.Directive', {
     context: Stub,
     modified_by: Stub,
   },
-  init: function () {
-    this.validateNonBlank('title');
-    this._super(...arguments);
+}, {
+  define: {
+    title: {
+      value: '',
+      validate: {
+        required: true,
+        validateUniqueTitle: true,
+      },
+    },
+    _transient_title: {
+      value: '',
+      validate: {
+        validateUniqueTitle: true,
+      },
+    },
   },
-}, {});
+});

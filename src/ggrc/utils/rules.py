@@ -1,4 +1,4 @@
-# Copyright (C) 2018 Google Inc.
+# Copyright (C) 2019 Google Inc.
 # Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 
 """Mapping rules for Relationship validation and map:model import columns."""
@@ -149,20 +149,22 @@ def _all_rules():
 
   all_models = {'AccessGroup', 'Contract', 'Control',
                 'CycleTaskGroupObjectTask', 'DataAsset', 'Facility', 'Issue',
-                'Market', 'Objective', 'OrgGroup', 'Person',
+                'Market', 'Objective', 'OrgGroup',
                 'Policy', 'Process', 'Product', 'Program', 'Project',
                 'Regulation', 'Risk', 'Requirement', 'Standard',
                 'System', 'Threat', 'Vendor', 'Metric', 'ProductGroup',
-                'TechnologyEnvironment'}
+                'TechnologyEnvironment', 'KeyReport', 'AccountBalance'}
 
   snapshots = snapshotter.rules.Types.all
 
   all_rules = {
       "AccessGroup": all_models - {'AccessGroup'},
+      "AccountBalance": all_models,
       "Contract": all_models - {'Contract'},
       "Control": all_models,
       "CycleTaskGroupObjectTask": ((all_models | {'Audit'}) -
                                    {'CycleTaskGroupObjectTask'}),
+      "TaskGroup": all_models - {'CycleTaskGroupObjectTask', 'Person'},
       "DataAsset": all_models,
       "Facility": all_models,
       "Market": all_models,
@@ -184,6 +186,7 @@ def _all_rules():
       "Vendor": all_models,
       "Metric": all_models,
       "ProductGroup": all_models,
+      "KeyReport": all_models,
   }
 
   # Audit and Audit-scope objects
@@ -197,7 +200,7 @@ def _all_rules():
           StaticSnapshotMappingRule(type_) for type_ in snapshots
       },
       "Issue": {"Assessment", "Audit", "CycleTaskGroupObjectTask", "Issue",
-                "Person", "Program", "Project", "RiskAssessment"} | {
+                "Program", "Project", "RiskAssessment"} | {
           IssueMappingRule(type_) for type_ in snapshots
       },
   })

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2018 Google Inc.
+ * Copyright (C) 2019 Google Inc.
  * Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
  */
 
@@ -127,6 +127,11 @@
         &:last-child {
           margin-right: 0;
         }
+      }
+    }
+    .hidable {
+      label {
+        display: inline-block; 
       }
     }
   }
@@ -365,15 +370,20 @@
         border: 1px solid $red;
       }
       label {
-        color: $red;
+        &:not(.multiselect-dropdown__label) {
+          color: $red;
+        }
       }
       select {
         border: 1px solid $red;
       }
+      datepicker-component ~ .help-inline {
+        margin-top: 4px;
+      }
       .help-inline {
         margin: -8px 0 8px 0;
         display: block;
-        font-size:$f-small;
+        font-size: $f-small;
         font-weight: bold;
         color: $red;
         padding: 0;
@@ -382,25 +392,7 @@
         border-color: $red;
       }
     }
-    .mandatory-dropdown {
-      &.select-failure {
-        .form-label {
-          color: $red;
-        }
 
-        .multiselect-dropdown__input  {
-          border-color: $red;
-        }
-
-        .help-inline.warning {
-          font-size: $f-small;
-          font-weight: bold;
-          color: $red;
-          margin-top: 5px;
-          padding: 0;
-        }
-      }
-    }
     .rich-text {
       margin-bottom: 20px;
     }
@@ -836,11 +828,6 @@
       &:nth-child(even) {
         background: #fafafa;
       }
-      .status-container {
-        .status-label {
-          margin-top: 4px;
-        }
-      }
       .openclose {
         i {
           margin-top: 4px !important;
@@ -881,7 +868,7 @@
 }
 
 .frequency-wrap {
-  label.smaller {
+  .smaller {
     margin-top:16px;
     font-size:14px;
     span.start-text {
@@ -903,4 +890,8 @@
 
 label.second-in-column {
   margin-top:20px;
+}
+
+.control-offset {
+  margin-left: 4px;
 }

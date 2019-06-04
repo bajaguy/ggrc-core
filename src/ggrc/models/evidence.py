@@ -1,4 +1,4 @@
-# Copyright (C) 2018 Google Inc.
+# Copyright (C) 2019 Google Inc.
 # Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 
 """Module containing Evidence model."""
@@ -194,9 +194,10 @@ class Evidence(Roleable, Relatable, mixins.Titled,
     return obj
 
   @staticmethod
-  def _build_file_name_postfix(parent_obj):
-    """Build postfix for given parent object"""
-    postfix_parts = [Evidence.FILE_NAME_SEPARATOR, parent_obj.slug]
+  def _build_mapped_to_string(parent_obj):
+    """Build description string with information to what objects this evidence
+    is mapped to for given parent object"""
+    mapped_to = [parent_obj.slug, ]
 
     related_snapshots = parent_obj.related_objects(_types=['Snapshot'])
     related_snapshots = sorted(related_snapshots, key=lambda it: it.id)
@@ -204,10 +205,10 @@ class Evidence(Roleable, Relatable, mixins.Titled,
     slugs = (sn.revision.content['slug'] for sn in related_snapshots if
              sn.child_type == parent_obj.assessment_type)
 
-    postfix_parts.extend(slugs)
-    postfix_sting = '_'.join(postfix_parts).lower()
+    mapped_to.extend(slugs)
+    mapped_to_sting = 'Mapped to: {}'.format(', '.join(mapped_to).lower())
 
-    return postfix_sting
+    return mapped_to_sting
 
   def _build_relationship(self, parent_obj):
     """Build relationship between evidence and parent object"""
@@ -219,8 +220,9 @@ class Evidence(Roleable, Relatable, mixins.Titled,
     db.session.add(rel)
     signals.Restful.model_put.send(rel.__class__, obj=rel, service=self)
 
-  def _update_fields(self, response):
+  def _update_fields(self, response, parent):
     """Update fields of evidence with values of the copied file"""
+    self.description = self._build_mapped_to_string(parent)
     self.gdrive_id = response['id']
     self.link = response['webViewLink']
     self.title = response['name']
@@ -230,32 +232,24 @@ class Evidence(Roleable, Relatable, mixins.Titled,
   def _get_folder(parent):
     return parent.folder if hasattr(parent, 'folder') else ''
 
-  def _map_parent(self):
-    """Maps evidence to parent object
-
-    If Document.FILE and source_gdrive_id => copy file
-    """
-    if self.is_with_parent_obj():
-      parent = self._get_parent_obj()
-      if self.kind == Evidence.FILE and self.source_gdrive_id:
-        self.exec_gdrive_file_copy_flow(parent)
-      self._build_relationship(parent)
-      self._parent_obj = None  # pylint: disable=attribute-defined-outside-init
-
-  def exec_gdrive_file_copy_flow(self, parent):
+  def exec_gdrive_file_copy_flow(self):
     """Execute google gdrive file copy flow
 
     Build file name, destination folder and copy file to that folder.
     After coping fills evidence object fields with new gdrive URL
     """
-    postfix = self._build_file_name_postfix(parent)
-    folder_id = self._get_folder(parent)
-    file_id = self.source_gdrive_id
-    from ggrc.gdrive.file_actions import process_gdrive_file
-    response = process_gdrive_file(file_id, folder_id, postfix,
-                                   separator=Evidence.FILE_NAME_SEPARATOR,
-                                   is_uploaded=self.is_uploaded)
-    self._update_fields(response)
+    if self.is_with_parent_obj() and \
+       self.kind == Evidence.FILE and \
+       self.source_gdrive_id:
+
+      parent = self._get_parent_obj()
+      folder_id = self._get_folder(parent)
+      file_id = self.source_gdrive_id
+      from ggrc.gdrive.file_actions import process_gdrive_file
+      response = process_gdrive_file(file_id, folder_id,
+                                     is_uploaded=self.is_uploaded)
+      self._update_fields(response, parent)
+      self._parent_obj = None  # pylint: disable=attribute-defined-outside-init
 
   def is_with_parent_obj(self):
     return bool(hasattr(self, '_parent_obj') and self._parent_obj)
@@ -266,4 +260,4 @@ class Evidence(Roleable, Relatable, mixins.Titled,
 
   def handle_before_flush(self):
     """Handler that called  before SQLAlchemy flush event"""
-    self._map_parent()
+    self.exec_gdrive_file_copy_flow()

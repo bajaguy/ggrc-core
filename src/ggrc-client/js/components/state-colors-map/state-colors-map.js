@@ -1,14 +1,10 @@
 /*
-    Copyright (C) 2018 Google Inc.
+    Copyright (C) 2019 Google Inc.
     Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 */
 
 /* Default Sate for Assessment should be 'Not Started' */
 const defaultState = 'Not Started';
-const template =
-  `<span class="state-value-dot state-{{suffix}} {{verified}}">
-    {{state}}
-  </span>`;
 
 /**
  * can.Map(ViewModel) presenting behavior of State Colors Map Component
@@ -38,6 +34,10 @@ let viewModel = can.Map.extend({
  */
 export default can.Component.extend({
   tag: 'state-colors-map',
-  template,
+  view: can.stache(
+    '<span class="state-value-dot state-{{suffix}} {{verified}}">' +
+    '{{state}}</span>'
+  ),
+  leakScope: true,
   viewModel,
 });

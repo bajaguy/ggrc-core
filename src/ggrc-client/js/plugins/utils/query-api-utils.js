@@ -1,5 +1,5 @@
 /*
- Copyright (C) 2018 Google Inc.
+ Copyright (C) 2019 Google Inc.
  Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
  */
 
@@ -79,6 +79,7 @@ function buildRelevantIdsQuery(objName, page, relevant, additionalFilter) {
  * @param {Number} page.current - Current page
  * @param {Number} page.pageSize - Page size
  * @param {Array} page.sort - Array of sorting criteria
+ * @param {Number} page.buffer - Size of additional items
  * @param {Object|Object[]} relevant - Information about relevant object
  * @param {Object} relevant.type - Type of relevant object
  * @param {Object} relevant.id - Id of relevant object
@@ -102,6 +103,9 @@ function buildParam(objName, page, relevant, fields, filters) {
   if (page.current && page.pageSize) {
     first = (page.current - 1) * page.pageSize;
     last = page.current * page.pageSize;
+    if (page.buffer) {
+      last += page.buffer;
+    }
     params.limit = [first, last];
   }
 
@@ -240,9 +244,88 @@ function _resolveBatch(queue) {
   });
 }
 
+/**
+ * Loads objects based on passed stubs.
+ * @async
+ * @param {Stub[]} stubs Array of stubs for which objects
+ * should be loaded
+ * @param {string[]} fields Fields, which should be presented in response
+ * for each object
+ * @return {Promise<object[]>} Loaded objects
+ */
+async function loadObjectsByStubs(stubs, fields) {
+  const batchedRequest = _buildMappedObjectsRequest(stubs, fields);
+  const response = await Promise.all(batchedRequest);
+  return _processObjectsResponse(response);
+}
+
+/**
+ * Loads objects based on passed types. If objects with passed type weren't
+ * found then the results won't contain objects with mentioned type.
+ * @async
+ * @param {can.Model.Cacheable|Stub} relevant - Information about relevant
+ * object
+ * @param {object|Stub[]} types Array of types for which objects
+ * should be loaded
+ * @param {string[]} fields Fields, which should be presented in response
+ * for each object
+ * @return {Promise<object[]>} Loaded objects
+ */
+async function loadObjectsByTypes(relevant, types, fields) {
+  const batchedRequest = _buildAllMappedObjectsRequest(relevant, types, fields);
+  const response = await Promise.all(batchedRequest);
+  return _processObjectsResponse(response);
+}
+
+function _buildAllMappedObjectsRequest(relevant, types, fields) { // eslint-disable-line
+  return _.map(types, (type) =>
+    batchRequests(buildParam(
+      type,
+      {},
+      relevant,
+      fields,
+      null,
+    ))
+  );
+}
+
+function _buildMappedObjectsRequest(stubs, fields) { // eslint-disable-line
+  const groupedStubsByType = _.groupBy(stubs, 'type');
+
+  return _.map(groupedStubsByType, (stubs, objectsType) =>
+    batchRequests(buildParam(
+      objectsType,
+      {},
+      null,
+      fields,
+      _buildObjectsFilter(stubs),
+    ))
+  );
+}
+
+function _buildObjectsFilter(stubs) {
+  return {
+    expression: {
+      left: 'id',
+      op: {name: 'IN'},
+      right: stubs.map((stub) => stub.attr('id')),
+    },
+  };
+}
+
+function _processObjectsResponse(response) {
+  return response.reduce((result, responseObj) => {
+    const [{values}] = Object.values(responseObj);
+    result.push(...values);
+    return result;
+  }, []);
+}
+
 export {
   buildParam,
   buildRelevantIdsQuery,
   batchRequests,
   buildCountParams,
+  loadObjectsByStubs,
+  loadObjectsByTypes,
 };

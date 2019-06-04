@@ -1,4 +1,4 @@
-# Copyright (C) 2018 Google Inc.
+# Copyright (C) 2019 Google Inc.
 # Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 
 """Unit Tests for Workflow model and WorkflowState mixin
@@ -11,9 +11,18 @@ import ddt
 from freezegun import freeze_time
 from mock import patch
 
+from ggrc_workflows import COPY_TITLE_TEMPLATE, get_copy_title
 from ggrc_workflows.models import cycle_task_group_object_task as cycle_task
 from ggrc_workflows.models import cycle
 from ggrc_workflows.models import workflow
+
+
+def get_copy_name(title, copy_count):
+  """Helper function to improve readability in tests."""
+  return COPY_TITLE_TEMPLATE % {
+      'parent_title': title,
+      'copy_count': copy_count
+  }
 
 
 @ddt.ddt
@@ -108,7 +117,7 @@ class TestWorkflowState(unittest.TestCase):
   @ddt.data(
       # (expected, setup_date),
       (date(2016, 12, 30), date(2016, 12, 31)),
-      (date(2016, 12, 30), date(2017, 1, 2)),
+      (date(2017, 1, 2), date(2017, 1, 2)),
       (date(2017, 8, 4), date(2017, 8, 5)),
       (date(2017, 8, 4), date(2017, 8, 6)),
       (date(2017, 8, 7), date(2017, 8, 7)),
@@ -121,3 +130,19 @@ class TestWorkflowState(unittest.TestCase):
           expected,
           workflow.Workflow().calc_next_adjusted_date(setup_date)
       )
+
+
+@ddt.ddt
+class TestWorkflowUtils(unittest.TestCase):
+  """Test case of the workflow's utils file."""
+
+  @ddt.data(
+      ('Title', [], get_copy_name('Title', 1)),
+      ('Title', ['Other Title'], get_copy_name('Title', 1)),
+      ('Title', [get_copy_name('Title', 1)], get_copy_name('Title', 2))
+  )
+  @ddt.unpack
+  def test_get_copy_title(self, current_title, used_titles, expected):
+    """Test if proper title is returned for all the cases."""
+    result = get_copy_title(current_title, used_titles)
+    self.assertEqual(result, expected)

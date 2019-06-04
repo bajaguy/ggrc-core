@@ -1,4 +1,4 @@
-# Copyright (C) 2018 Google Inc.
+# Copyright (C) 2019 Google Inc.
 # Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 
 """Test issue_tracker hooks."""
@@ -10,6 +10,7 @@ import mock
 
 from ggrc.models.hooks.issue_tracker import assessment_integration
 from ggrc.models.hooks.issue_tracker import integration_utils
+from ggrc.models import exceptions
 
 
 @ddt.ddt
@@ -219,3 +220,143 @@ class TestUtilityFunctions(unittest.TestCase):
           "assignee2@test.com",
           reporter_tracker
       )
+
+  @mock.patch(
+      'ggrc.models.hooks.issue_tracker.assessment_integration.'
+      'AssessmentTrackerHandler._get_issue_from_assmt_template'
+  )
+  @mock.patch(
+      'ggrc.models.hooks.issue_tracker.assessment_integration.'
+      'AssessmentTrackerHandler._is_tracker_enabled'
+  )
+  @ddt.data(
+      # cases: issue tracker is OFF in audit
+      (False, None, None, False),
+      (False, {'enabled': True}, {'enabled': True}, False),
+      # cases: issue tracker is ON in audit, OFF in API
+      (True, {'enabled': False}, {'enabled': True}, False),
+      (True, {'enabled': False}, {'enabled': False}, False),
+      (True, {'enabled': False}, None, False),
+      # cases: issue tracker is ON in audit, ON in API
+      (True, {'enabled': True}, {'enabled': True}, True),
+      (True, {'enabled': True}, {'enabled': False}, True),
+      (True, {'enabled': True}, None, True),
+      # cases: issue tracker is ON in audit, no "enable" flag in API
+      (True, None, {'enabled': True}, True),
+      (True, None, {'enabled': False}, False),
+      (True, None, None, True),
+  )
+  @ddt.unpack
+  def test_is_issue_on_create_enabled(self, is_tracker_enabled, api_issue_dict,
+                                      tmpl_issue_dict, expected,
+                                      mock_tracker_enabled, mock_template):
+    """Test _is_issue_on_create_enabled(in_audit={0}, api={1}, tmpl={2})"""
+    # pylint: disable=protected-access,too-many-arguments
+
+    # prepare Assessment instance
+    asmt = mock.Mock()
+    asmt.audit = mock.Mock()
+    mock_tracker_enabled.return_value = is_tracker_enabled
+
+    # prepare API dictionary
+    api_dict = {}
+
+    if api_issue_dict is not None:
+      api_dict['issue_tracker'] = api_issue_dict
+
+    if tmpl_issue_dict is not None:
+      api_dict['template'] = {}
+      mock_template.return_value = tmpl_issue_dict
+    else:
+      mock_template.return_value = {}
+
+    # test result
+    tracker_handler = assessment_integration.AssessmentTrackerHandler()
+    ret = tracker_handler._is_issue_on_create_enabled(asmt, api_dict)
+
+    self.assertEqual(ret, expected)
+
+  @ddt.data(
+      ({}, False),
+      ({'title': None}, False),
+      ({'title': ''}, False),
+      ({'title': ' '}, False),
+      ({'title': 'a'}, True),
+      ({'title': 'a '}, True),
+  )
+  @ddt.unpack
+  def test_validate_assessment_title(self, issue_info, expected):
+    """Test title validation in issue_info={0}"""
+    # pylint: disable=protected-access
+
+    if expected:
+      assessment_integration.AssessmentTrackerHandler.\
+          _validate_assessment_title(issue_info)
+    else:
+      with self.assertRaises(exceptions.ValidationError):
+        assessment_integration.AssessmentTrackerHandler.\
+            _validate_assessment_title(issue_info)
+
+  @mock.patch(
+      'ggrc.models.hooks.issue_tracker.assessment_integration.'
+      'AssessmentTrackerHandler._get_issue_info_from_audit'
+  )
+  @mock.patch(
+      'ggrc.models.hooks.issue_tracker.assessment_integration.'
+      'AssessmentTrackerHandler._get_issue_from_assmt_template'
+  )
+  @ddt.data(
+      # expected - value from API dict
+      ({'a': 1}, None, None, {'a': 1}),
+      ({'a': 1}, {}, None, {'a': 1}),
+      ({'a': 1}, None, {}, {'a': 1}),
+      ({'a': 1}, {}, {}, {'a': 1}),
+      ({'a': 1}, {'b': 1}, None, {'a': 1}),
+      ({'a': 1}, {'b': 1}, {}, {'a': 1}),
+      ({'a': 1}, None, {'c': 1}, {'a': 1}),
+      ({'a': 1}, {}, {'c': 1}, {'a': 1}),
+      ({'a': 1}, {'b': 1}, {'c': 1}, {'a': 1}),
+      # expected - value from template dict
+      (None, {'b': 1}, None, {'b': 1, 'title': 'T'}),
+      ({}, {'b': 1}, None, {'b': 1, 'title': 'T'}),
+      (None, {'b': 1}, {}, {'b': 1, 'title': 'T'}),
+      ({}, {'b': 1}, {}, {'b': 1, 'title': 'T'}),
+      (None, {'b': 1}, {'c': 1}, {'b': 1, 'title': 'T'}),
+      ({}, {'b': 1}, {'c': 1}, {'b': 1, 'title': 'T'}),
+      # expected - value from audit dict
+      (None, None, {'c': 1}, {'c': 1, 'title': 'T'}),
+      ({}, None, {'c': 1}, {'c': 1, 'title': 'T'}),
+      (None, {}, {'c': 1}, {'c': 1, 'title': 'T'}),
+      ({}, {}, {'c': 1}, {'c': 1, 'title': 'T'}),
+  )
+  @ddt.unpack
+  def test_get_issuetracker_info(self, api_value, tmpl_value,
+                                 audit_value, expected,
+                                 mock_tmpl, mock_audit):
+    """Test _get_issuetracker_info(api_val={0}, tmpl_val={1}, audit_val={2})"""
+    # pylint: disable=protected-access,too-many-arguments
+
+    asmt = mock.Mock()
+    asmt.title = 'T'
+    api_dict = dict()
+
+    if api_value is not None:
+      api_dict['issue_tracker'] = api_value
+
+    if tmpl_value is not None:
+      api_dict['template'] = {'type': 'A', 'id': 'B'}
+      mock_tmpl.return_value = tmpl_value
+    else:
+      mock_tmpl.return_value = {}
+
+    if audit_value is not None:
+      api_dict['audit'] = {'type': 'A', 'id': 'B'}
+      mock_audit.return_value = audit_value
+    else:
+      mock_audit.return_value = {}
+
+    # test result
+    tracker_handler = assessment_integration.AssessmentTrackerHandler()
+    ret = tracker_handler._get_issuetracker_info(asmt, api_dict)
+
+    self.assertEqual(ret, expected)

@@ -1,4 +1,4 @@
-# Copyright (C) 2018 Google Inc.
+# Copyright (C) 2019 Google Inc.
 # Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 
 """Module with Person model definition."""
@@ -21,6 +21,7 @@ from ggrc.models.relationship import Relatable
 from ggrc.models.utils import validate_option
 from ggrc.rbac import SystemWideRoles
 from ggrc.models.person_profile import PersonProfile
+from ggrc.fulltext import attributes
 
 
 class Person(CustomAttributable, CustomAttributeMapable, HasOwnContext,
@@ -53,12 +54,17 @@ class Person(CustomAttributable, CustomAttributeMapable, HasOwnContext,
       'Option.role == "person_language")',
       uselist=False,
   )
-
+  saved_searches = db.relationship(
+      "SavedSearch",
+      lazy="dynamic",
+      cascade="all, delete-orphan",
+  )
   profile = db.relationship(
       "PersonProfile",
       foreign_keys='PersonProfile.person_id',
       uselist=False,
       backref="person",
+      cascade='all, delete-orphan',
   )
   access_control_people = db.relationship(
       'AccessControlPerson',
@@ -77,6 +83,10 @@ class Person(CustomAttributable, CustomAttributeMapable, HasOwnContext,
       'company',
       'email',
       'name',
+      attributes.FullTextAttr(
+          "Authorizations",
+          "system_wide_role"
+      ),
   ]
   _api_attrs = reflection.ApiAttributes(
       'company',
@@ -125,6 +135,10 @@ class Person(CustomAttributable, CustomAttributeMapable, HasOwnContext,
   def user_name(self):
     return self.email.split("@")[0]
 
+  @property
+  def title(self):
+    return self.name or self.email
+
   def is_active(self):
     # pylint: disable=no-self-use
     return True  # self.active
@@ -161,13 +175,13 @@ class Person(CustomAttributable, CustomAttributeMapable, HasOwnContext,
     return email_re.match(val) if val else False
 
   @classmethod
-  def eager_query(cls):
+  def eager_query(cls, **kwargs):
     from sqlalchemy import orm
 
-    # query = super(Person, cls).eager_query()
+    # query = super(Person, cls).eager_query(**kwargs)
     # Completely overriding eager_query to avoid eager loading of the
     # modified_by relationship
-    return super(Person, cls).eager_query().options(
+    return super(Person, cls).eager_query(**kwargs).options(
         orm.joinedload('language'),
         orm.joinedload('profile'),
         orm.subqueryload('object_people'),
@@ -181,6 +195,7 @@ class Person(CustomAttributable, CustomAttributeMapable, HasOwnContext,
         orm.Load(cls).undefer_group(
             "Person_complete",
         ),
+        orm.Load(cls).joinedload('user_roles'),
     )
 
   def _display_name(self):

@@ -1,5 +1,5 @@
 /*
-    Copyright (C) 2018 Google Inc.
+    Copyright (C) 2019 Google Inc.
     Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 */
 
@@ -18,11 +18,13 @@ import {loadScript} from '../plugins/ggrc_utils';
 import Relationship from '../models/service-models/relationship';
 import Assessment from '../models/business-models/assessment';
 
-export default can.Control({
+export default can.Control.extend({
   defaults: {
+    Assessment,
+    Relationship,
     model: getPageModel(),
     instance: getPageInstance(),
-    widget_view: GGRC.mustache_path + '/base_objects/summary.mustache',
+    widget_view: GGRC.templates_path + '/base_objects/summary.stache',
     isLoading: true,
     isShown: false,
     forceRefresh: false,
@@ -49,9 +51,8 @@ export default can.Control({
   },
 }, {
   init: function () {
-    let frag;
     if (this.element.data('widget-view')) {
-      this.options.widget_view = GGRC.mustache_path +
+      this.options.widget_view = GGRC.templates_path +
         this.element.data('widget-view');
     }
     this.element.closest('.widget')
@@ -69,10 +70,15 @@ export default can.Control({
         },
       },
     });
-    frag = can.view(this.get_widget_view(this.element),
-      this.options.context);
-    this.widget_shown();
-    this.element.html(frag);
+
+    $.ajax({
+      url: this.get_widget_view(this.element),
+      dataType: 'text',
+    }).then((view) => {
+      let frag = can.stache(view)(this.options.context);
+      this.element.html(frag);
+      this.widget_shown();
+    });
     return 0;
   },
   onRelationshipChange: function (model, ev, instance) {
@@ -82,9 +88,9 @@ export default can.Control({
       this.options.forceRefresh = true;
     }
   },
-  '{CMS.Models.Relationship} destroyed': 'onRelationshipChange',
-  '{CMS.Models.Relationship} created': 'onRelationshipChange',
-  '{CMS.Models.Assessment} updated': function (model, ev, instance) {
+  '{Relationship} destroyed': 'onRelationshipChange',
+  '{Relationship} created': 'onRelationshipChange',
+  '{Assessment} updated': function (model, ev, instance) {
     if (instance instanceof Assessment) {
       this.options.forceRefresh = true;
     }
@@ -94,7 +100,7 @@ export default can.Control({
       .closest('[data-widget-view]')
       .attr('data-widget-view');
     return (widgetView && widgetView.length > 0) ?
-      GGRC.mustache_path + widgetView :
+      GGRC.templates_path + widgetView :
       this.options.widget_view;
   },
   widget_shown: function (event) {
@@ -130,7 +136,7 @@ export default can.Control({
     chartOptions.attr('isInitialized', true);
 
     that.setState(type, {total: 0, statuses: { }}, true);
-    that.getStatuses(that.options.instance.id).then(function (raw) {
+    return that.getStatuses(that.options.instance.id).then(function (raw) {
       let data = that.parseStatuses(type, raw);
       let chart = that.drawChart(elementId, data);
 

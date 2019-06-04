@@ -1,17 +1,18 @@
 /*
- Copyright (C) 2018 Google Inc.
+ Copyright (C) 2019 Google Inc.
  Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
  */
 
 import tracker from '../../tracker';
-import '../spinner/spinner';
+import '../spinner-component/spinner-component';
 import {
   getPageType,
 } from '../../plugins/utils/current-page-utils';
-import template from './cycle-task-actions.mustache';
+import template from './cycle-task-actions.stache';
 import {updateStatus} from '../../plugins/utils/workflow-utils';
 import Permission from '../../permission';
 import {notifier} from '../../plugins/utils/notifiers-utils';
+import {reify} from '../../plugins/utils/reify-utils';
 
 let viewModel = can.Map.extend({
   define: {
@@ -45,10 +46,16 @@ let viewModel = can.Map.extend({
         let showButtons = Permission.is_allowed_for('update', instance);
 
         if (pageType === 'Workflow') {
-          return showButtons && this.attr('cycle').reify().attr('is_current');
+          return showButtons && reify(this.attr('cycle')).attr('is_current');
         }
 
         return showButtons;
+      },
+    },
+    isAllowedToUpdateWorkflow: {
+      get: function () {
+        const workflow = this.attr('instance.workflow');
+        return Permission.is_allowed_for('update', workflow);
       },
     },
   },
@@ -56,7 +63,7 @@ let viewModel = can.Map.extend({
   disabled: false,
   oldValues: [],
   async changeStatus(ctx, el, ev) {
-    let status = el.data('value');
+    let status = $(el).data('value');
     let instance = this.attr('instance');
     let oldValue = {
       status: instance.attr('status'),
@@ -105,7 +112,8 @@ let viewModel = can.Map.extend({
  */
 export default can.Component.extend({
   tag: 'cycle-task-actions',
-  template,
+  view: can.stache(template),
+  leakScope: true,
   viewModel,
   events: {
     inserted: function () {

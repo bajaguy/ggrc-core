@@ -1,0 +1,59 @@
+{{!
+    Copyright (C) 2019 Google Inc.
+    Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
+}}
+
+  <section class="info{{#if is_info_pin}} sticky-info-panel{{/if}}">
+    <div class="tier-content">
+      <div class="pane-header">
+        <div class="pane-header__container">
+          <div class="pane-header__title">
+            <h6>Title</h6>
+            <h3 class="pane-header__title-name">{{instance.title}}</h3>
+          </div>
+          <div class="pane-header__toolbar">
+            {{#if is_info_pin}}
+              <info-pin-buttons maximized:from="maximized"
+                                onChangeMaximizedState:from="@onChangeMaximizedState"
+                                onClose:from="@onClose">
+              </info-pin-buttons>
+            {{/if}}
+            <div class="info-pane-utility">
+              {{#is_allowed 'update' instance}}
+                <three-dots-menu>
+                  {{^is(workflow.status, "Inactive")}}
+                    {{> /static/templates/base_objects/edit_object_link.stache}}
+                  {{/is}}
+                  <li>
+                    <task-group-clone taskGroup:from="instance">
+                      <a href="javascript://">
+                        <i class="fa fa-clone"></i>
+                        Clone Task Group
+                      </a>
+                    </task-group-clone>
+                  </li>
+                </three-dots-menu>
+              {{/is_allowed}}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="pane-content">
+        {{> /static/templates/task_groups/tier2_content.stache}}
+        <div class="info-pane__section">
+          <task-group-objects taskGroup:from="instance"
+                              canEdit:from="canEdit"
+          ></task-group-objects>
+        </div>
+        <div class="info-pane__section">
+          <h5 class="info-pane__section-title">
+            Tasks
+          </h5>
+          <task-list baseInstance:from="instance"
+                     workflow:from="workflow"
+          ></task-list>
+        </div>
+      </div>
+    </div>
+</section>

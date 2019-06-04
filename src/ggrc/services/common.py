@@ -1,10 +1,12 @@
-# Copyright (C) 2018 Google Inc.
+# Copyright (C) 2019 Google Inc.
 # Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 
 
 """GGRC Collection REST services implementation. Common to all GGRC collection
 resources.
 """
+# pylint: disable=too-many-lines
+# pylint: disable=cyclic-import
 
 import datetime
 import collections
@@ -23,8 +25,16 @@ from flask.views import View
 from flask.ext.sqlalchemy import Pagination
 import sqlalchemy as sa
 import sqlalchemy.orm.exc
+from sqlalchemy.orm import load_only
+from sqlalchemy import func
 from sqlalchemy.exc import IntegrityError
-from werkzeug.exceptions import BadRequest, Forbidden, HTTPException, NotFound
+from werkzeug.exceptions import (
+    BadRequest,
+    Forbidden,
+    HTTPException,
+    NotFound,
+    MethodNotAllowed,
+)
 
 import ggrc.builder.json
 import ggrc.models
@@ -35,8 +45,10 @@ from ggrc.utils import as_json, benchmark, dump_attrs
 from ggrc.utils.log_event import log_event
 from ggrc.fulltext import get_indexer
 from ggrc.login import get_current_user_id, get_current_user
+from ggrc.login import is_external_app_user
 from ggrc.models.cache import Cache
 from ggrc.models.exceptions import ValidationError, translate_message
+from ggrc.models.mixins.with_readonly_access import WithReadOnlyAccess
 from ggrc.rbac import permissions
 from ggrc.services.attribute_query import AttributeQueryBuilder
 from ggrc.services import signals
@@ -45,6 +57,7 @@ from ggrc.query import utils as query_utils
 from ggrc import settings
 from ggrc.cache import utils as cache_utils
 from ggrc.utils import errors as ggrc_errors
+from ggrc.utils import format_api_error_response
 
 
 # pylint: disable=invalid-name
@@ -52,6 +65,7 @@ logger = logging.getLogger(__name__)
 
 
 CACHE_EXPIRY_COLLECTION = 60
+MAX_AMOUNT_OF_REVISIONS = 100  # this is used on admin events page
 
 
 def set_ids_for_new_custom_attributes(parent_obj):
@@ -104,8 +118,7 @@ def update_snapshot_index(cache):
 
 class ModelView(View):
   """Basic view handler for all models"""
-  # pylint: disable=too-many-public-methods
-  # pylint: disable=protected-access
+  # pylint: disable=too-many-public-methods, protected-access
   # access to _sa_class_manager is needed for fetching the right mapper
   DEFAULT_PAGE_SIZE = 20
   MAX_PAGE_SIZE = 100
@@ -149,15 +162,6 @@ class ModelView(View):
         for val, m in mapper.polymorphic_map.items()
         if m in mappers)
     return mapper.polymorphic_on.in_(polymorphic_on_values)
-
-  @staticmethod
-  def _get_matching_types(model):
-    mapper = model._sa_class_manager.mapper
-    if len(list(mapper.self_and_descendants)) == 1:
-      return mapper.class_.__name__
-
-    # FIXME: Actually needs to use 'self_and_descendants'
-    return [m.class_.__name__ for m in mapper.self_and_descendants]
 
   @staticmethod
   def get_match_columns(model):
@@ -261,16 +265,16 @@ class ModelView(View):
             query = query.filter(self.model.id.in_(j_resources))
     if '__search' in request.args:
       terms = request.args['__search']
-      types = self._get_matching_types(self.model)
       indexer = get_indexer()
-      models = indexer._get_grouped_types(types)
-      search_query = indexer.get_permissions_query(models, 'read')
-      search_query = sa.and_(search_query, indexer._get_filter_query(terms))
+      search_query = indexer.get_permissions_query([self.model.__name__],
+                                                   'read')
+      search_query = sa.and_(search_query,
+                             indexer.get_filter_query(terms, self.model))
       search_query = db.session.query(indexer.record_type.key).filter(
           search_query)
       if '__mywork' in request.args:
-        search_query = indexer._add_owner_query(
-            search_query, models, get_current_user_id())
+        search_query = indexer.search_get_owner_query(
+            search_query, [self.model], get_current_user_id())
       search_subquery = search_query.subquery()
       query = query.filter(self.model.id.in_(search_subquery))
     order_properties = []
@@ -349,6 +353,7 @@ class ModelView(View):
   # Routing helpers
   @classmethod
   def endpoint_name(cls):
+    """Get name of current class"""
     return cls.__name__
 
   @classmethod
@@ -418,6 +423,8 @@ class Resource(ModelView):
 
   def dispatch_request(self, *args, **kwargs):  # noqa
     # pylint: disable=too-many-return-statements,arguments-differ
+    # pylint: disable=too-many-branches
+
     with benchmark("Dispatch request"):
       with benchmark("dispatch_request > Check Headers"):
         method = request.method
@@ -451,9 +458,18 @@ class Resource(ModelView):
           logger.exception(err)
           message = translate_message(err)
           raise BadRequest(message)
+        except HTTPException as error:
+          logger.exception(error)
+          code = error.code or 500
+          # Since HTTPException may have both 4xx or 5xx codes
+          alternative_message = ggrc_errors.INTERNAL_SERVER_ERROR
+          if code < 500:
+            alternative_message = ggrc_errors.BAD_REQUEST_MESSAGE
+          message = error.description or alternative_message
+          return format_api_error_response(code, message)
         except Exception as err:  # pylint: disable=broad-except
           logger.exception(err)
-          err.message = ggrc_errors.BAD_REQUEST_MESSAGE
+          err.message = ggrc_errors.INTERNAL_SERVER_ERROR
           raise
         finally:
           # When running integration tests, cache sometimes does not clear
@@ -467,7 +483,7 @@ class Resource(ModelView):
     """POST operation handler."""
     raise NotImplementedError()
 
-  def get(self, id):
+  def get(self, id):  # pylint: disable=redefined-builtin
     """Default JSON request handlers"""
     with benchmark("Query for object"):
       obj = self.get_object(id)
@@ -526,30 +542,26 @@ class Resource(ModelView):
     missing_headers = required_headers.difference(
         set(self.request.headers.keys()))
     if missing_headers:
-      return current_app.make_response((
-          json.dumps({
-              "message": "Missing headers: " + ", ".join(missing_headers),
-          }),
+      return format_api_error_response(
           428,
-          [("Content-Type", "application/json")],
-      ))
+          "Missing headers: " + ", ".join(missing_headers)
+      )
 
     object_etag = etag(self.modified_at(obj), get_info(obj))
     object_timestamp = self.http_timestamp(self.modified_at(obj))
     if (request.headers["If-Match"] != object_etag or
             request.headers["If-Unmodified-Since"] != object_timestamp):
-      return current_app.make_response((
-          json.dumps({
-              "message": "The resource could not be updated due to a conflict "
-                         "with the current state on the server. Please "
-                         "resolve the conflict by refreshing the resource.",
-          }),
+      return format_api_error_response(
           409,
-          [("Content-Type", "application/json")]
-      ))
+          "The resource could not be updated due to a conflict "
+          "with the current state on the server. Please "
+          "resolve the conflict by refreshing the resource."
+      )
     return None
 
-  def json_update(self, obj, src):
+  @staticmethod
+  def json_update(obj, src):
+    """Update object `obj` with data from JSON `src`."""
     ggrc.builder.json.update(obj, src)
 
   def patch(self):
@@ -570,8 +582,42 @@ class Resource(ModelView):
             not permissions.has_conditions('update', self.model.__name__)):
       raise Forbidden()
 
+  @staticmethod
+  def _validate_readonly_access(obj, src):
+    """Ensure that user can perform this request depending on readonly flag
+
+    This method is called for POST, PUT and DELETE requests.
+    It raises 405 NotAllowed if user cannot change object.
+
+    :param obj - object with all attributes set/updated from src (POST, PUT)
+                 or existing unmodified object (DELETE)
+    :param src - dict from request (POST, PUT) or None (DELETE)
+    """
+
+    del src  # unused
+
+    if not isinstance(obj, WithReadOnlyAccess):
+      return
+
+    is_external = is_external_app_user()
+
+    if is_external and request.method in ('PUT', 'POST'):
+      return
+
+    if obj.readonly:
+      raise MethodNotAllowed(
+          description="The object is in a read-only mode and "
+                      "is dedicated for SOX needs")
+
+  def _validate_readonly_access_on_post(self, objects, sources):
+    """Validate read-only access on POST"""
+
+    for obj, src in zip(objects, sources):
+      self._validate_readonly_access(obj, src)
+
   @utils.validate_mimetype("application/json")
-  def put(self, id):
+  def put(self, id):  # pylint: disable=redefined-builtin
+    """PUT operation handler."""
     with benchmark("Query for object"):
       obj = self.get_object(id)
     if obj is None:
@@ -594,11 +640,17 @@ class Resource(ModelView):
     with benchmark("Query update permissions"):
       new_context = self.get_context_id_from_json(src)
       self._check_put_permissions(obj, new_context)
+
+    with benchmark("Validate read-only access"):
+      # check read-only access AFTER check for permissions to disallow
+      # user obtain value for flag "readonly"
+      self._validate_readonly_access(obj, src)
+
     with benchmark("Deserialize object"):
       self.json_update(obj, src)
-    obj.modified_by_id = get_current_user_id()
-    obj.updated_at = datetime.datetime.utcnow()
-    db.session.add(obj)
+
+    self.add_modified_object_to_session(obj)
+
     with benchmark("Process actions"):
       self.process_actions(obj)
     with benchmark("Validate custom attributes"):
@@ -656,6 +708,13 @@ class Resource(ModelView):
           object_for_json, self.modified_at(obj),
           obj_etag=etag(self.modified_at(obj), get_info(obj)))
 
+  def add_modified_object_to_session(self, obj):
+    """Update modification metadata and add object to session."""
+    obj.modified_by_id = get_current_user_id()
+    obj.updated_at = datetime.datetime.utcnow()
+
+    db.session.add(obj)
+
   @classmethod
   def _mark_delete_object_permissions(cls, obj):
     """Mark objects to fetch permissions on delete request."""
@@ -666,7 +725,8 @@ class Resource(ModelView):
     else:
       flask.g.referenced_object_stubs = {obj.type: {obj.id}}
 
-  def delete(self, id):
+  def delete(self, id):  # pylint: disable=redefined-builtin
+    """DELETE operation handler."""
     with benchmark("Query for object"):
       obj = self.get_object(id)
     if obj is None:
@@ -684,6 +744,12 @@ class Resource(ModelView):
     header_error = self.validate_headers_for_put_or_delete(obj)
     if header_error:
       return header_error
+
+    with benchmark("Validate read-only access"):
+      # check read-only access AFTER check for permissions to disallow
+      # user obtain value for flag "readonly"
+      self._validate_readonly_access(obj, None)
+
     db.session.delete(obj)
     with benchmark("Send DELETEd event"):
       signals.Restful.model_deleted.send(
@@ -712,7 +778,7 @@ class Resource(ModelView):
 
   @staticmethod
   def has_cache():
-    return getattr(settings, 'MEMCACHE_MECHANISM', False)
+    return cache_utils.has_memcache()
 
   def apply_paging(self, matches_query):
     page_size = min(
@@ -866,10 +932,12 @@ class Resource(ModelView):
         cache_utils.get_cache_key(None, id_=obj.id, type_=obj.type),
     )
 
-  def json_create(self, obj, src):
+  @staticmethod
+  def json_create(obj, src):
     ggrc.builder.json.create(obj, src)
 
-  def get_context_id_from_json(self, src):
+  @staticmethod
+  def get_context_id_from_json(src):
     """Get context id from json."""
     context = src.get('context', None)
     if context:
@@ -911,11 +979,18 @@ class Resource(ModelView):
           root_attribute))
 
     if 'context' not in src:
-      raise BadRequest('context MUST be specified.')
+      # context is obsolete functionality which is covered by ACL now.
+      # However, this functionality cannot be completely removed because
+      # it is deeply integrated into the code and requires too much effort
+      # to be removed for now. FE not always adds this field,
+      # but it is required by BE source code. So we add it with None value
+      src['context'] = None
 
     return src
 
   def _get_relationship(self, src):
+    """Get existing relationship if exists, and update updated_at"""
+
     relationship = self.model.query.filter(
         self.model.source_id == src["source"]["id"],
         self.model.source_type == src["source"]["type"],
@@ -976,18 +1051,22 @@ class Resource(ModelView):
         db.session.expunge_all()
         raise Forbidden()
 
-  def _gather_referenced_objects(self, data, accomulator=None):
-    if accomulator is None:
-      accomulator = collections.defaultdict(set)
+  def _gather_referenced_objects(self, data, accumulator=None):
+    if accumulator is None:
+      accumulator = collections.defaultdict(set)
     if isinstance(data, list):
       for value in data:
-        self._gather_referenced_objects(value, accomulator)
+        self._gather_referenced_objects(value, accumulator)
     elif isinstance(data, dict):
       if "type" in data and data.get("id"):
-        accomulator[data["type"]].add(data["id"])
+        try:
+          accumulator[data["type"]].add(data["id"])
+        except TypeError:
+          raise BadRequest("Either type or id are specified "
+                           "incorrectly in the request payload.")
       for value in data.values():
-        self._gather_referenced_objects(value, accomulator)
-    return accomulator
+        self._gather_referenced_objects(value, accumulator)
+    return accumulator
 
   def _build_request_stub_cache(self, data):
     objects = self._gather_referenced_objects(data)
@@ -999,6 +1078,10 @@ class Resource(ModelView):
             obj.id: obj for obj in class_.query.filter(class_.id.in_(ids))
         }
 
+  def _check_post_create_options(self, body):
+    """Do NOTHING by default"""
+    pass
+
   def collection_post_loop(self, body, res, no_result):
     """Handle all posted objects.
 
@@ -1007,6 +1090,8 @@ class Resource(ModelView):
       res: List that will get responses appended to it.
       no_result: Flag for suppressing results.
     """
+    with benchmark("Check create options"):
+      self._check_post_create_options(body)
     with benchmark("Generate objects"):
       objects = []
       sources = []
@@ -1027,6 +1112,10 @@ class Resource(ModelView):
 
     with benchmark("Check create permissions"):
       self._check_post_permissions(objects)
+
+    with benchmark("Validate read-only access"):
+      self._validate_readonly_access_on_post(objects, sources)
+
     with benchmark("Send collection POSTed event"):
       signals.Restful.collection_posted.send(
           obj.__class__, objects=objects, sources=sources)
@@ -1066,6 +1155,11 @@ class Resource(ModelView):
         # relationships are set, so need to commit the changes
       db.session.commit()
     with benchmark("Send event job"):
+      # global_ac_roles may save a set of ACR objects in the session. If
+      # session state is changed, all ACRs will be rerequested one by one.
+      # To avoid such behavior link to ACRs objects should be removed manually.
+      if hasattr(flask.g, "global_ac_roles"):
+        del flask.g.global_ac_roles
       send_event_job(event)
 
   @staticmethod
@@ -1262,6 +1356,65 @@ class Resource(ModelView):
       inclusions = ()
     return inclusions
 
+  @staticmethod
+  def get_events_resources(model, ids):
+    """Get events resources representation from the db.
+
+    Returned events look like the following:
+    {u'events': [{u'created_at': u'2019-01-22T13:18:26',
+                  u'id': 955,
+                  u'modified_by': {u'id': 2,
+                                   u'type': u'Person'},
+                  u'resource_type': u'Control',
+                  u'revisions': [{u'description': u'New Control created'}],
+                  u'revisions_count': 1,
+                  u'type': u'Event'},
+                  ...],
+    """
+    resources = {}
+    events = db.session.query(
+        ggrc.models.Event,
+        func.count(
+            ggrc.models.Revision.id
+        ).label("revisions_count")
+    ).join(
+        ggrc.models.Revision,
+        ggrc.models.Event.id ==
+        ggrc.models.Revision.event_id
+    ).filter(
+        model.id.in_(ids.keys())
+    ).group_by(
+        ggrc.models.Event.id
+    ).all()
+    for event, revisions_count in events:
+      event_resource = {
+          "id": event.id,
+          "resource_type": event.resource_type,
+          "created_at": event.created_at,
+          "modified_by": event.modified_by,
+          "revisions_count": revisions_count,
+          "type": "Event",
+          "revisions_stub": [],
+      }
+      revisions = db.session.query(
+          ggrc.models.Revision
+      ).filter(
+          ggrc.models.Revision.event_id ==
+          event.id
+      ).options(load_only(
+          "_content",
+          "action",
+          "resource_type",
+          "event_id")
+      ).limit(MAX_AMOUNT_OF_REVISIONS)
+      for revision in revisions:
+        event_resource['revisions_stub'].append(
+            {'description': revision.description,
+             'resource_type': revision.resource_type}
+        )
+      resources[ids[event.id]] = event_resource
+    return resources
+
   def build_page_object_for_json(self, paging):
     def page_url(params):
       return base_url + '?' + urlencode(utils.encoded_dict(params))
@@ -1291,15 +1444,21 @@ class Resource(ModelView):
     # FIXME: This is cheating -- `matches` should be allowed to be any model
     model = self.model
     ids = {m[0]: m for m in matches}
-    with benchmark("Query database for matches"):
-      query = model.eager_query()
-      # We force the query here so that we can benchmark it
-      objs = query.filter(model.id.in_(ids.keys())).all()
-    with benchmark("Publish objects"):
-      resources = {}
-      includes = self.get_properties_to_include(request.args.get('__include'))
-      for obj in objs:
-        resources[ids[obj.id]] = ggrc.builder.json.publish(obj, includes)
+    if model.__name__ == "Event":
+      with benchmark("Query database for events"):
+        resources = self.get_events_resources(model, ids)
+    else:
+      with benchmark("Query database for matches"):
+        query = model.eager_query(load_related=False)
+        # We force the query here so that we can benchmark it
+        objs = query.filter(model.id.in_(ids.keys())).all()
+        with benchmark("Publish objects"):
+          resources = {}
+          includes = self.get_properties_to_include(
+              request.args.get('__include')
+          )
+          for obj in objs:
+            resources[ids[obj.id]] = ggrc.builder.json.publish(obj, includes)
     with benchmark("Publish representation"):
       ggrc.builder.json.publish_representation(resources)
     return resources
@@ -1318,6 +1477,7 @@ class Resource(ModelView):
     return resource
 
   def object_for_json(self, obj, model_name=None, properties_to_include=None):
+    """Serialize obj in JSON format."""
     model_name = model_name or self.model._inflector.table_singular
     json_obj = ggrc.builder.json.publish(
         obj, properties_to_include or [], inclusion_filter)
@@ -1340,6 +1500,8 @@ class Resource(ModelView):
   def json_success_response(self, response_object, last_modified=None,
                             status=200, id=None, cache_op=None,
                             obj_etag=None):
+    """Prepare success JSON response and set required headers."""
+    # pylint: disable=redefined-builtin
     headers = [('Content-Type', 'application/json')]
     if last_modified:
       headers.append(('Last-Modified', self.http_timestamp(last_modified)))

@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2018 Google Inc.
+  Copyright (C) 2019 Google Inc.
   Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 */
 
@@ -10,7 +10,8 @@ import Permission from '../../permission';
 
 export default can.Component.extend({
   tag: 'related-people-access-control-group',
-  viewModel: {
+  leakScope: true,
+  viewModel: can.Map.extend({
     define: {
       canEdit: {
         get: function () {
@@ -42,8 +43,8 @@ export default can.Component.extend({
     },
     instance: {},
     isNewInstance: false,
-    groupId: '@',
-    title: '@',
+    groupId: '',
+    title: '',
     singleUserRole: false,
     people: [],
     isDirty: false,
@@ -115,9 +116,9 @@ export default can.Component.extend({
         this.saveChanges();
       }
     },
-  },
+  }),
   events: {
-    init: function ($element, options) {
+    init: function () {
       let vm = this.viewModel;
       vm.attr('backUpPeople', vm.attr('people').attr());
     },

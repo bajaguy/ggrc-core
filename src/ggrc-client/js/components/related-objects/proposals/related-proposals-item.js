@@ -1,5 +1,5 @@
 /*
- Copyright (C) 2018 Google Inc., authors, and contributors
+ Copyright (C) 2019 Google Inc., authors, and contributors
  Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
  */
 
@@ -10,15 +10,16 @@ import '../../diff/instance-acl-diff';
 import '../../diff/instance-gca-diff';
 import '../../diff/instance-mapping-fields-diff';
 import '../../diff/instance-list-fields-diff';
-import template from './templates/related-proposals-item.mustache';
+import template from './templates/related-proposals-item.stache';
 import {getPersonInfo} from '../../../plugins/utils/user-utils';
 import {getFormattedLocalDate} from '../../../plugins/utils/date-utils';
-const tag = 'related-proposals-item';
+import {reify, isReifiable} from '../../../plugins/utils/reify-utils';
 
 export default can.Component.extend({
-  tag,
-  template,
-  viewModel: {
+  tag: 'related-proposals-item',
+  view: can.stache(template),
+  leakScope: true,
+  viewModel: can.Map.extend({
     define: {
       proposal: {
         value: {},
@@ -88,11 +89,11 @@ export default can.Component.extend({
       return text;
     },
     getPersonEmail(person) {
-      if (!person || !person.reify) {
+      if (!person || !isReifiable(person)) {
         return '';
       }
 
-      return person.reify().email;
+      return reify(person).email;
     },
     buildTooltipMessage(startWord, email, date, comment) {
       if (!comment) {
@@ -104,5 +105,5 @@ export default can.Component.extend({
         Comment:
         ${comment}`;
     },
-  },
+  }),
 });

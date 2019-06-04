@@ -1,4 +1,4 @@
-# Copyright (C) 2018 Google Inc.
+# Copyright (C) 2019 Google Inc.
 # Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 
 """Module for handling a single import block.
@@ -20,6 +20,8 @@ from flask import _app_ctx_stack
 
 from ggrc import db
 from ggrc import models
+from ggrc.models import exceptions
+from ggrc.models import all_models
 from ggrc.models import reflection
 from ggrc.rbac import permissions
 from ggrc.utils import benchmark
@@ -31,7 +33,6 @@ from ggrc.converters import base_row
 from ggrc.converters.import_helper import get_column_order
 from ggrc.converters.import_helper import get_object_column_definitions
 from ggrc.models.mixins import issue_tracker as issue_tracker_mixins
-from ggrc.models.exceptions import ReservedNameError
 from ggrc.services import signals
 from ggrc_workflows.models.cycle_task_group_object_task import \
     CycleTaskGroupObjectTask
@@ -96,20 +97,13 @@ class BlockConverter(object):
     self.row_converters = []
     self.ignore = False
     self._has_non_importable_columns = False
+    self.object_headers = {}
+    self.headers = {}
     # For import contains model name from csv file.
     # For export contains 'Model.__name__' value.
     self.class_name = class_name
     # TODO: remove 'if' statement. Init should initialize only.
     if self.object_class:
-      names = {n.strip().strip("*").lower() for n in raw_headers or []} or None
-      self.object_headers = get_object_column_definitions(self.object_class,
-                                                          names)
-      if not raw_headers:
-        all_header_names = [unicode(key)
-                            for key in self._get_header_names().keys()]
-        raw_headers = all_header_names
-      self.check_for_duplicate_columns(raw_headers)
-      self.headers = self.clean_headers(raw_headers)
       self.table_singular = self.object_class._inflector.table_singular
       self.name = self.object_class._inflector.human_singular.title()
     else:
@@ -288,7 +282,7 @@ class BlockConverter(object):
     rows data.
 
     Args:
-      raw_headers (list of str): unmodified header row from csv file
+      raw_headers (list of unicode): unmodified header row from csv file
 
     Returns:
       Ordered Dictionary containing all valid headers
@@ -309,9 +303,18 @@ class BlockConverter(object):
           continue
         clean_headers[field_name] = self.object_headers[field_name]
       else:
-        self.add_warning(errors.UNKNOWN_COLUMN,
-                         line=self.offset + 2,
-                         column_name=header)
+        if header.startswith(("map:", "unmap:")):
+          obj_a = self.name
+          obj_b = header.split(":", 1)[1]
+          self.add_warning(errors.UNSUPPORTED_MAPPING,
+                           line=self.offset + 2,
+                           obj_a=obj_a,
+                           obj_b=obj_b,
+                           column_name=header)
+        else:
+          self.add_warning(errors.UNKNOWN_COLUMN,
+                           line=self.offset + 2,
+                           column_name=header)
         self._remove_column(index - removed_count)
         removed_count += 1
     return clean_headers
@@ -363,6 +366,14 @@ class ImportBlockConverter(BlockConverter):
         class_name=class_name,
         operation="import"
     )
+    names = {n.strip().strip("*").lower() for n in raw_headers or []} or None
+    self.object_headers = get_object_column_definitions(
+        self.object_class,
+        names,
+        include_hidden=True,
+    )
+    self.check_for_duplicate_columns(raw_headers)
+    self.headers = self.clean_headers(raw_headers)
     self.csv_lines = csv_lines
     self.converter = converter
     self.unique_values = self.get_unique_values_dict(self.object_class)
@@ -417,28 +428,41 @@ class ImportBlockConverter(BlockConverter):
     Special columns which are primary keys logically or affect the valid set of
     columns go before usual columns.
     """
+
     return [
-        k for k in self.headers if k in self.converter.priority_columns
+        # ensure that columns are ordered according to the priority list
+        k for k in self.converter.priority_columns if k in self.headers
     ] + [
         k for k in self.headers if k not in self.converter.priority_columns
     ]
 
-  def import_csv_data(self):
+  def import_csv_data(self):  # noqa
     """Perform import sequence for the block."""
     try:
       for row in self.row_converters_from_csv():
         try:
+          ie_status = self.converter.get_job_status()
+          if ie_status and ie_status == \
+             all_models.ImportExport.STOPPED_STATUS:
+            raise exceptions.ImportStoppedException()
           row.process_row()
-        except ReservedNameError:
-          row.add_error(errors.DUPLICATE_CAD_NAME)
-          logger.exception(errors.DUPLICATE_CAD_NAME)
+        except exceptions.ImportStoppedException:
+          raise
+        except ValueError as err:
+          db.session.rollback()
+          msg = err.message or errors.UNEXPECTED_ERROR
+          row.add_error(errors.ERROR_TEMPLATE, message=msg)
+          logger.exception(msg)
         except Exception:  # pylint: disable=broad-except
+          db.session.rollback()
           row.add_error(errors.UNKNOWN_ERROR)
-          logger.exception("Unexpected error on import")
+          logger.exception(errors.UNEXPECTED_ERROR)
         self._update_info(row)
         _app_ctx_stack.top.sqlalchemy_queries = []
+    except exceptions.ImportStoppedException:
+      raise
     except Exception:  # pylint: disable=broad-except
-      logger.exception("Unexpected error on import")
+      logger.exception(errors.UNEXPECTED_ERROR)
     finally:
       db.session.commit_hooks_enable_flag.enable()
       is_final_commit_required = not (self.converter.dry_run or self.ignore)
@@ -535,6 +559,9 @@ class ExportBlockConverter(BlockConverter):
         class_name=class_name,
         operation="export"
     )
+    self.object_headers = get_object_column_definitions(self.object_class)
+    raw_headers = [unicode(key) for key in self._get_header_names().keys()]
+    self.headers = self.clean_headers(raw_headers)
     self.organize_fields(fields)
 
   @property
@@ -587,5 +614,8 @@ class ExportBlockConverter(BlockConverter):
     if self.ignore:
       return
     for row_converter in self.row_converters_from_ids():
-      row_converter.handle_obj_row_data()
-      yield row_converter.to_array(self.fields)
+      obj = row_converter.obj
+      with benchmark("Create handlers for object fields"):
+        row_converter.handle_obj_row_data()
+      with benchmark("Load data for {} {}".format(obj.type, obj.id)):
+        yield row_converter.to_array(self.fields)

@@ -1,4 +1,4 @@
-# Copyright (C) 2018 Google Inc.
+# Copyright (C) 2019 Google Inc.
 # Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 
 """A collection of hooks to process IssueTracker related events."""
@@ -120,15 +120,23 @@ class AssessmentTrackerHandler(object):
           issue_info: dictionary with issue payload information
     """
     self._validate_generic_fields(issue_info)
+    self._validate_assessment_title(issue_info)
 
-    # Title
+  @staticmethod
+  def _validate_assessment_title(issue_info):
+    """Validate assessment fields for issue
+
+      Args:
+          issue_info: dictionary with issue payload information
+    """
+
     try:
       title = issue_info["title"]
     except KeyError:
       raise exceptions.ValidationError("Title is mandatory.")
-    else:
-      if not title.strip():
-        raise exceptions.ValidationError("Title can not be blank.")
+
+    if title is None or not title.strip():
+      raise exceptions.ValidationError("Title can not be blank.")
 
   @classmethod
   def prepare_issue_json(cls, assessment, issue_tracker_info=None,
@@ -206,24 +214,36 @@ class AssessmentTrackerHandler(object):
 
     return issue_payload
 
-  def _get_issuetracker_info(self, assessment_src):
+  def _get_issuetracker_info(self, assessment, assessment_src):
     """Get default issue information.
+
+    This function MUST NOT be called during import background task.
 
     Args:
         assessment_src: dictionary with issue information
     Returns:
         default information for Issue Tracker
     """
+
+    # get from API dict if available
     issue_tracker_info_default = assessment_src.get("issue_tracker", {})
-    if not issue_tracker_info_default:
-      issue_tracker_info_default = self._get_issue_from_assmt_template(
-          assessment_src.get("template", {})
-      )
+    if issue_tracker_info_default:
+      return issue_tracker_info_default
+
+    # get from template dict if available
+    issue_tracker_info_default = self._get_issue_from_assmt_template(
+        assessment_src.get("template", {})
+    )
+    if issue_tracker_info_default:
+      issue_tracker_info_default["title"] = assessment.title
+      return issue_tracker_info_default
+
+    # get from audit
     if not issue_tracker_info_default:
       issue_tracker_info_default = self._get_issue_info_from_audit(
-          issue_tracker_info_default.get("audit", {})
+          assessment_src.get("audit", {})
       )
-
+      issue_tracker_info_default["title"] = assessment.title
     return issue_tracker_info_default
 
   @staticmethod
@@ -254,34 +274,46 @@ class AssessmentTrackerHandler(object):
   def handle_assessment_create(self, assessment, assessment_src):
     """Handle assessment issue create.
 
+    Do not perform any actions if one of the following is true:
+    * this is import background task
+    * this is POST request and integration is disabled on audit or app level
+
+    In case of import the work will be done by bulk_sync background task
+    to speed up import
+
     Args:
         assessment: object from Assessment model
         assessment_src: dictionary with issue information
     """
-    if self._is_tracker_enabled(assessment.audit) and \
-            self._is_issue_enabled(assessment_src):
-      if assessment_src.get("issue_tracker", {}).get("issue_id"):
-        issue_id = assessment_src["issue_tracker"]["issue_id"]
-        if not self._is_already_linked(assessment, issue_id):
-          issue_info, _ = self._link_ticket(
-              assessment,
-              issue_id,
-              assessment_src
-          )
 
-          all_models.IssuetrackerIssue.create_or_update_from_dict(
-              assessment,
-              issue_info
-          )
-      else:
-        issue_info, _ = self._create_ticket(
+    if assessment.is_import:
+      return
+
+    if not self._is_issue_on_create_enabled(assessment, assessment_src):
+      return
+
+    issue_id = assessment_src.get("issue_tracker", {}).get("issue_id")
+    if issue_id:
+      if not self._is_already_linked(assessment, issue_id):
+        issue_info, _ = self._link_ticket(
             assessment,
+            issue_id,
             assessment_src
         )
+
         all_models.IssuetrackerIssue.create_or_update_from_dict(
             assessment,
             issue_info
         )
+    else:
+      issue_info, _ = self._create_ticket(
+          assessment,
+          assessment_src
+      )
+      all_models.IssuetrackerIssue.create_or_update_from_dict(
+          assessment,
+          issue_info
+      )
 
   def handle_assessment_delete(self, assessment):
     """Handle assessment issue delete.
@@ -399,6 +431,8 @@ class AssessmentTrackerHandler(object):
   def handle_audit_create(self, audit, audit_src):
     """Handle audit create for Issue Tracker.
 
+    This function MUST NOT be called during import background task execution
+
     Args:
         audit: object from Audit model
         audit_src: dictionary with issue information
@@ -415,9 +449,11 @@ class AssessmentTrackerHandler(object):
   def handle_audit_update(self, audit, audit_src):
     """Handle audit update for Issue Tracker.
 
-      Args:
-          audit: object from Audit model
-          audit_src: dictionary with issue information
+    This function MUST NOT be called during import background task execution
+
+    Args:
+        audit: object from Audit model
+        audit_src: dictionary with issue information
     """
     issue_db_info = self._collect_audit_info(
         audit,
@@ -463,6 +499,8 @@ class AssessmentTrackerHandler(object):
   def handle_assmt_template_create(self, assessment_template,
                                    assmt_template_src):
     """Handle assessment template create for Issue Tracker.
+
+    This function MUST NOT be called during import background task execution
 
     Args:
         assessment_template: object from
@@ -519,7 +557,10 @@ class AssessmentTrackerHandler(object):
         for issue store
         sync_result.status: status of request to Issue Tracker
     """
-    issuetracker_info = self._get_issuetracker_info(assessment_src)
+    issuetracker_info = self._get_issuetracker_info(
+        assessment,
+        assessment_src
+    )
     self._validate_assessment_fields(issuetracker_info)
     issuetracker_info = self._update_with_assmt_data_for_ticket_create(
         assessment,
@@ -598,7 +639,10 @@ class AssessmentTrackerHandler(object):
         for issue store
         sync_result.status: status of request to Issue Tracker
     """
-    issuetracker_info = self._get_issuetracker_info(assessment_src)
+    issuetracker_info = self._get_issuetracker_info(
+        assessment,
+        assessment_src
+    )
     self._validate_assessment_fields(issuetracker_info)
     issuetracker_info = self._update_with_assmt_data_for_ticket_create(
         assessment,
@@ -1261,13 +1305,14 @@ class AssessmentTrackerHandler(object):
         "reporter": reporter,
         "cc_list": ccs,
         "due_date": assessment.start_date,
-        "issue_id": assmt_src.get("issue_id")
+        "issue_id": assmt_src.get("issue_id"),
+        "people_sync_enabled": cls._is_people_sync_enabled(assessment.audit),
     }
 
     return issue_db_info
 
-  @staticmethod
-  def _update_with_assmt_data_for_ticket_update(assessment, assmt_src):
+  @classmethod
+  def _update_with_assmt_data_for_ticket_update(cls, assessment, assmt_src):
     # pylint: disable=invalid-name
     """Collect issue information for assessment update.
 
@@ -1292,7 +1337,8 @@ class AssessmentTrackerHandler(object):
         "enabled": True,
         "due_date": assessment.start_date,
         "issue_id": assmt_src["issue_id"],
-        "issue_url": assmt_src["issue_url"]
+        "issue_url": assmt_src["issue_url"],
+        "people_sync_enabled": cls._is_people_sync_enabled(assessment.audit),
     }
 
     return issue_db_info
@@ -1333,7 +1379,8 @@ class AssessmentTrackerHandler(object):
         "assignee": assignee,
         "reporter": reporter,
         "cc_list": ccs,
-        "due_date": assessment.start_date
+        "due_date": assessment.start_date,
+        "people_sync_enabled": self._is_people_sync_enabled(assessment.audit),
     }
 
     return issue_db_info
@@ -1357,7 +1404,10 @@ class AssessmentTrackerHandler(object):
             "component_id",
             constants.DEFAULT_ISSUETRACKER_VALUES["component_id"]
         ),
-        "hotlist_id": audit_src.get("hotlist_id"),
+        "hotlist_id": audit_src.get(
+            "hotlist_id",
+            constants.DEFAULT_ISSUETRACKER_VALUES["hotlist_id"],
+        ),
         "issue_type": audit_src.get(
             "issue_type",
             constants.DEFAULT_ISSUETRACKER_VALUES["issue_type"]
@@ -1370,7 +1420,8 @@ class AssessmentTrackerHandler(object):
             "issue_severity",
             constants.DEFAULT_ISSUETRACKER_VALUES["issue_severity"]
         ),
-        "enabled": audit_src["enabled"]
+        "enabled": audit_src["enabled"],
+        "people_sync_enabled": audit_src.get("people_sync_enabled", True),
     }
 
     return issue_db_info
@@ -1554,20 +1605,22 @@ class AssessmentTrackerHandler(object):
     """
     reporter = self._merge_reporter(
         issue_db_info["reporter"],
-        issue_tracker_info["reporter"]
+        issue_tracker_info["reporter"],
+        people_sync_enabled=issue_db_info["people_sync_enabled"],
     )
     assignee = self._merge_assignee(
         issue_db_info["assignee"],
-        issue_tracker_info["assignee"]
+        issue_tracker_info["assignee"],
+        people_sync_enabled=issue_db_info["people_sync_enabled"],
     )
     ccs = self._merge_ccs(
         issue_db_info["cc_list"],
-        issue_tracker_info["ccs"]
+        issue_tracker_info["ccs"],
+        people_sync_enabled=issue_db_info["people_sync_enabled"],
     )
-    if self._is_reporters_not_equals(
-        issue_db_info["reporter"],
-        issue_tracker_info["reporter"]
-    ):
+    reporters_differ = self._is_reporters_not_equals(
+        issue_db_info["reporter"], issue_tracker_info["reporter"])
+    if issue_db_info["people_sync_enabled"] and reporters_differ:
       ccs.add(issue_db_info["reporter"])
 
     issue_payload = {
@@ -1686,20 +1739,23 @@ class AssessmentTrackerHandler(object):
     """
     reporter = self._merge_reporter(
         issue_info_db["reporter"],
-        issue_tracker_info["reporter"]
+        issue_tracker_info["reporter"],
+        people_sync_enabled=issue_info_db["people_sync_enabled"],
     )
     assignee = self._merge_assignee(
         issue_info_db["assignee"],
-        issue_tracker_info["assignee"]
+        issue_tracker_info["assignee"],
+        people_sync_enabled=issue_info_db["people_sync_enabled"],
     )
     ccs = self._merge_ccs(
         issue_info_db["cc_list"],
-        issue_tracker_info.get("ccs", [])
+        issue_tracker_info.get("ccs", []),
+        people_sync_enabled=issue_info_db["people_sync_enabled"],
     )
-    if self._is_reporters_not_equals(
-        issue_info_db["reporter"],
-        issue_tracker_info["reporter"]
-    ):
+
+    reporters_differ = self._is_reporters_not_equals(
+        issue_info_db["reporter"], issue_tracker_info["reporter"])
+    if issue_info_db["people_sync_enabled"] and reporters_differ:
       ccs.add(issue_info_db["reporter"])
 
     issue_info_db.update({
@@ -1711,47 +1767,60 @@ class AssessmentTrackerHandler(object):
     return issue_info_db
 
   @staticmethod
-  def _merge_reporter(reporter_db, reporter_tracker):
+  def _merge_reporter(reporter_db, reporter_tracker,
+                      people_sync_enabled=True):
     """Merge reporter with Issue Tracker.
 
     Args:
         reporter_db: reporter from ggrc system.
         reporter_tracker: reporter from Issue Tracker.
+        people_sync_enabled: flag indicating whether assignees from GGRC
+          system should be synced with Issue Tracker or not.
 
     Returns:
         Reporter regarding business rules
     """
-    return reporter_tracker or reporter_db or ""
+    # pylint: disable=unused-argument
+    result = reporter_tracker or ""
+    if people_sync_enabled:
+      result = result or reporter_db
+    return result
 
   @staticmethod
-  def _merge_assignee(assignee_db, assignee_tracker):
+  def _merge_assignee(assignee_db, assignee_tracker,
+                      people_sync_enabled=True):
     """Merge assignee with Issue Tracker.
 
     Args:
         assignee_db: assignee from ggrc system.
         assignee_tracker: assignee from Issue Tracker.
+        people_sync_enabled: flag indicating whether assignees from GGRC
+          system should be synced with Issue Tracker or not.
 
     Returns:
         Assignee regarding business rules
     """
-    return assignee_db or assignee_tracker or ""
+    result = assignee_tracker or ""
+    if people_sync_enabled:
+      result = assignee_db or result
+    return result
 
   @staticmethod
-  def _merge_ccs(ccs_db, ccs_tracker):
+  def _merge_ccs(ccs_db, ccs_tracker, people_sync_enabled=True):
     """Merge ccs with Issue Tracker.
 
     Args:
         ccs_db: ccs from ggrc system.
         ccs_tracker: ccs from Issue Tracker.
+        people_sync_enabled: flag indicating whether assignees from GGRC
+          system should be synced with Issue Tracker or not.
 
     Returns:
-        Union of ccs
+        Ccs regarding business rules
     """
-    ccs_db = set(ccs_db)
-    ccs_tracker = set(ccs_tracker)
-
-    ccs = ccs_db.union(ccs_tracker)
-
+    ccs = set(ccs_tracker)
+    if people_sync_enabled:
+      ccs |= set(ccs_db)
     return ccs
 
   def _send_issue_create(self, issue_payload):
@@ -2004,6 +2073,21 @@ class AssessmentTrackerHandler(object):
     return True
 
   @staticmethod
+  def _is_people_sync_enabled(audit):
+    """Returns a boolean whether people sync feature is enabled.
+
+    Args:
+      audit: Audit model instance.
+
+    Returns:
+      A boolean, True if feature is enabled or False otherwise.
+    """
+    audit_tracker_info = audit.issue_tracker or {}
+    if not audit_tracker_info.get("people_sync_enabled"):
+      return False
+    return True
+
+  @staticmethod
   def _is_audit_initial_exist(initial_state):
     """Check that audit initial state exists.
 
@@ -2218,6 +2302,40 @@ class AssessmentTrackerHandler(object):
     ).get(
         "enabled", False
     )
+
+  def _is_issue_on_create_enabled(self, assessment, assessment_src):
+    """Check that issue tracker on create enabled.
+
+    Args:
+      assessment: assessment instance
+      assessment_src: dictionary with issue information
+
+    Returns:
+      Boolean indicator that issue enabled
+    """
+
+    # Ensure that Issue Tracker in Audit is enabled
+    if not self._is_tracker_enabled(assessment.audit):
+      return False
+
+    # Get enable flag from API request if available
+    issue_tracker_info = assessment_src.get(
+        "issue_tracker", {}
+    )
+
+    if issue_tracker_info:
+      return issue_tracker_info.get("enabled", False)
+
+    # Get enable flag from assessment template if available
+    template_info = assessment_src.get("template", {})
+    template_issue_info = self._get_issue_from_assmt_template(template_info)
+
+    if template_issue_info:
+      return template_issue_info.get("enabled", False)
+
+    # enable flag was not found. Allow to use issue tracker,
+    # as it is enabled in audit
+    return True
 
   @staticmethod
   def _is_ccs_same(ccs_payload, ccs_tracker):
@@ -2479,8 +2597,10 @@ def _hook_assmt_template_post(sender, objects=None, sources=None):
   tracker_handler = AssessmentTrackerHandler()
   for assessment_template, assmt_template_src in itertools.izip(objects,
                                                                 sources):
+    integration_utils.update_issue_tracker_for_import(assessment_template)
     issue_info = assmt_template_src.get('issue_tracker')
     if issue_info:
+      # this part will be run for API calls only, as src is empty for imports
       tracker_handler.handle_assmt_template_create(
           assessment_template,
           issue_info
@@ -2516,8 +2636,10 @@ def _hook_audit_issue_post(sender, objects=None, sources=None):
 
   tracker_handler = AssessmentTrackerHandler()
   for audit, audit_src in itertools.izip(objects, sources):
+    integration_utils.update_issue_tracker_for_import(audit)
     issue_info = audit_src.get('issue_tracker')
     if issue_info:
+      # this part will be run for API calls only, as src is empty for imports
       tracker_handler.handle_audit_create(audit, issue_info)
 
 

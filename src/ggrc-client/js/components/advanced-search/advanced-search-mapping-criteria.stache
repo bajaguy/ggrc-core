@@ -1,0 +1,79 @@
+{{!
+    Copyright (C) 2019 Google Inc.
+    Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
+}}
+
+<div class="mapping-criteria">
+  <h6>{{title}}</h6>
+  <div class="mapping-criteria__content flex-box flex-box-multi">
+    <div class="mapping-criteria__type">
+      <select el:value:bind="criteria.objectName" {{#if isClone}}disabled{{/if}}>
+      {{#mappingTypes}}
+        <option value="{{model_singular}}"
+                label="{{title_singular}}">
+        </option>
+      {{/mappingTypes}}
+      </select>
+    </div>
+    <div class="flex-box flex-box-multi">
+      <div class="flex-box flex-box-multi">
+        <advanced-search-filter-attribute
+                attribute:bind="criteria.filter.value"
+                availableAttributes:from="availableAttributes"
+                showActions:from="false">
+        </advanced-search-filter-attribute>
+        <button type="button" class="mapping-criteria__remove" on:el:click="remove()"><i class="fa fa-trash"></i></button>
+      </div>
+      <div class="mapping-criteria__action">
+        {{#if showPopover}}
+          <simple-popover buttonText:from="'+ Add'" extraCssClass:from="'advanced-search'" placement:from="'top'">
+            <button type="button"
+                    class="mapping-criteria__action-button"
+                    on:el:click="addRelevant()">
+              Map Condition
+            </button>
+            {{^if isClone}}
+              <button type="button"
+                      class="mapping-criteria__action-button"
+                      on:el:click="createGroup()">
+                Group Expression
+              </button>
+            {{/if}}
+          </simple-popover>
+        {{else}}
+          {{#if canAddMapping}}
+            <a href="javascript:void(0)" class="advanced-filter" on:el:click="addRelevant()">+ Add Map Condition</a>
+          {{/if}}
+          {{#if canBeGrouped}}
+            <a href="javascript:void(0)" class="advanced-filter" on:el:click="createGroup()">+ Add Group Expression</a>
+          {{/if}}
+        {{/if}}
+      </div>
+    </div>
+  </div>
+  {{#if criteria.mappedTo}}
+  <div class="mapping-criteria__relationship"></div>
+  <div class="mapping-criteria__relevant">
+    {{#switch criteria.mappedTo.type}}
+      {{#case "mappingCriteria"}}
+        <advanced-search-mapping-criteria
+          criteria:bind="criteria.mappedTo.value"
+          on:remove="removeRelevant()"
+          modelName:from="criteria.objectName"
+          extendable:from="extendable"
+          on:createGroup="relevantToGroup()"
+          canBeGrouped:to="childCanBeGrouped">
+        </advanced-search-mapping-criteria>
+      {{/case}}
+      {{#case "group"}}
+        <advanced-search-mapping-group
+          items:bind="criteria.mappedTo.value"
+          on:remove="removeRelevant()"
+          modelName:from="criteria.objectName"
+          root:to="childCanBeGrouped">
+        </advanced-search-mapping-group>
+        {{/case}}
+      {{/switch}}
+  </div>
+  {{/if}}
+</div>

@@ -1,5 +1,5 @@
 /*
- Copyright (C) 2018 Google Inc.
+ Copyright (C) 2019 Google Inc.
  Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
  */
 
@@ -7,14 +7,16 @@ import '../comment/comment-input';
 import '../comment/comment-add-button';
 import '../object-list-item/editable-document-object-list-item';
 import '../assessment/attach-button';
-import template from './ca-object-modal-content.mustache';
+import template from './ca-object-modal-content.stache';
 import tracker from '../../tracker';
 import {getAssigneeType} from '../../plugins/ggrc_utils';
+import pubSub from '../../pub-sub';
 
 export default can.Component.extend({
   tag: 'ca-object-modal-content',
-  template: template,
-  viewModel: {
+  view: can.stache(template),
+  leakScope: true,
+  viewModel: can.Map.extend({
     define: {
       comment: {
         get() {
@@ -53,10 +55,10 @@ export default can.Component.extend({
       saveDfd: null,
     },
     afterCreation(comment, success) {
-      this.dispatch({
-        type: 'afterCommentCreated',
+      pubSub.dispatch({
+        type: 'relatedItemSaved',
         item: comment,
-        success: success,
+        itemType: 'comments',
       });
     },
     addComment(comment, data) {
@@ -78,11 +80,12 @@ export default can.Component.extend({
         tracker.USER_JOURNEY_KEYS.INFO_PANE,
         tracker.USER_ACTIONS.INFO_PANE.ADD_COMMENT_TO_LCA);
 
-      this.dispatch({
-        type: 'beforeCommentCreated',
+      pubSub.dispatch({
+        type: 'relatedItemBeforeSave',
         items: [comment.attr({
           assignee_type: getAssigneeType(instance),
         })],
+        itemType: 'comments',
       });
       this.attr('content.contextScope.errorsMap.comment', false);
       this.attr('content.contextScope.validation.valid',
@@ -105,5 +108,5 @@ export default can.Component.extend({
           });
         });
     },
-  },
+  }),
 });

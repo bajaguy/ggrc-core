@@ -1,41 +1,68 @@
-# Copyright (C) 2018 Google Inc.
+# Copyright (C) 2019 Google Inc.
 # Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 
 """Program model."""
+
+from sqlalchemy import orm
+from werkzeug import exceptions as wzg_exceptions
+
+
 from ggrc import db
-from ggrc.fulltext.mixin import Indexed
-from ggrc.access_control.roleable import Roleable
-from ggrc.models.context import HasOwnContext
+from ggrc.access_control import roleable
+from ggrc.fulltext import mixin as ft_mixin
+from ggrc.models import comment
+from ggrc.models import context
+from ggrc.models import deferred
+from ggrc.models import proposal
 from ggrc.models import mixins
-from ggrc.models.mixins import base
-from ggrc.models.deferred import deferred
 from ggrc.models import object_document
-from ggrc.models.object_person import Personable
+from ggrc.models import object_person
 from ggrc.models import reflection
+from ggrc.models import relationship
 from ggrc.models import review
-from ggrc.models.relationship import Relatable
+from ggrc.models.mixins import mega
+from ggrc.models.mixins import rest_handable as rest_handable_mixins
+from ggrc.utils import errors
 
 
-class Program(review.Reviewable,
+class Program(mega.Mega,
+              review.Reviewable,
               mixins.CustomAttributable,
+              comment.Commentable,
               object_document.PublicDocumentable,
-              Roleable,
-              Personable,
-              Relatable,
-              HasOwnContext,
+              roleable.Roleable,
+              object_person.Personable,
+              relationship.Relatable,
+              context.HasOwnContext,
               mixins.LastDeprecatedTimeboxed,
-              base.ContextRBAC,
+              rest_handable_mixins.WithDeleteHandable,
+              mixins.base.ContextRBAC,
               mixins.BusinessObject,
+              proposal.Proposalable,
               mixins.Folderable,
-              Indexed,
+              ft_mixin.Indexed,
               db.Model):
   """Representation for Program model."""
   __tablename__ = 'programs'
 
   KINDS = ['Directive']
   KINDS_HIDDEN = ['Company Controls Policy']
+  VALID_RECIPIENTS = frozenset([
+      "Program Managers",
+      "Program Editors",
+      "Program Readers",
+      "Primary Contacts",
+      "Secondary Contacts",
+  ])
 
-  kind = deferred(db.Column(db.String), 'Program')
+  kind = deferred.deferred(db.Column(db.String), 'Program')
+
+  recipients = db.Column(
+      db.String,
+      nullable=True,
+      default=(u"Program Managers,Program Editors,Program Readers,"
+               u"Primary Contacts,Secondary Contacts"),
+  )
 
   audits = db.relationship(
       'Audit', backref='program', cascade='all, delete-orphan')
@@ -52,11 +79,20 @@ class Program(review.Reviewable,
   }
 
   @classmethod
-  def eager_query(cls):
-    from sqlalchemy import orm
+  def eager_query(cls, **kwargs):
+    query = super(Program, cls).eager_query(**kwargs)
 
-    query = super(Program, cls).eager_query()
     return cls.eager_inclusions(query, Program._include_links).options(
         orm.subqueryload('audits'),
         orm.subqueryload('risk_assessments'),
     )
+
+  def _check_no_audits(self):
+    """Check that audit has no assessments before delete."""
+    if self.audits:
+      db.session.rollback()
+      raise wzg_exceptions.Conflict(errors.MAPPED_AUDITS)
+
+  def handle_delete(self):
+    """Handle model_deleted signals."""
+    self._check_no_audits()

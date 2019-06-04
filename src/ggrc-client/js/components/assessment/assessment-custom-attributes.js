@@ -1,15 +1,16 @@
 /*
- Copyright (C) 2018 Google Inc.
+ Copyright (C) 2019 Google Inc.
  Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
  */
 
 import './info-pane/confirm-edit-action';
-import template from './custom-attributes.mustache';
+import template from './custom-attributes.stache';
 
 export default can.Component.extend({
   tag: 'assessment-custom-attributes',
-  template,
-  viewModel: {
+  view: can.stache(template),
+  leakScope: true,
+  viewModel: can.Map.extend({
     items: [],
     editMode: false,
     modifiedFields: {},
@@ -22,5 +23,5 @@ export default can.Component.extend({
       });
       this.attr('modifiedFields', {}, true);
     },
-  },
+  }),
 });

@@ -1,0 +1,63 @@
+{{!
+  Copyright (C) 2019 Google Inc.
+  Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
+}}
+
+<div class="lhn-people">
+  <div class="flex-box width-100">
+    {{#if hasConflicts}}
+      <div class="width-100">
+        <div class="alert alert-verifier">
+          <p>
+              Please be informed that Assignee and Verifier are the same person.
+          </p>
+        </div>
+      </div>
+    {{/if}}
+  </div>
+
+  <related-people-access-control
+    class="width-100"
+    on:saveCustomRole="saveRoles()"
+    hasConflicts:to="hasConflicts"
+    conflictRoles:from="conflictRoles"
+    orderOfRoles:from="includeRoles"
+    includeRoles:from="includeRoles"
+    instance:from="instance">
+      <div class="lhn-people-groups">
+        {{#groups}}
+          <related-people-access-control-group
+            class="lhn-people-group"
+            autoUpdate:from="true"
+            on:updateRoles="updateRoles(scope.event)"
+            isNewInstance:from="isNewInstance"
+            required:from="required"
+            groupId:from="groupId"
+            title:from="title"
+            people:from="people"
+            instance:from="instance"
+            updatableGroupId:from="updatableGroupId">
+              <div>
+                <deletable-people-group
+                  showEmptyMessage:from="true"
+                  required:from="required"
+                  on:unmap="removePerson(scope.event)"
+                  canUnmap:from="canEdit"
+                  isLoading:from="denyUnmap"
+                  groupId:from="groupId"
+                  instance:from="instance"
+                  people:from="people">
+                    <label class="lhn-people-group__title form-label form-label__extended">
+                      {{title}}
+                      {{#if required}}
+                        <i class="fa fa-asterisk"></i>
+                      {{/if}}
+                      <spinner-component class="lhn-people-group__spinner" toggle:from="denyUnmap"></spinner-component>
+                    </label>
+                </deletable-people-group>
+              </div>
+          </related-people-access-control-group>
+        {{/groups}}
+      </div>
+  </related-people-access-control>
+</div>

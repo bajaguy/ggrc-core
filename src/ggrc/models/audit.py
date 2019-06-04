@@ -1,32 +1,33 @@
-# Copyright (C) 2018 Google Inc.
+# Copyright (C) 2019 Google Inc.
 # Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 
 """Audit model."""
 
 from sqlalchemy import orm
-from werkzeug.exceptions import Forbidden
+from werkzeug import exceptions as wzg_exceptions
 
 from ggrc import db
 from ggrc.access_control.roleable import Roleable
 from ggrc.builder import simple_property
-from ggrc.login import get_current_user
-from ggrc.models.deferred import deferred
-from ggrc.models import mixins
-from ggrc.models.mixins.with_evidence import WithEvidence
-from ggrc.rbac import SystemWideRoles
-
 from ggrc.fulltext.mixin import Indexed
+from ggrc.login import get_current_user
+from ggrc.models import mixins
 from ggrc.models import reflection
 from ggrc.models.context import HasOwnContext
+from ggrc.models.deferred import deferred
+from ggrc.models.evidence import Evidence
 from ggrc.models.mixins import base
 from ggrc.models.mixins import clonable
 from ggrc.models.mixins import WithLastDeprecatedDate
 from ggrc.models.mixins import issue_tracker as issue_tracker_mixins
+from ggrc.models.mixins import rest_handable as rest_handable_mixins
+from ggrc.models.mixins.with_evidence import WithEvidence
 from ggrc.models.object_person import Personable
 from ggrc.models.program import Program
-from ggrc.models.evidence import Evidence
 from ggrc.models.relationship import Relatable, Relationship
 from ggrc.models.snapshot import Snapshotable
+from ggrc.rbac import SystemWideRoles
+from ggrc.utils import errors
 
 
 class Audit(Snapshotable,
@@ -38,11 +39,13 @@ class Audit(Snapshotable,
             Relatable,
             Roleable,
             issue_tracker_mixins.IssueTrackedWithConfig,
+            issue_tracker_mixins.IssueTrackedWithPeopleSync,
             WithLastDeprecatedDate,
             mixins.Timeboxed,
             base.ContextRBAC,
             mixins.BusinessObject,
             mixins.Folderable,
+            rest_handable_mixins.WithDeleteHandable,
             Indexed,
             db.Model):
   """Audit model."""
@@ -141,8 +144,21 @@ class Audit(Snapshotable,
     to audit itself (auditors, audit firm, context setting,
     custom attribute values, etc.)
     """
-    from ggrc_basic_permissions import create_audit_context
 
+    # NOTE. Currently this function is called from Restful.collection_posted
+    # hook. The following operations are performed:
+    # 1) create new object, call json_create(), where attributes will be set
+    #    with value validation
+    # 2) current function is called from(Restful.collection_posted
+    #    which overrides some attributes, attribute validator for these
+    #    attributes are called
+    # So, validation for those attrs are called twice!
+    # One corner case of this behavior is validation of field "title".
+    # title cannot be None, and because title validation is performed before
+    # this function, API request MUST contain non-empty title in dict,
+    # however the value will be overridden and re-validated in this function!
+
+    from ggrc_basic_permissions import create_audit_context
     data = {
         "title": source_object.generate_attribute("title"),
         "description": source_object.description,
@@ -204,7 +220,7 @@ class Audit(Snapshotable,
        not any(acl for person, acl in list(self.program.access_control_list)
                if acl.ac_role.name == "Program Managers" and
                person.id == user.id):
-      raise Forbidden()
+      raise wzg_exceptions.Forbidden()
     return value
 
   @classmethod
@@ -216,8 +232,8 @@ class Audit(Snapshotable,
     ).exists()
 
   @classmethod
-  def eager_query(cls):
-    query = super(Audit, cls).eager_query()
+  def eager_query(cls, **kwargs):
+    query = super(Audit, cls).eager_query(**kwargs)
     return query.options(
         orm.joinedload('program'),
         orm.subqueryload('object_people').joinedload('person'),
@@ -298,6 +314,16 @@ class Audit(Snapshotable,
         Evidence.id.in_(evidence_ids)
     )
 
+  def _check_no_assessments(self):
+    """Check that audit has no assessments before delete."""
+    if self.assessments or self.assessment_templates:
+      db.session.rollback()
+      raise wzg_exceptions.Conflict(errors.MAPPED_ASSESSMENT)
+
+  def handle_delete(self):
+    """Handle model_deleted signals."""
+    self._check_no_assessments()
+
 
 def build_audit_stub(obj):
   """Returns a stub of audit model to which assessment is related to."""
@@ -307,6 +333,7 @@ def build_audit_stub(obj):
   return {
       'type': 'Audit',
       'id': audit_id,
+      'title': obj.audit.title,
       'context_id': obj.context_id,
       'href': '/api/audits/%d' % audit_id,
       'issue_tracker': obj.audit.issue_tracker,

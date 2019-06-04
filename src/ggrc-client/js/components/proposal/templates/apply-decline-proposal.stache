@@ -1,0 +1,46 @@
+{{!
+  Copyright (C) 2019 Google Inc.
+  Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
+}}
+
+<div class="ggrc-form proposal-confirm">
+  <div class="ggrc-form-item">
+    <div class="ggrc-form-item__row">
+      <label class="ggrc-form-item__label">
+        Comment
+      </label>
+      <rich-text
+        hiddenToolbar:from="true"
+        placeholder:from="'Enter comment'"
+        content:bind="actionComment"
+        withMentions:from="true">
+      </rich-text>
+    </div>
+  </div>
+
+  <div class="proposal-confirm__actions">
+    <spinner-component toggle:from="isLoading"></spinner-component>
+    {{#if canDisplayApplyButton}}
+      <button type="button"
+        class="btn btn-green proposal-confirm__button"
+        on:el:click="confirm(true)"
+        {{#if isLoading}}disabled{{/if}}>
+          Apply
+      </button>
+    {{/if}}
+    {{#if canDisplayDeclineButton}}
+      <button type="button"
+        class="btn btn-red proposal-confirm__button"
+        on:el:click="confirm()"
+        {{#if isLoading}}disabled{{/if}}>
+          Decline
+      </button>
+    {{/if}}
+    <button type="button"
+      class="btn btn-small proposal-confirm__button btn-white"
+      on:el:click="closeModal()"
+      {{#if isLoading}}disabled{{/if}}>
+        Cancel
+    </button>
+  </div>
+</div>

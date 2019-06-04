@@ -1,0 +1,17 @@
+{{!
+    Copyright (C) 2019 Google Inc.
+    Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
+}}
+
+<custom-attributes-actions
+  disabled:from="isInfoPaneSaving"
+  instance:from="instance"
+  formEditMode:bind="editMode">
+</custom-attributes-actions>
+<object-state-toolbar verifiers:from="verifiers"
+                      instance:from="instance"
+                      instanceState:from="currentState"
+                      disabled:from="isInfoPaneSaving"
+                      isUndoButtonVisible:from="isUndoButtonVisible"
+                      on:onStateChange="onStateChange(scope.event)">
+</object-state-toolbar>

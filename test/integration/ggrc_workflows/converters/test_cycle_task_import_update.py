@@ -1,4 +1,4 @@
-# Copyright (C) 2018 Google Inc.
+# Copyright (C) 2019 Google Inc.
 # Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 
 """Module contains integration tests for Cycle Task Group Object Task Object
@@ -14,6 +14,7 @@ from freezegun import freeze_time
 
 import ddt
 
+from ggrc.models import all_models
 from ggrc import db
 from ggrc.access_control import role
 from ggrc.converters import errors
@@ -61,7 +62,7 @@ class TestCycleTaskImportUpdate(BaseTestCycleTaskImportUpdate):
 
   IMPORTABLE_COLUMN_NAMES = [
       "Summary",
-      "Task Details",
+      "Task Description",
       "Start Date", "Due Date",
       "Actual Finish Date",
       "Actual Verified Date",
@@ -107,6 +108,16 @@ class TestCycleTaskImportUpdate(BaseTestCycleTaskImportUpdate):
                     columns=", ".join(self.IMPORTABLE_COLUMN_NAMES)
                 )
             },
+            'row_warnings': {
+                errors.UNMODIFIABLE_COLUMN.format(
+                    line=12,
+                    column_name="Actual Verified Date"
+                ),
+                errors.UNMODIFIABLE_COLUMN.format(
+                    line=17,
+                    column_name="Actual Verified Date"
+                )
+            }
         }
     }
 
@@ -156,7 +167,6 @@ class TestCycleTaskImportUpdate(BaseTestCycleTaskImportUpdate):
       for task in task_group_tasks:
         self.wf_generator.generate_task_group_task(tg, task)
       self.wf_generator.generate_task_group_object(tg, random_object)
-
       _, cycle = self.wf_generator.generate_cycle(wf)
       self.wf_generator.activate_workflow(wf)
 
@@ -283,7 +293,7 @@ class TestCycleTaskImportUpdate(BaseTestCycleTaskImportUpdate):
             "description": self.task_group_tasks_active[3]["description"],
             "start_date": "2016-07-19",
             "end_date": "2016-07-22",
-            "finished_date": "2016-07-01 00:00:00",
+            "finished_date": "2016-07-01",
             "verified_date": "None",
             "status": "Finished"
         },
@@ -292,8 +302,8 @@ class TestCycleTaskImportUpdate(BaseTestCycleTaskImportUpdate):
             "description": self.task_group_tasks_active[4]["description"],
             "start_date": "2016-07-25",
             "end_date": "2016-07-29",
-            "finished_date": "2016-07-01 00:00:00",
-            "verified_date": "2016-07-01 00:00:00",
+            "finished_date": "2016-07-01",
+            "verified_date": "2016-07-01",
             "status": "Verified"
         }
     }
@@ -379,7 +389,7 @@ class TestCycleTaskImportUpdate(BaseTestCycleTaskImportUpdate):
             "description": self.task_group_tasks_historical[3]["description"],
             "start_date": "2014-05-19",
             "end_date": "2014-05-23",
-            "finished_date": "2014-05-01 00:00:00",
+            "finished_date": "2014-05-01",
             "verified_date": "None",
             "status": "Finished"
         },
@@ -388,8 +398,8 @@ class TestCycleTaskImportUpdate(BaseTestCycleTaskImportUpdate):
             "description": self.task_group_tasks_historical[4]["description"],
             "start_date": "2014-05-23",
             "end_date": "2014-05-30",
-            "finished_date": "2014-05-01 00:00:00",
-            "verified_date": "2014-05-01 00:00:00",
+            "finished_date": "2014-05-01",
+            "verified_date": "2014-05-01",
             "status": "Verified"
         }
     }
@@ -433,7 +443,7 @@ class TestCycleTaskImportUpdate(BaseTestCycleTaskImportUpdate):
                 self.task_group_tasks_active[3]["description"] + " four",
             "start_date": "2016-06-19",
             "end_date": "2016-06-24",
-            "finished_date": "2016-07-19 00:00:00",
+            "finished_date": "2016-07-19",
             "verified_date": "None",
             "status": "Finished"
         },
@@ -443,8 +453,8 @@ class TestCycleTaskImportUpdate(BaseTestCycleTaskImportUpdate):
                 self.task_group_tasks_active[4]["description"] + " five",
             "start_date": "2016-06-25",
             "end_date": "2016-06-30",
-            "finished_date": "2016-07-25 00:00:00",
-            "verified_date": "2016-08-30 00:00:00",
+            "finished_date": "2016-07-01",
+            "verified_date": "2016-07-01",
             "status": "Verified"
         },
         "CYCLETASK-6": {
@@ -483,7 +493,7 @@ class TestCycleTaskImportUpdate(BaseTestCycleTaskImportUpdate):
                 self.task_group_tasks_historical[3]["description"] + " four",
             "start_date": "2014-04-19",
             "end_date": "2014-04-24",
-            "finished_date": "2014-05-19 00:00:00",
+            "finished_date": "2014-05-19",
             "verified_date": "None",
             "status": "Finished"
         },
@@ -493,8 +503,8 @@ class TestCycleTaskImportUpdate(BaseTestCycleTaskImportUpdate):
                 self.task_group_tasks_historical[4]["description"] + " five",
             "start_date": "2014-04-25",
             "end_date": "2014-04-30",
-            "finished_date": "2014-05-25 00:00:00",
-            "verified_date": "2014-06-30 00:00:00",
+            "finished_date": "2014-05-01",
+            "verified_date": "2014-05-01",
             "status": "Verified"
         }
     }
@@ -640,3 +650,38 @@ class TestCycleTaskImportUpdateAssignee(BaseTestCycleTaskImportUpdate):
     }
 
     self._check_csv_response(response, expected_warnings)
+
+
+@ddt.ddt
+class TestCycleTaskImportComments(TestCase):
+  """Test cases for update comments on import cycle tasks"""
+
+  def setUp(self):
+    with ggrc_factories.single_commit():
+      self.task = factories.CycleTaskGroupObjectTaskFactory()
+
+  @ddt.data(
+      ('comment 1', 1),
+      ('comment 2;;comment 3', 2)
+  )
+  @ddt.unpack
+  def test_update_comments_via_import(self, comment, count):
+    """Test update/add comments via import"""
+    current_comments_count = all_models.Relationship.query.filter_by(
+        source_id=self.task.id,
+        source_type=self.task.type,
+        destination_type='Comment').count()
+
+    self.import_data(OrderedDict([
+        ("object_type", self.task.type),
+        ("Code*", self.task.slug),
+        ("Task Assignees*", 'test@exmple.com'),
+        ("Task Type", "some data"),
+        ("Comments", comment)]))
+
+    new_comments_count = all_models.Relationship.query.filter_by(
+        source_id=self.task.id,
+        source_type=self.task.type,
+        destination_type='Comment').count()
+
+    self.assertEqual(current_comments_count + count, new_comments_count)

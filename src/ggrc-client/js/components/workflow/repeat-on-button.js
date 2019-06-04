@@ -1,16 +1,17 @@
 /*
- Copyright (C) 2018 Google Inc.
+ Copyright (C) 2019 Google Inc.
  Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
  */
 
-import '../dropdown/dropdown';
-import template from './templates/repeat-on-button.mustache';
+import '../dropdown/dropdown-component';
+import template from './templates/repeat-on-button.stache';
 import * as config from '../../apps/workflow-config';
 
 export default can.Component.extend({
   tag: 'repeat-on-button',
-  template,
-  viewModel: {
+  view: can.stache(template),
+  leakScope: true,
+  viewModel: can.Map.extend({
     define: {
       buttonText: {
         get: function () {
@@ -121,13 +122,13 @@ export default can.Component.extend({
       }
 
       this.attr('isSaving', true);
-      onSave(unit, repeatEvery)
+      return onSave(unit, repeatEvery)
         .then(function () {
           this.attr('isSaving', false);
           this.attr('state.open', false);
         }.bind(this));
     },
-  },
+  }),
   events: {
     '{state.result} unit': function () {
       this.viewModel.updateRepeatEveryOptions();

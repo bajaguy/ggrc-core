@@ -1,7 +1,7 @@
-# Copyright (C) 2018 Google Inc.
+# Copyright (C) 2019 Google Inc.
 # Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 """Generic handlers for imports and exports."""
-
+import json
 import re
 from logging import getLogger
 from datetime import date
@@ -15,7 +15,7 @@ from ggrc import db
 from ggrc.converters import get_exportables, errors
 from ggrc.login import get_current_user
 from ggrc.models import all_models
-from ggrc.models.mixins import ScopeObject
+from ggrc.models.exceptions import ValidationError
 from ggrc.models.reflection import AttributeInfo
 from ggrc.rbac import permissions
 
@@ -54,8 +54,7 @@ class ColumnHandler(object):
     self.dry_run = row_converter.block_converter.converter.dry_run
     self.new_objects = self.row_converter.block_converter.converter.new_objects
     self.unique = options.get("unique", False)
-    if options.get("parse"):
-      self.set_value()
+    self.ignore = False
 
   def value_explicitly_empty(self, value):
     return value in self.EXPLICIT_EMPTY_VALUE
@@ -367,16 +366,21 @@ class DateColumnHandler(ColumnHandler):
     # TODO: change all importable date columns' type from 'DateTime'
     # to 'Date' type. Remove if statement after it.
     try:
+      value = value or self.get_value()
       if not value:
-        return
+        if self.mandatory:
+          self.add_error(errors.MISSING_VALUE_ERROR,
+                         column_name=self.display_name)
+        return None
+
       parsed_value = parse(value)
-      if self.key == "last_assessment_date":
-        self.check_last_asmnt_date(parsed_value)
-      if type(getattr(self.row_converter.obj, self.key, None)) is date:
-        return parsed_value.date()
-      else:
-        return parsed_value
-    except:
+      if isinstance(getattr(self.row_converter.obj, self.key, None), date):
+        parsed_value = parsed_value.date()
+      if self.key in ("last_assessment_date", "verified_date") and \
+         self.check_readonly_changes(parsed_value, self.key):
+        return None
+      return parsed_value
+    except:  # pylint: disable=bare-except
       self.add_error(errors.WRONG_VALUE_ERROR, column_name=self.display_name)
 
   def _check_errors_non_importable_objects(self, object_date, import_date):
@@ -408,18 +412,15 @@ class DateColumnHandler(ColumnHandler):
       return value.strftime("%m/%d/%Y")
     return ""
 
-  def check_last_asmnt_date(self, new_last_asmnt_date):
-    """Check if the new object don't contain changed Last Assessment Date."""
-    old_last_asmnt_date = getattr(
-        self.row_converter.obj, "last_assessment_date", None
-    )
-    date_modified = old_last_asmnt_date and new_last_asmnt_date and \
-        old_last_asmnt_date.date() != new_last_asmnt_date.date()
-    if date_modified:
-      self.add_warning(
-          errors.UNMODIFIABLE_COLUMN,
-          column_name=self.display_name,
-      )
+  def check_readonly_changes(self, new_date, attr_name):
+    """Check if the new object don't contain changed date."""
+    old_date = getattr(self.row_converter.obj, attr_name, None)
+    is_modified = old_date and new_date and old_date != new_date
+    if is_modified:
+      self.add_warning(errors.UNMODIFIABLE_COLUMN,
+                       column_name=self.display_name,)
+      return True
+    return False
 
 
 class NullableDateColumnHandler(DateColumnHandler):
@@ -429,7 +430,8 @@ class NullableDateColumnHandler(DateColumnHandler):
 
   def parse_item(self):
     """Datetime column can be nullable."""
-    if not self.value_explicitly_empty(self.raw_value):
+    if not self.value_explicitly_empty(self.raw_value) and \
+            self.raw_value != "":
       return super(NullableDateColumnHandler, self).parse_item()
     if self.mandatory:
       self.add_error(
@@ -544,13 +546,13 @@ class MappingColumnHandler(ColumnHandler):
   def _is_allowed_mapping_by_type(self, source_type, destination_type):
     # pylint: disable=no-self-use
     """Checks if a mapping is allowed between given types."""
-    scoping_models_names = [m.__name__ for m in all_models.all_models
-                            if issubclass(m, ScopeObject)]
+    try:
+      all_models.Relationship.validate_relation_by_type(source_type,
+                                                        destination_type)
+    except ValidationError:
+      return False
 
-    return not (source_type in scoping_models_names and
-                destination_type in ("Regulation", "Standard") or
-                destination_type in scoping_models_names and
-                source_type in ("Regulation", "Standard"))
+    return True
 
   def _add_mapping_warning(self, source, destination):
     """Add warning if we have changes mappings """
@@ -902,78 +904,6 @@ class PersonUnmappingColumnHandler(ObjectPersonColumnHandler):
     self.dry_run = True
 
 
-class CategoryColumnHandler(ColumnHandler):
-  """"Base class for column handler with category."""
-
-  def parse_item(self):
-    """Parse cell item."""
-    names = [v.strip() for v in self.raw_value.split("\n")]
-    names = [name for name in names if name != ""]
-    categories = all_models.CategoryBase.query.filter(
-        and_(
-            all_models.CategoryBase.name.in_(names),
-            all_models.CategoryBase.type == self.category_base_type
-        )
-    ).all()
-    category_names = set([c.name.strip() for c in categories])
-    for name in names:
-      if name not in category_names:
-        self.add_warning(
-            errors.WRONG_MULTI_VALUE, column_name=self.display_name, value=name
-        )
-    if not categories:
-      if self.row_converter.is_new and self.mandatory:
-        self.add_error(
-            errors.MISSING_VALUE_ERROR, column_name=self.display_name
-        )
-      return None
-    return categories
-
-  def _is_assertions_same(self):
-    """Compare current and previous assertions state."""
-    current_assertions = getattr(self.row_converter.obj, self.key)
-    assertion_names = [
-        assertion.name
-        for assertion in current_assertions
-    ]
-    assertion_new_names = [
-        assertion.name
-        for assertion in self.value
-    ]
-
-    return set(assertion_names) == set(assertion_new_names)
-
-  def set_obj_attr(self):
-    """Set object attribute."""
-    if self.value is None:
-      return
-    elif self.key == "assertions" and self._is_assertions_same():
-      return
-    setattr(self.row_converter.obj, self.key, self.value)
-
-  def get_value(self):
-    """Get value in string representation."""
-    categories = getattr(self.row_converter.obj, self.key, self.value)
-    categorie_names = [c.name for c in categories]
-    return "\n".join(categorie_names)
-
-
-class ControlCategoryColumnHandler(CategoryColumnHandler):
-
-  def __init__(self, row_converter, key, **options):
-    self.category_base_type = "ControlCategory"
-    super(ControlCategoryColumnHandler,
-          self).__init__(row_converter, key, **options)
-
-
-class ControlAssertionColumnHandler(CategoryColumnHandler):
-
-  def __init__(self, row_converter, key, **options):
-    self.category_base_type = "ControlAssertion"
-    super(ControlAssertionColumnHandler,
-          self).__init__(row_converter, key, **options)
-
-
 class DocumentsColumnHandler(ColumnHandler):
 
   def get_value(self):
@@ -1077,3 +1007,21 @@ class ReviewersColumnHandler(ExportOnlyColumnHandler):
     return '\n'.join(sorted(
         reviewer.email for reviewer in reviewers
     ))
+
+
+class JsonListColumnHandler(ColumnHandler):
+  """Handler for fields with json list values."""
+
+  def get_value(self):
+    json_values = getattr(self.row_converter.obj, self.key, "[]")
+    values = []
+    try:
+      if json_values:
+        values = json.loads(json_values)
+    except ValueError:
+      logger.error(
+          "Failed to convert {} field for {} {}".format(
+              self.key, self.row_converter.obj.type, self.row_converter.obj.id
+          )
+      )
+    return "\n".join(values)

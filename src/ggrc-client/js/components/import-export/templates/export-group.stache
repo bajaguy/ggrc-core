@@ -1,0 +1,23 @@
+{{!
+  Copyright (C) 2019 Google Inc.
+  Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
+}}
+
+<div class="export-groups">
+
+  <div class="relevant-filter-group">
+    {{#each panels}}
+      <div class="new-relevant-block">
+        <export-panel type:from="type"
+                      item:from="{.}"
+                      panel_index:from="@index"
+                      removable:from="isRemovable">
+       </export-panel>
+     </div>
+    {{/each}}
+  </div>
+
+  <button type="button" class="btn btn-small btn-white" on:el:click="addObjectType()">
+    Add Object Type
+  </button>
+</div>

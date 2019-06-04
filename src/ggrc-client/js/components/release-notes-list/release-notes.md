@@ -1,8 +1,32 @@
-[//]: <> (updated 12/20/2018)
+[//]: <> (updated 05/22/2019)
 
 Our product team is working hard to engineer compliance @ scale and make your day to day user journeys easier. We have been adding key capabilities to the product as listed here below.
 
-[Primary and Secondary Contacts in Control object are renamed (v.1.35.0, 12/20/2018)](https://docs.google.com/document/d/1Tm1nRVDIgUArjezZSnCvcwCm3gLcXdB6wRJKUaF6VUA/edit#heading=h.d9jpeh222p9)
+[Integration with Drogon enabled for SOX systems (v.2.5.0, 05/22/2019)](https://docs.google.com/document/d/1Tm1nRVDIgUArjezZSnCvcwCm3gLcXdB6wRJKUaF6VUA/edit#heading=h.7sp3gw0nc2)
+
+[Mapping Scope Object to Standard or Regulation moved to new frontend (v.2.5.0, 05/22/2019)](https://docs.google.com/document/d/1Tm1nRVDIgUArjezZSnCvcwCm3gLcXdB6wRJKUaF6VUA/edit#heading=h.b64613515b6c)
+
+[Introducing Program to Program mapping (Mega Program) (v.2.3.0, 05/03/2019)](https://docs.google.com/document/d/1Tm1nRVDIgUArjezZSnCvcwCm3gLcXdB6wRJKUaF6VUA/edit#heading=h.grald8eg2cgj)
+
+[A functionality to turn off sync of people fields between Assessment and Ticket tracker (v.2.3.0, 05/03/2019)](https://docs.google.com/document/d/1Tm1nRVDIgUArjezZSnCvcwCm3gLcXdB6wRJKUaF6VUA/edit#heading=h.bee9ft50hu3p)
+
+[Mentioning person enabled at comments (v.2.2.0, 04/24/2019)](https://docs.google.com/document/d/1Tm1nRVDIgUArjezZSnCvcwCm3gLcXdB6wRJKUaF6VUA/edit#heading=h.l5ud67lwwc62)
+
+[New object Account Balance (v.2.1.0, 04/10/2019)](https://docs.google.com/document/d/1Tm1nRVDIgUArjezZSnCvcwCm3gLcXdB6wRJKUaF6VUA/edit#heading=h.ny5sa23suyjm)
+
+[Introducing new Control Library frontend (v.2.0.0, 03/26/2019)](https://docs.google.com/document/d/1Tm1nRVDIgUArjezZSnCvcwCm3gLcXdB6wRJKUaF6VUA/edit#heading=h.oo6v96vy5j1x)
+
+[‘Related Requirements’ added to snapshot (v.2.0.0, 03/26/2019)](https://docs.google.com/document/d/1Tm1nRVDIgUArjezZSnCvcwCm3gLcXdB6wRJKUaF6VUA/edit#heading=h.dwnfktph11qf)
+
+[Introduced new object ‘Key report’ (v.1.41.0, 02/19/2019)](https://docs.google.com/document/d/1Tm1nRVDIgUArjezZSnCvcwCm3gLcXdB6wRJKUaF6VUA/edit#heading=h.acts40q04kus)
+
+[Changes at synchronization logic with Ticket Tracker (v.1.39.0, 02/05/2019)](https://docs.google.com/document/d/1Tm1nRVDIgUArjezZSnCvcwCm3gLcXdB6wRJKUaF6VUA/edit#heading=h.fe36fb28bds4)
+
+[Calendar events added for tasks (v.1.38.0, 01/16/2019)](https://docs.google.com/document/d/1Tm1nRVDIgUArjezZSnCvcwCm3gLcXdB6wRJKUaF6VUA/edit#heading=h.v06wxnchauyl)
+
+[Added a checkbox in Audit ‘Create screen’ to map snapshots manually (v.1.38.0, 01/16/2019)](https://docs.google.com/document/d/1Tm1nRVDIgUArjezZSnCvcwCm3gLcXdB6wRJKUaF6VUA/edit#heading=h.1k1frii91vko)
+
+[Primary and Secondary Contacts in Control object are renamed (v.1.35.0, 12/20/2018)](https://docs.google.com/document/d/1Tm1nRVDIgUArjezZSnCvcwCm3gLcXdB6wRJKUaF6VUA/edit#heading=h.fyunlkl3iivr)
 
 [You can now import ticket tracker integration settings for assessments and issues (v1.32.0, 11/28/2018)](https://docs.google.com/document/d/1Tm1nRVDIgUArjezZSnCvcwCm3gLcXdB6wRJKUaF6VUA/edit#heading=h.ypafmrujihtr)
 
@@ -69,6 +93,61 @@ Our product team is working hard to engineer compliance @ scale and make your da
 [Linking assessments with other issue tracking systems (v0.10.36, 12/12/2017)](https://docs.google.com/document/d/1Tm1nRVDIgUArjezZSnCvcwCm3gLcXdB6wRJKUaF6VUA/edit#heading=h.9ry21bbez6aa)
 
 [Performance improvements](https://docs.google.com/document/d/1Tm1nRVDIgUArjezZSnCvcwCm3gLcXdB6wRJKUaF6VUA/edit#heading=h.m9vl04nitn8)
+
+### Integration with Drogon enabled for SOX systems (v.2.5.0, 05/22/2019)
+
+Integration with Drogon was enabled for read-only SOX systems. The frequency of data sync is once per day. Any updates will have to be executed Drogon as it is the source system.
+
+### Mapping Scope Object to Standard or Regulation moved to new frontend (v.2.5.0, 05/22/2019)
+
+Mapping and unmapping of Scope Object to Standard or Regulation was moved to a new frontend. To perform the mapping (or unmapping) follow the corresponding link to a new frontend.
+
+### Introducing Program to Program mapping (Mega Program) (v.2.3.0, 05/03/2019)
+
+Program to Program mapping was enabled. Through Unified mapper Programs can be selected to become a Parent or a Child. Objects listed below will be automapped from a Child Program to a Parent Program.
+
+Object types available for automapping: Regulation, Objective, Control, Clause, Contract, Policy, Risk, Standard, Thread, Requirement, System, Product, Process, Market, DataAsset, Facility, OrgGroup, Metric, Technology Environment, Product Group, Projects, Vendors, Access Groups, Key report, Account balance.
+
+### A functionality to turn off sync of people fields between Assessment and Ticket tracker (v.2.3.0, 05/03/2019)
+
+Configurable setting is available on Audit info pane to sync the people fields between Assessment and Ticket Tracker.
+
+### Mentioning person enabled at comments (v.2.2.0, 04/24/2019)
+
+Comments functionality was enhanced by introducing mention a person feature. To leverage this feature use + or @ with a user email (example, +example@google.com or @example@google.com) in the comments box. A mentioned user will get an email notification when the comment is saved.
+
+### New object Account Balance (v.2.1.0, 04/10/2019)
+
+Account Balance can be used to sort, store and summarize a company's transactions and processes. Account Balance is categorized as a scoping object and can be mapped to other GRC objects similar to other Scoping Objects.
+
+### Introducing new Control Library frontend (v.2.0.0, 03/26/2019)
+
+New frontend will support create, edit, delete, change proposal, restoring versions, comments and import of Controls. The above listed functionality will be disabled in the current UI. New frontend will also support mapping of Scoping objects, Standards and Regulations to Controls. The current frontend will still provide ability to add reference urls, attachments, snapshot creation, object mapping (except to Standards, Regulations and Scoping objects).
+
+### ‘Related Requirements’ added to snapshot (v.2.0.0, 03/26/2019)
+
+‘Related Requirements’ section was added to ‘More information’ option on Assessment Snapshots. Related Requirements contains information about Title, Description, Notes, Custom Attributes.
+
+### Introduced new object ‘Key report’ (v.1.41.0, 02/19/2019)
+
+New scoping object ‘Key report’ was introduced.
+
+### Changes at synchronization logic with Ticket Tracker (v.1.39.0, 02/05/2019)
+
+When the ticket for Assessment is created the fields are synced with the following logic:
+
+- Assessment Assignee appear in alphabetical order on Ticket Assignee field as primary assignee.
+- Non primary assessment assignees appear at Ticket CC list.
+- Audit Captain appear in alphabetical order on Ticket Reporter field as primary reporter.
+- Non primary reporter Audit Captains appear on Ticket CC list.
+
+### Calendar events added for tasks (v.1.38.0, 01/16/2019)
+
+GGRC Workflow Tasks are now integrated with Google Calendar. In order to improve the notification capability of the tool we introduce a Google Calendar integration feature. It provides an ability to track upcoming tasks based on their due dates as google calendar events. Google calendar events are created for all tasks that are due in future and not finished. User will have ability to have an associated calendar event for every workcycle cycle task. The calendar event associated with the task contains the description of task due on that day as well as the “My Task” link.   
+
+### Added a checkbox in Audit ‘Create screen’ to map snapshots manually (v.1.38.0, 01/16/2019)
+
+Now it is possible to create an audit without snapshots mapped. For this purpose on ‘Audit Create screen’ should be used a checkbox ‘Manually map snapshots’. This option is available and visible only on Audit ‘Create screen’.
 
 ### Primary and Secondary Contacts in Control object are renamed (v.1.35.0, 12/20/2018)
 
@@ -189,7 +268,7 @@ You can use labels, to easily categorize and search for assessments. You can add
 
 ### Improvements to surfacing ‘related assessments’ (v0.10.37, 12/20/2017)
 
-The system will consider assessments as related between each other, if they are mapped to the same assessed objects or other mapped versions of it.    For example two assessments mapped to control A (or any versions of it) will be considered related.   If an assessment is mapped to control B it will be also considered related if control A and B are related.
+The system will consider assessments as related between each other, if they are mapped to the same assessed objects or other mapped versions of it. For example two assessments mapped to control A (or any versions of it) will be considered related. If an assessment is mapped to control B it will be also considered related if control A and B are related.
 
 ### Extend assessment assignees rights (v0.10.37, 12/20/2017)
 

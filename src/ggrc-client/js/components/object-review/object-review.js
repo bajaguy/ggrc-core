@@ -1,11 +1,11 @@
 /*
- Copyright (C) 2018 Google Inc., authors, and contributors
+ Copyright (C) 2019 Google Inc., authors, and contributors
  Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
  */
 
 import './request-review-modal';
-import template from './templates/object-review.mustache';
-import notificationTemplate from './templates/complete-review-notification.mustache';
+import template from './templates/object-review.stache';
+import notificationTemplate from './templates/complete-review-notification.stache';
 import Review from '../../models/service-models/review';
 import Permission from '../../permission';
 import {isSnapshot} from '../../plugins/utils/snapshot-utils';
@@ -18,19 +18,22 @@ import {
 import {getRole} from '../../plugins/utils/acl-utils';
 import {notifier} from '../../plugins/utils/notifiers-utils';
 
-const tag = 'object-review';
-
 export default can.Component.extend({
-  tag,
-  template,
-  viewModel: {
+  tag: 'object-review',
+  view: can.stache(template),
+  leakScope: true,
+  viewModel: can.Map.extend({
     define: {
       reviewStatus: {
         get() {
           let status = this.attr('review.status') ||
             this.attr('instance.review_status');
 
-          return status.toLowerCase();
+          if (status) {
+            return status.toLowerCase();
+          } else {
+            return '';
+          }
         },
       },
       isReviewed: {
@@ -127,7 +130,7 @@ export default can.Component.extend({
         item.person.id === GGRC.current_user.id);
 
       if (!isCurrentUserReviewer) {
-        const reviewerRole = getRole('Review', 'Reviewer');
+        const reviewerRole = getRole('Review', 'Reviewers');
 
         acl.push({
           ac_role_id: reviewerRole.id,
@@ -142,13 +145,15 @@ export default can.Component.extend({
       this.attr('review', event.review);
     },
     showLastChanges() {
-      this.attr('review').setShowLastReviewUpdates(true);
       this.attr('instance').dispatch({
         ...NAVIGATE_TO_TAB,
         tabId: 'change-log',
+        options: {
+          showLastReviewUpdates: true,
+        },
       });
     },
-  },
+  }),
   events: {
     inserted() {
       this.viewModel.loadReview();
@@ -156,7 +161,7 @@ export default can.Component.extend({
     '{viewModel.instance} modelAfterSave'() {
       this.viewModel.loadReview();
     },
-    [`{viewModel.instance} ${REFRESH_MAPPING.type}`](instance, event) {
+    [`{viewModel.instance} ${REFRESH_MAPPING.type}`]([instance], event) {
       // check destinationType because REFRESH_MAPPING is also dispatched on modal 'hide'
       if (event.destinationType) {
         this.viewModel.loadReview();

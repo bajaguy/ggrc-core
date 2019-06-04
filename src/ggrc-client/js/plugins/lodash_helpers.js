@@ -1,5 +1,5 @@
 /*
-    Copyright (C) 2018 Google Inc.
+    Copyright (C) 2019 Google Inc.
     Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 */
 
@@ -64,6 +64,17 @@
      */
     getExistingKeys: function (object) {
       return _.keys(_.pickBy(object, _.identity));
+    },
+
+    /**
+     *
+     * @param {Array} items - array of items.
+     * @param {Function} predicate - function with the condition for "map" operation
+     * @return {Array} - result of "map" operation without "null" and "undefined" values
+     */
+    filteredMap: function (items, predicate) {
+      return _.map(items, predicate)
+        .filter((item) => !_.isNull(item) && !_.isUndefined(item));
     },
   });
 })(_);

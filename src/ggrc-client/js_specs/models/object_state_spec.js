@@ -1,5 +1,5 @@
 /*
-    Copyright (C) 2018 Google Inc.
+    Copyright (C) 2019 Google Inc.
     Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 */
 
@@ -9,8 +9,8 @@ import Issue from '../../js/models/business-models/issue';
 import * as businessModels from '../../js/models/business-models';
 
 describe('Model states test', function () {
-  let basicStateObjects = ['AccessGroup', 'Contract',
-    'Control', 'DataAsset', 'Facility', 'Market',
+  let basicStateObjects = ['AccessGroup', 'AccountBalance', 'Contract',
+    'Control', 'DataAsset', 'Facility', 'KeyReport', 'Market',
     'Objective', 'OrgGroup', 'Policy', 'Process', 'Product', 'Program',
     'Project', 'Regulation', 'Risk', 'Requirement', 'Standard', 'System',
     'Threat', 'Vendor'];
@@ -42,11 +42,12 @@ describe('Model states test', function () {
 describe('Model "status" attr test', function () {
   const objectsWithState = ['Assessment', 'AssessmentTemplate', 'Audit',
     'Contract', 'Control', 'Cycle', 'Document', 'Evidence', 'Issue',
-    'Objective', 'Policy', 'Program', 'Regulation', 'Risk', 'RiskAssessment',
+    'Objective', 'Policy', 'Program', 'Regulation', 'Risk',
     'Requirement', 'Standard', 'Threat', 'Workflow'];
-  const objectsWithLaunchStatus = ['AccessGroup', 'DataAsset', 'Facility',
-    'Market', 'Metric', 'OrgGroup', 'Process', 'Product', 'ProductGroup',
-    'Project', 'System', 'TechnologyEnvironment', 'Vendor'];
+  const objectsWithLaunchStatus = ['AccessGroup', 'AccountBalance',
+    'DataAsset', 'Facility', 'KeyReport', 'Market', 'Metric', 'OrgGroup',
+    'Process', 'Product', 'ProductGroup', 'Project', 'System',
+    'TechnologyEnvironment', 'Vendor'];
 
   objectsWithState.forEach(function (object) {
     it(`checks if ${object} has State in attr_list`, () => {
@@ -76,13 +77,14 @@ describe('Model "status" attr test', function () {
 });
 
 describe('Model review state test', function () {
-  const reviewObjects = ['Contract', 'Control', 'Objective',
-    'Policy', 'Program', 'Regulation', 'Risk', 'Requirement', 'Standard',
+  const reviewObjects = ['Contract', 'Objective',
+    'Policy', 'Program', 'Regulation', 'Requirement', 'Standard',
     'Threat'];
-  const objectsWithoutReview = ['AccessGroup', 'Assessment',
-    'AssessmentTemplate', 'Audit', 'DataAsset', 'Facility', 'Issue', 'Market',
-    'Metric', 'OrgGroup', 'Process', 'Product', 'ProductGroup', 'Project',
-    'System', 'TechnologyEnvironment', 'Vendor'];
+  const externalReviewObjects = ['Control', 'Risk'];
+  const objectsWithoutReview = ['AccessGroup', 'AccountBalance', 'Assessment',
+    'AssessmentTemplate', 'Audit', 'DataAsset', 'Facility', 'Issue',
+    'KeyReport', 'Market', 'Metric', 'OrgGroup', 'Process', 'Product',
+    'ProductGroup', 'Project', 'System', 'TechnologyEnvironment', 'Vendor'];
 
   reviewObjects.forEach(function (object) {
     it('checks if ' + object + ' has review status in attr_list', () => {
@@ -93,6 +95,20 @@ describe('Model review state test', function () {
       expect(_.map(attrList, 'attr_name'))
         .toContain('review_status', 'for object ' + object);
     });
+  });
+
+  externalReviewObjects.forEach(function (object) {
+    it('checks if ' + object + ' has external review status in attr_list',
+      () => {
+        const attrList = businessModels[object].tree_view_options.attr_list;
+
+        let attr = attrList.
+          find((attr) => attr.attr_name === 'external_review_status');
+
+        expect(attr).not.toBeNull();
+        expect(attr.attr_title).toBe('Review Status');
+        expect(attr.attr_sort_field).toBe('review_status_display_name');
+      });
   });
 
   objectsWithoutReview.forEach(function (object) {

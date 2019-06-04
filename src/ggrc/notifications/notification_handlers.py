@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-# Copyright (C) 2018 Google Inc.
+# Copyright (C) 2019 Google Inc.
 # Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 
 """Notification handlers for object in the ggrc module.
@@ -21,11 +21,13 @@ from enum import Enum
 
 from sqlalchemy import inspect
 from sqlalchemy.sql.expression import true
+from werkzeug.exceptions import InternalServerError
 
 from ggrc import db
 from ggrc import notifications
 from ggrc.services import signals
 from ggrc import models
+from ggrc.utils import errors
 from ggrc.models.mixins.statusable import Statusable
 
 
@@ -173,11 +175,12 @@ def _add_state_change_notif(obj, state_change, remove_existing=False):
     _add_notification(obj, notif_type)
 
 
-def handle_assignable_modified(obj):  # noqa: ignore=C901
+def handle_assignable_modified(obj, event=None):  # noqa: ignore=C901
   """A handler for the Assignable object modified event.
 
   Args:
     obj (models.mixins.Assignable): an object that has been modified
+    event (models.Event): event which lead to object modification
   """
   attrs = inspect(obj).attrs
   status_history = attrs["status"].history
@@ -228,7 +231,8 @@ def handle_assignable_modified(obj):  # noqa: ignore=C901
       is_changed = True
       break
 
-  is_changed = is_changed or _ca_values_changed(obj)  # CA check only if needed
+  is_changed = is_changed or \
+      _ca_values_changed(obj, event)  # CA check only if needed
 
   if not is_changed:
     return  # no changes detected, nothing left to do
@@ -243,7 +247,7 @@ def handle_assignable_modified(obj):  # noqa: ignore=C901
   _add_assessment_updated_notif(obj)
 
 
-def _ca_values_changed(obj):
+def _ca_values_changed(obj, event):
   """Check if object's custom attribute values have been changed.
 
   The changes are determined by comparing the current object custom attributes
@@ -253,22 +257,34 @@ def _ca_values_changed(obj):
 
   Args:
     obj (models.mixins.Assignable): the object to check
+    event (models.Event): event which lead to object modification
 
   Returns:
     (bool) True if there is a change to any of the CA values, False otherwise.
   """
-  rev = db.session.query(models.Revision) \
-                  .filter_by(resource_id=obj.id, resource_type=obj.type) \
-                  .order_by(models.Revision.id.desc()) \
-                  .first()
-
+  filters = [models.Revision.resource_id == obj.id,
+             models.Revision.resource_type == obj.type]
+  if event and event.revisions:
+    filters.append(
+        ~models.Revision.id.in_(
+            [rev.id for rev in event.revisions
+             if rev.resource_type == obj.type and rev.resource_id == obj.id]
+        )
+    )
+  revision = db.session.query(
+      models.Revision
+  ).filter(
+      *filters
+  ).order_by(models.Revision.id.desc()).first()
+  if not revision:
+    raise InternalServerError(errors.MISSING_REVISION)
   new_attrs = {
       "custom_attribute_values":
       [value.log_json() for value in obj.custom_attribute_values],
       "custom_attribute_definitions":
       [defn.log_json() for defn in obj.custom_attribute_definitions]
   }
-  return any(notifications.get_updated_cavs(new_attrs, rev.content))
+  return any(notifications.get_updated_cavs(new_attrs, revision.content))
 
 
 def _align_by_ids(items, items2):
@@ -425,6 +441,11 @@ def register_handlers():  # noqa: C901
   def assignable_modified_listener(sender, obj=None, src=None, service=None):
     handle_assignable_modified(obj)
 
+  @signals.Restful.model_put_before_commit.connect_via(models.Assessment)
+  def assignable_put_listener(sender, obj=None, event=None, **kwargs):
+    """Assessment put before commit listener."""
+    handle_assignable_modified(obj, event)
+
   @signals.Restful.collection_posted.connect_via(models.Assessment)
   def assignable_created_listener(sender, objects=None, **kwargs):
     handle_assignable_created(objects)
@@ -443,7 +464,6 @@ def register_handlers():  # noqa: C901
       handle_comment_created(obj, src)
 
   @signals.Restful.model_posted.connect_via(models.Relationship)
-  @signals.Restful.model_put.connect_via(models.Relationship)
   @signals.Restful.model_deleted.connect_via(models.Relationship)
   def relationship_altered_listener(sender, obj=None, src=None, service=None):
     """Listener for modified relationships."""

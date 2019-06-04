@@ -1,0 +1,44 @@
+{{!
+    Copyright (C) 2019 Google Inc.
+    Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
+}}
+
+<div class="filter-group">
+  <div class="filter-group__header">
+    <a class="close-btn" href="javascript://" on:el:click="remove()">
+      <i class="fa fa-remove"></i>
+    </a>
+  </div>
+  <div class="filter-group__content">
+    {{#each items}}
+      {{#switch type}}
+        {{#case "attribute"}}
+        <div class="filter-group__attribute">
+          <advanced-search-filter-attribute
+            attribute:bind="value"
+            on:remove="removeItem(., true)"
+            availableAttributes:from="availableAttributes">
+          </advanced-search-filter-attribute>
+        </div>
+        {{/case}}
+        {{#case "operator"}}
+        <div class="filter-group__operator">
+          <advanced-search-filter-operator
+            operator:bind="value">
+          </advanced-search-filter-operator>
+        </div>
+        {{/case}}
+      {{/switch}}
+    {{/each}}
+  </div>
+  <div class="filter-group__footer">
+    <div>
+      <button type="button"
+              class="btn btn-small btn-white"
+              on:el:click="addFilterCriterion()">
+        Add Attribute
+      </button>
+    </div>
+  </div>
+</div>
+

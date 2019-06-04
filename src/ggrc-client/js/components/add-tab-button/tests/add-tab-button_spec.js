@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2018 Google Inc.
+  Copyright (C) 2019 Google Inc.
   Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 */
 
@@ -66,22 +66,6 @@ describe('add-tab-button component', function () {
 
         expect(result).toBe(true);
       });
-    });
-  });
-
-  describe('sortWidgets() method', () => {
-    it('sorts widget names in alphabetical order', () => {
-      const list = ['Policies', 'Audits', 'Contracts', 'Risks'];
-
-      viewModel.attr('widgetList',
-        list.map((name) => ({internav_display: name})));
-
-      viewModel.sortWidgets();
-
-      const result = viewModel.attr('widgetList')
-        .map((widget) => widget.internav_display).serialize();
-
-      expect(result).toEqual(list.sort());
     });
   });
 });

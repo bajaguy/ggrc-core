@@ -1,5 +1,5 @@
 /*
- Copyright (C) 2018 Google Inc.
+ Copyright (C) 2019 Google Inc.
  Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
  */
 
@@ -7,8 +7,9 @@ import Cacheable from '../cacheable';
 import tracker from '../../tracker';
 import caUpdate from '../mixins/ca-update';
 import Stub from '../stub';
+import {loadPersonProfile} from '../../plugins/utils/user-utils';
 
-export default Cacheable('CMS.Models.Person', {
+export default Cacheable.extend({
   root_object: 'person',
   root_collection: 'people',
   category: 'entities',
@@ -71,16 +72,25 @@ export default Cacheable('CMS.Models.Person', {
   sub_tree_view_options: {
     default_filter: ['Program', 'Control', 'Risk', 'Assessment'],
   },
-  init: function () {
-    let rEmail =
-      /^[-!#$%&*+\\./0-9=?A-Z^_`{|}~]+@([-0-9A-Z]+\.)+([0-9A-Z]){2,4}$/i;
-    this._super(...arguments);
-
-    this.validateNonBlank('email');
-    this.validateFormatOf('email', rEmail);
-    this.validateNonBlank('name');
-  },
 }, {
+  define: {
+    email: {
+      value: '',
+      validate: {
+        required: true,
+        format: {
+          pattern:
+            /^[-!#$%&*+\\./0-9=?A-Z^_`{|}~]+@([-0-9A-Z]+\.)+([0-9A-Z]){2,4}$/i,
+        },
+      },
+    },
+    name: {
+      value: '',
+      validate: {
+        required: true,
+      },
+    },
+  },
   display_name: function () {
     return this.email;
   },
@@ -131,5 +141,12 @@ export default Cacheable('CMS.Models.Person', {
         stopFn(true);
         console.warn(`Request on '${url}' failed!`);
       });
+  },
+  form_preload(newObjectForm) {
+    if (newObjectForm) {
+      return $.Deferred().resolve();
+    }
+
+    return loadPersonProfile(this);
   },
 });

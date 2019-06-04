@@ -1,11 +1,13 @@
 /*
- Copyright (C) 2018 Google Inc.
+ Copyright (C) 2019 Google Inc.
  Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
  */
 
-import template from './people-list-info.mustache';
+import '../three-dots-menu/three-dots-menu';
+
+import template from './people-list-info.stache';
 import '../../models/service-models/role';
-import PersonProfile from '../../models/service-models/person-profile';
+import {loadPersonProfile} from '../../plugins/utils/user-utils';
 
 let viewModel = can.Map.extend({
   instance: null,
@@ -15,6 +17,14 @@ let viewModel = can.Map.extend({
   isRefreshed: false,
   isSaving: false,
   isAttributesDisabled: false,
+  define: {
+    isNoRole: {
+      type: Boolean,
+      get() {
+        return this.attr('instance.system_wide_role') === 'No Access';
+      },
+    },
+  },
   async onSendCalendarEventsChange({checked}) {
     const profile = this.attr('profile');
 
@@ -36,16 +46,14 @@ let viewModel = can.Map.extend({
     this.attr('isRefreshed', true);
   },
   async loadPersonProfile() {
-    const profile = await PersonProfile.findOne({
-      id: this.attr('instance.profile.id'),
-    });
-    this.attr('profile', profile);
+    this.attr('profile', await loadPersonProfile(this.attr('instance')));
   },
 });
 
 export default can.Component.extend({
   tag: 'people-list-info',
-  template,
+  view: can.stache(template),
+  leakScope: true,
   viewModel,
   events: {
     ' open'() {

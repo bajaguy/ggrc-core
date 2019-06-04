@@ -38,12 +38,14 @@ have Docker up and running. Here are the steps:
 
 **NOTE for Windows/OSX users:** Make sure `docker` is up and running by following the [windows guide](https://docs.docker.com/engine/installation/windows/#using-docker-from-windows-command-prompt-cmd-exe) / [osx guide](https://docs.docker.com/engine/installation/mac/#from-your-shell).
 
+**NOTE:** Navigate to [main](https://github.com/google/ggrc-core/tree/main) branch to retrieve complete control functionality (such as create/edit/deprecate controls). Control functionality to create, edit & deprecate is unavailable on other branches.
+
 * clone the repo
 * cd to the project directory
 * Set up the necessary keys:
 
 ``` sh
-mv docker-compose.override.yml{.example,}
+cp docker-compose.override.yml{.example,}
 vim docker-compose.override.yml # Add the keys from cloud console
 ```
 * Run the following:
@@ -118,7 +120,7 @@ by default and can be monitored with:
 docker exec $(docker container ls -f name=ggrccore_db_1 -q -a) tail -f /tmp/mysql.log
 ```
 
-Error logs, with all deadlock information: 
+Error logs, with all deadlock information:
 
 ```
 docker exec $(docker container ls -f name=ggrccore_db_1 -q -a) tail -f /tmp/mysql_error.log
@@ -132,7 +134,7 @@ docker exec $(docker container ls -f name=ggrccore_db_1 -q -a) tail -f /tmp/slow
 
 ## Running Tests
 
-Tests are your friend! Keep them running, keep them updated.
+Tests are your friends! Keep them running, keep them updated.
 
 #### For JavaScript tests:
 
@@ -147,13 +149,42 @@ need to debug an issue in the Chrome browser. For performance reasons
 `run_karma_chrome` does not automatically build assets, so make sure you do it
 manually by running `build_assets`.
 
+##### Measure test coverage
+
+```sh
+test_coverage run # To measure JavaScript test coverage
+test_coverage clean # To remove coverage report
+```
+
+`test_coverage run` will generate coverage report at `coverage/index.html`
+
 #### For Python tests:
 
+To run all python integration and unit tests use:
 ```sh
 run_pytests
 ```
 
-The script will run unit tests and integration tests.
+To run just integration tests use:
+
+```sh
+run_integration  # for full test suite
+
+# or in smaller chunks
+run_integration_ggrc  # everything inside integration/ggrc without ACL 
+run_integration_acl  # everything inside integration/ggrc/access_control
+run_integration_non_ggrc  # everything else (or other modules than ggrc)
+```
+
+Note:
+To run individual python tests without the run\_integration script you must
+initiate test environment, otherwise external users will fail to generate.
+
+```sh
+source bin/init_test_env 
+nosetests /vagrant/test/integration/ggrc/test_my_test_file.py
+```
+
 
 For better usage of unit tests, you can use sniffer inside the test/unit folder.
 This will run the tests on each file update.
@@ -284,7 +315,7 @@ Put this in `/etc/docker/daemon.json`:
 {
    "dns": ["10.0.0.2", "10.0.0.3"]
 }
-```   
+```
 Exit from root:
 ```
 # exit
@@ -348,14 +379,15 @@ defined, `DEV_PREFIX` defaults to the value of `PREFIX`. (In the VM,
 it is defined to `/vagrant-dev` to avoid slowdown caused by the shared
 filesystem at `/vagrant`.)
 
-### Changes to Requirements Files
+### Changes python requirements
 
 The first thing to try to resolve issues due to missing prerequisites is to
 run the following command from within the project directory in the host
 operating system:
 
 ```sh
-docker-compose build
+./bin/containers setup
+./bin/containers run
 ```
 
 command *should* be an update Python virtualenv containing the Python packages
@@ -376,8 +408,19 @@ Note that if you're using `launch_gae_ggrc`, then changes to
 make appengine_packages
 ```
 
+### Changes JS requirements
+
+On every change of front-end packages or just to reinstall them,
+you can run *inside* the container:
+
+```sh
+refresh
+```
+
+and then run `build_assets` or `watch_assets` to rebuild files
+
 # Copyright Notice
 
-Copyright (C) 2013-2018 Google Inc.
+Copyright (C) 2013-2019 Google Inc.
 Licensed under the [Apache 2.0](http://www.apache.org/licenses/LICENSE-2.0)
 license (see the LICENSE file).

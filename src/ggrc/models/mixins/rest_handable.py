@@ -1,4 +1,4 @@
-# Copyright (C) 2018 Google Inc.
+# Copyright (C) 2019 Google Inc.
 # Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 
 """Contains mixins for handle REST events issued by signals.
@@ -27,6 +27,42 @@ class WithPutHandable(object):
       model.handle_put(kwargs["obj"])
 
 
+class WithPutAfterCommitHandable(object):
+  """Mixin that adds PUT after commit handler."""
+  __lazy_init__ = True
+
+  def handle_put_after_commit(self, event):
+    """PUT after commit handler."""
+    raise NotImplementedError
+
+  @classmethod
+  def init(cls, model):
+    """Init handlers."""
+    # pylint: disable=unused-variable,unused-argument
+    @signals.Restful.model_put_after_commit.connect_via(model)
+    def model_put_after_commit(*args, **kwargs):
+      """PUT after commit handler."""
+      model.handle_put_after_commit(kwargs["obj"], kwargs["event"])
+
+
+class WithDeleteHandable(object):
+  """Mixin that adds DELETE handler"""
+  __lazy_init__ = True
+
+  def handle_delete(self):
+    """DELETE handler"""
+    raise NotImplementedError
+
+  @classmethod
+  def init(cls, model):
+    """Init handlers"""
+    # pylint: disable=unused-variable,unused-argument
+    @signals.Restful.model_deleted.connect_via(model)
+    def model_delete(*args, **kwargs):
+      """DELETE handler"""
+      model.handle_delete(kwargs["obj"])
+
+
 class WithPostHandable(object):
   """Mixin that adds POST handler"""
   __lazy_init__ = True
@@ -45,16 +81,30 @@ class WithPostHandable(object):
       model.handle_post(kwargs["obj"])
 
 
+class WithPostAfterCommitHandable(object):
+  """Mixin that adds POST after commit handler."""
+  __lazy_init__ = True
+
+  def handle_posted_after_commit(self, event):
+    """POST after commit handler."""
+    raise NotImplementedError
+
+  @classmethod
+  def init(cls, model):
+    """Init handlers."""
+    # pylint: disable=unused-variable,unused-argument
+    @signals.Restful.model_posted_after_commit.connect_via(model)
+    def model_posted_after_commit(*args, **kwargs):
+      """POST after commit handler."""
+      model.handle_posted_after_commit(kwargs["obj"], kwargs["event"])
+
+
 class WithRelationshipsHandable(object):
   """Mixin that adds relationship POST/PUT/DELETE handlers"""
   __lazy_init__ = True
 
   def handle_relationship_post(self, counterparty):
     """relationship POST handler"""
-    pass
-
-  def handle_relationship_put(self, counterparty):
-    """relationship PUT handler"""
     pass
 
   def handle_relationship_delete(self, counterparty):
@@ -93,15 +143,6 @@ class WithRelationshipsHandable(object):
         return
       obj, counterparty = get_obj_counterparty(relationship)
       model.handle_relationship_post(obj, counterparty)
-
-    @signals.Restful.model_put.connect_via(all_models.Relationship)
-    def relationship_updated(*args, **kwargs):
-      """relationship PUT handler"""
-      relationship = kwargs["obj"]
-      if not is_in_relationship(relationship):
-        return
-      obj, counterparty = get_obj_counterparty(relationship)
-      model.handle_relationship_put(obj, counterparty)
 
     @signals.Restful.model_deleted.connect_via(all_models.Relationship)
     def relationship_delete(*args, **kwargs):

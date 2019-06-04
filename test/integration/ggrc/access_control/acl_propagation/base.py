@@ -1,4 +1,4 @@
-# Copyright (C) 2018 Google Inc.
+# Copyright (C) 2019 Google Inc.
 # Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 
 """Test Access Control roles propagation."""
@@ -147,7 +147,7 @@ class TestACLPropagation(TestCase):
       else:
         self.assert_status(res, expected_res)
 
-  def runtest(self, role, model, action_name, expected_result):
+  def runtest(self, role, model, action_name, expected_result, **kwargs):
     """Run integration RBAC test.
 
     Args:
@@ -159,7 +159,7 @@ class TestACLPropagation(TestCase):
     model_name, parent = model, None
     if " " in model:
       model_name, parent = model.split(" ")
-    rbac_factory = self.init_factory(role, model_name, parent)
+    rbac_factory = self.init_factory(role, model_name, parent, **kwargs)
     if not rbac_factory:
       raise Exception("There is no factory for model '{}'".format(model_name))
 

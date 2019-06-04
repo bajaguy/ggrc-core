@@ -1,4 +1,4 @@
-# Copyright (C) 2018 Google Inc.
+# Copyright (C) 2019 Google Inc.
 # Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 
 """Check number of db queries per API request.
@@ -56,8 +56,8 @@ class TestComprehensiveSheets(TestCase):
 
   LIMIT_DICT = {
       "LIST": {
-          all_models.Revision: 67,
-          all_models.Event: 69,
+          all_models.Revision: 86,
+          all_models.Event: 291,
       },
       "SINGLE": {}
   }
@@ -76,7 +76,7 @@ class TestComprehensiveSheets(TestCase):
         self.generator.api.get_query(model, "")
         if counter.get > limit:
           print collections.Counter(counter.queries).most_common(1)
-        self.assertLess(
+        self.assertLessEqual(
             counter.get,
             limit,
             "Query count for object {} exceeded: {}/{}".format(
@@ -138,3 +138,5 @@ class TestComprehensiveSheets(TestCase):
       cad(definition_type="program", title="my_dropdown",
           attribute_type="Dropdown",
           multi_choice_options="a,b,c,d")
+      cad(definition_type="program", title="my_multiselect",
+          attribute_type="Multiselect")

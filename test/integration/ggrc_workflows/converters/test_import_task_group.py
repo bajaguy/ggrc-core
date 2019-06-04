@@ -1,4 +1,4 @@
-# Copyright (C) 2018 Google Inc.
+# Copyright (C) 2019 Google Inc.
 # Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 """Tests for TaskGroup import."""
 
@@ -94,35 +94,38 @@ class TestTaskGroupImport(WorkflowTestCase):
     self.assertFalse(task_group.contact)
 
   @ddt.data(
-      (all_models.OrgGroup.__name__, True),
-      (all_models.Vendor.__name__, True),
-      (all_models.AccessGroup.__name__, True),
-      (all_models.System.__name__, True),
-      (all_models.Process.__name__, True),
-      (all_models.DataAsset.__name__, True),
-      (all_models.Product.__name__, True),
-      (all_models.Project.__name__, True),
-      (all_models.Facility.__name__, True),
-      (all_models.Market.__name__, True),
-      (all_models.Program.__name__, True),
-      (all_models.Regulation.__name__, True),
-      (all_models.Policy.__name__, True),
-      (all_models.Standard.__name__, True),
-      (all_models.Contract.__name__, True),
-      (all_models.Requirement.__name__, True),
-      (all_models.Control.__name__, True),
-      (all_models.Objective.__name__, True),
-      (all_models.Issue.__name__, True),
-      (all_models.Risk.__name__, True),
-      (all_models.Threat.__name__, True),
-      (all_models.Assessment.__name__, False),
-      (all_models.Audit.__name__, False),
-      (all_models.Metric.__name__, True),
-      (all_models.ProductGroup.__name__, True),
-      (all_models.TechnologyEnvironment.__name__, True),
+      (all_models.OrgGroup.__name__, "org group", True),
+      (all_models.Vendor.__name__, "vendor", True),
+      (all_models.AccessGroup.__name__, "access group", True),
+      (all_models.System.__name__, "system", True),
+      (all_models.Process.__name__, "process", True),
+      (all_models.DataAsset.__name__, "data asset", True),
+      (all_models.Product.__name__, "product", True),
+      (all_models.Project.__name__, "project", True),
+      (all_models.Facility.__name__, "facility", True),
+      (all_models.Market.__name__, "market", True),
+      (all_models.Program.__name__, "program", True),
+      (all_models.Regulation.__name__, "regulation", True),
+      (all_models.Policy.__name__, "policy", True),
+      (all_models.Standard.__name__, "standard", True),
+      (all_models.Contract.__name__, "contract", True),
+      (all_models.Requirement.__name__, "requirement", True),
+      (all_models.Control.__name__, "control", True),
+      (all_models.Objective.__name__, "objective", True),
+      (all_models.Issue.__name__, "issue", True),
+      (all_models.Risk.__name__, "risk", True),
+      (all_models.Threat.__name__, "threat", True),
+      (all_models.Assessment.__name__, "assessment", False),
+      (all_models.Audit.__name__, "audit", False),
+      (all_models.Metric.__name__, "metric", True),
+      (all_models.ProductGroup.__name__, "product group", True),
+      (all_models.TechnologyEnvironment.__name__,
+       "technology environment", True),
+      (all_models.KeyReport.__name__, "key report", True),
+      (all_models.AccountBalance.__name__, "account balance", True),
   )
   @ddt.unpack
-  def test_task_group_import_objects(self, model_name, is_mapped):
+  def test_task_group_import_objects(self, model_name, header_name, is_mapped):
     """"Tests import TaskGroup with mapping to object: {0}."""
 
     mapped_slug = "MAPPEDOBJECT-1"
@@ -133,22 +136,27 @@ class TestTaskGroupImport(WorkflowTestCase):
         ("object_type", all_models.TaskGroup.__name__),
         ("code", self.TG_SLUG),
         ("workflow", self.WF_SLUG),
-        ("objects", "{}: {}".format(model_name, mapped_slug))
+        ("map:{}".format(header_name), "{}".format(mapped_slug))
     ])
     result = self.import_data(tg_data)
     task_group = all_models.TaskGroup.query.one()
+    mapped_objs = filter(lambda obj: obj.__class__.__name__ == model_name,
+                         task_group.related_objects())
     if is_mapped:
-      self.assertEqual(len(task_group.task_group_objects), 1)
-      self.assertEqual(task_group.task_group_objects[0].object.slug,
+      self.assertEqual(len(mapped_objs), 1)
+      self.assertEqual(mapped_objs.pop().slug,
                        mapped_slug)
       self.assertEqual(len(result[0]['row_warnings']), 0)
     else:
-      self.assertEqual(len(task_group.task_group_objects), 0)
-      self.assertEqual(len(result[0]['row_warnings']), 1)
+      self.assertEqual(len(mapped_objs), 0)
+      self.assertEqual(len(result[0]['block_warnings']), 1)
       self.assertEqual(
-          result[0]['row_warnings'][0],
-          errors.INVALID_TASKGROUP_MAPPING_WARNING.format(
-              line=3, object_class=model_name
+          result[0]['block_warnings'][0],
+          errors.UNSUPPORTED_MAPPING.format(
+              line=2,
+              obj_a="Task Group",
+              obj_b=header_name,
+              column_name="map:{}".format(header_name)
           )
       )
 
@@ -290,3 +298,49 @@ class TestTaskGroupTaskImport(WorkflowTestCase):
     self._check_csv_response(response, expected_messages)
     self.assertEquals(start_date_before, start_date_after)
     self.assertEquals(end_date_before, end_date_after)
+
+  @ddt.data(
+      (
+          "",
+          datetime.date(2018, 7, 21),
+          {u"Line 3: Field 'Start Date' is required. "
+           u"The line will be ignored."},
+      ),
+      (
+          datetime.date(2018, 7, 14),
+          "",
+          {u"Line 3: Field 'End Date' is required. "
+           u"The line will be ignored."},
+      ),
+      (
+          "",
+          "",
+          {u"Line 3: Field 'Start Date' is required. "
+           u"The line will be ignored.",
+           u"Line 3: Field 'End Date' is required. "
+           u"The line will be ignored."},
+      ),
+  )
+  # pylint: disable=invalid-name
+  @ddt.unpack
+  def test_start_end_dates_error(self, start_date, end_date,
+                                 expected_errors):
+    """Tests import error message with empty start/end dates."""
+
+    tgt_import_data = collections.OrderedDict([
+        ("object_type", "Task Group Task"),
+        ("code", "code"),
+        ("task type", "Rich Text"),
+        ("task group", self.task_group.slug),
+        ("summary", "Task group test task 1"),
+        ("start date*", start_date),
+        ("end date*", end_date),
+        ("task assignees", self.person.email),
+    ])
+    response = self.import_data(tgt_import_data)
+    expected_messages = {
+        "Task Group Task": {
+            "row_errors": expected_errors,
+        }
+    }
+    self._check_csv_response(response, expected_messages)

@@ -1,11 +1,12 @@
 /*
-  Copyright (C) 2018 Google Inc.
+  Copyright (C) 2019 Google Inc.
   Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 */
 
 import CycleTaskGroupObjectTask from '../cycle-task-group-object-task';
 import Workflow from '../workflow';
 import {makeFakeInstance} from '../../../../js_specs/spec_helpers';
+import * as ReifyUtils from '../../../plugins/utils/reify-utils';
 
 describe('CycleTaskGroupObjectTask model', function () {
   let fakeCTModelCreator;
@@ -43,7 +44,7 @@ describe('CycleTaskGroupObjectTask model', function () {
         },
       });
 
-      spyOn(instance.cycle, 'reify').and.returnValue(instance.cycle);
+      spyOn(ReifyUtils, 'reify').and.returnValue(instance.cycle);
 
       method = Model.prototype.responseOptionsEditable.bind(instance);
     });
@@ -101,7 +102,7 @@ describe('CycleTaskGroupObjectTask model', function () {
 
     it('populates the workflow and related objects ' +
       'when creating new task from workflow page',
-    function () {
+    function (done) {
       let cycles = [{
         id: 'cycle id',
         is_current: true}];
@@ -114,17 +115,23 @@ describe('CycleTaskGroupObjectTask model', function () {
         cycles: cycles,
       });
 
+      let resolveChain = $.Deferred().resolve(cycles);
+
+      spyOn(Workflow, 'findInCacheById').and.returnValue(workflow);
       spyOn(workflow, 'refresh_all').and
-        .returnValue($.Deferred().resolve(cycles));
+        .returnValue(resolveChain);
 
       instance.form_preload(true, {workflow: workflow});
 
-      expect(instance.attr('workflow.id')).toEqual('workflow id');
-      expect(instance.attr('workflow.type')).toEqual('Workflow');
-      expect(instance.attr('context.id')).toEqual('context id');
-      expect(instance.attr('context.type')).toEqual('Context');
-      expect(instance.attr('cycle.id')).toEqual('cycle id');
-      expect(instance.attr('cycle.type')).toEqual('Cycle');
+      resolveChain.then(() => {
+        expect(instance.attr('workflow.id')).toEqual('workflow id');
+        expect(instance.attr('workflow.type')).toEqual('Workflow');
+        expect(instance.attr('context.id')).toEqual('context id');
+        expect(instance.attr('context.type')).toEqual('Context');
+        expect(instance.attr('cycle.id')).toEqual('cycle id');
+        expect(instance.attr('cycle.type')).toEqual('Cycle');
+        done();
+      });
     });
   });
 });

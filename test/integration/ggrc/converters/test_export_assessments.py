@@ -1,4 +1,4 @@
-# Copyright (C) 2018 Google Inc.
+# Copyright (C) 2019 Google Inc.
 # Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 
 
@@ -255,12 +255,10 @@ class TestExport(TestCase):
           title="Simple title",
           kind=all_models.Evidence.FILE,
           link="https://d.go.com/d/18YJavJlv8YvIoCy/edit",
-          description="mega description",
-          parent_obj={
-              "id": self.assessment.id,
-              "type": "Assessment"
-          }
+          description="mega description"
       )
+      factories.RelationshipFactory(source=self.assessment,
+                                    destination=evid_file)
       evid_file_link = evid_file.link
       evid_file_title = evid_file.title
 
@@ -268,12 +266,10 @@ class TestExport(TestCase):
           title="Simple title",
           kind=all_models.Evidence.URL,
           link="google.com",
-          description="mega description",
-          parent_obj={
-              "id": self.assessment.id,
-              "type": "Assessment"
-          }
+          description="mega description"
       )
+      factories.RelationshipFactory(source=self.assessment,
+                                    destination=evid_url)
       evid_url_link = evid_url.link
 
     search_request = [{

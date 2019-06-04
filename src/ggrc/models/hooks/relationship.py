@@ -1,4 +1,4 @@
-# Copyright (C) 2018 Google Inc.
+# Copyright (C) 2019 Google Inc.
 # Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 
 """Relationship creation/modification hooks."""
@@ -9,14 +9,16 @@ import logging
 import itertools
 
 import sqlalchemy as sa
+from werkzeug.exceptions import BadRequest
 
 from ggrc import db
-from ggrc.models.hooks import assessment
-from ggrc.services import signals
+from ggrc.login import is_external_app_user
 from ggrc.models import all_models
-from ggrc.models.comment import Commentable
-from ggrc.models.mixins.base import ChangeTracked
 from ggrc.models import exceptions
+from ggrc.models.comment import Commentable, ExternalCommentable
+from ggrc.models.hooks import assessment
+from ggrc.models.mixins.base import ChangeTracked
+from ggrc.services import signals
 
 
 LOGGER = logging.getLogger(__name__)
@@ -300,24 +302,17 @@ def copy_snapshot_test_plan(objects):
         assessment.copy_snapshot_plan(asmnt, snapshot)
 
 
+def delete_comment_notification(comment):
+  """Remove notification for external model comments."""
+  all_models.Notification.query.filter(
+      all_models.Notification.object_type == "Comment",
+      all_models.Notification.object_id == comment.id
+  ).delete()
+
+
 def init_hook():  # noqa
   """Initialize Relationship-related hooks."""
   # pylint: disable=unused-variable
-
-  @signals.Restful.collection_posted.connect_via(all_models.Relationship)
-  def handle_comment_mapping(sender, objects=None, **kwargs):
-    """Update Commentable.updated_at when Comment mapped."""
-    # pylint: disable=unused-argument
-    for obj in objects:
-      if obj.source_type != u"Comment" and obj.destination_type != u"Comment":
-        continue
-
-      comment, other = obj.source, obj.destination
-      if comment.type != u"Comment":
-        comment, other = other, comment
-
-      if isinstance(other, (Commentable, ChangeTracked)):
-        other.updated_at = datetime.utcnow()
 
   sa.event.listen(sa.orm.session.Session, "before_flush",
                   handle_new_audit_issue_mapping)
@@ -354,3 +349,67 @@ def init_hook():  # noqa
     """Handle assessment test plan"""
     # pylint: disable=unused-argument
     copy_snapshot_test_plan(objects)
+
+  @signals.Restful.collection_posted.connect_via(all_models.Relationship)
+  def handle_comment_mapping(sender, objects=None, **kwargs):
+    """Update Commentable.updated_at when Comment mapped."""
+    # pylint: disable=unused-argument
+
+    for obj in objects:
+      if (obj.source_type not in ("Comment", "ExternalComment") and
+         obj.destination_type not in ("Comment", "ExternalComment")):
+        continue
+
+      comment, other = obj.source, obj.destination
+      if comment.type not in ("Comment", "ExternalComment"):
+        comment, other = other, comment
+
+      if isinstance(other, (Commentable, ExternalCommentable, ChangeTracked)):
+        other.updated_at = datetime.utcnow()
+
+  @signals.Restful.model_posted_after_commit.connect_via(
+      all_models.Relationship
+  )
+  def handle_posted_after_commit(obj_class, obj, **kwargs):
+    """Send people mentions on comment posted."""
+    # pylint: disable=unused-argument
+    from ggrc.notifications import people_mentions
+
+    if (obj.source_type not in ("Comment", "ExternalComment") and
+       obj.destination_type not in ("Comment", "ExternalComment")):
+      return
+
+    comment, other = obj.source, obj.destination
+    if comment.type not in ("Comment", "ExternalComment"):
+      comment, other = other, comment
+
+    if isinstance(other, (Commentable, ExternalCommentable, ChangeTracked)):
+      people_mentions.handle_comment_mapped(obj=other, comments=[comment])
+
+  @signals.Restful.collection_posted.connect_via(all_models.Relationship)
+  def forbid_self_relationship(sender, objects=None, **kwargs):
+    """Validates that created Relationship doesn't have same object
+    as source and destination"""
+    # pylint: disable=unused-argument
+    for obj in objects:
+      if (obj.source_type == obj.destination_type and
+              obj.source_id == obj.destination_id):
+        raise BadRequest("The mapping of object on itself is not possible")
+
+  # pylint: disable=unused-argument
+  @signals.Restful.collection_posted.connect_via(all_models.Relationship)
+  def validate_external_creation(sender, objects=None, **kwargs):
+    """
+        Validate that external user can't create regular relationships.
+        Validate that local user can't create external relationships.
+    """
+    error_message = (
+        u"You do not have the necessary permissions to "
+        u"create {} relationships."
+    )
+    for obj in objects:
+      if is_external_app_user() and not obj.is_external:
+        raise BadRequest(error_message.format("regular"))
+
+      elif not is_external_app_user() and obj.is_external:
+        raise BadRequest(error_message.format("external"))

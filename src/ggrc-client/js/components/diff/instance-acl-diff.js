@@ -1,5 +1,5 @@
 /*
- Copyright (C) 2018 Google Inc., authors, and contributors
+ Copyright (C) 2019 Google Inc., authors, and contributors
  Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
  */
 
@@ -7,8 +7,7 @@ import {buildModifiedACL} from '../../plugins/utils/object-history-utils';
 import {getRoleById} from '../../plugins/utils/acl-utils';
 import {REFRESH_PROPOSAL_DIFF} from '../../events/eventTypes';
 import DiffBaseVM from './diff-base-vm';
-import template from './templates/instance-diff-items.mustache';
-const tag = 'instance-acl-diff';
+import template from './templates/instance-diff-items.stache';
 
 const viewModel = DiffBaseVM.extend({
   modifiedAcl: {},
@@ -66,8 +65,9 @@ const viewModel = DiffBaseVM.extend({
 });
 
 export default can.Component.extend({
-  tag,
-  template,
+  tag: 'instance-acl-diff',
+  view: can.stache(template),
+  leakScope: true,
   viewModel: viewModel,
   events: {
     buildDiff() {

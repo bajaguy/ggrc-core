@@ -1,12 +1,13 @@
 /*
-    Copyright (C) 2018 Google Inc.
+    Copyright (C) 2019 Google Inc.
     Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 */
 
 import Cacheable from '../cacheable';
 import Stub from '../stub';
+import {trigger} from 'can-event';
 
-export default Cacheable('CMS.Models.Relationship', {
+export default Cacheable.extend({
   root_object: 'relationship',
   root_collection: 'relationships',
   attributes: {
@@ -59,7 +60,7 @@ export default Cacheable('CMS.Models.Relationship', {
         '?cascade=' + cascade,
     })
       .done(function () {
-        can.trigger(this.constructor, 'destroyed', this);
+        trigger.call(this.constructor, 'destroyed', this);
       }.bind(this));
   },
 });

@@ -1,4 +1,4 @@
-# Copyright (C) 2018 Google Inc.
+# Copyright (C) 2019 Google Inc.
 # Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 """Page objects for child elements of pages"""
 # pylint: disable=too-few-public-methods
@@ -67,6 +67,8 @@ class SimpleField(object):
   def __init__(self, container, label):
     self._label_text = label
     self._root = container.h6(text=label).parent()
+    if "action-toolbar" in self._root.classes:
+      self._root = self._root.parent()
 
   @property
   def text(self):
@@ -96,15 +98,31 @@ class Datepicker(object):
   def _set_date(self, date):
     """Sets active date in datepicker using JQuery UI Datepicker API."""
     jquery_ui_picker_el = self._root.element(class_name="datepicker__calendar")
+    date = date if isinstance(date, str) else date.strftime("%Y-%m-%d")
     self._root.browser.execute_script("""
       var datepicker_el = $(arguments[0]);
       var date = arguments[1];
       datepicker_el.datepicker("setDate", date);
-    """, jquery_ui_picker_el, date.strftime("%Y-%m-%d"))
+    """, jquery_ui_picker_el, date)
 
   def _click_active_date(self):
     """Clicks date that is marked as active."""
     self._root.element(class_name="ui-state-active").click()
+
+
+class AssertionsDropdown(object):
+  """Assertions Dropdown element."""
+  def __init__(self, container):
+    self.text = "Assertions"
+    self._root = container.element(
+        class_name="custom-attr-wrap").element(text=self.text)
+    self.assertions_values = self._root.parent().text.splitlines()[1:]
+    self._inline_edit = InlineEdit(self._root)
+    self.input = self._root.select(class_name="input-block-level")
+
+  def open_inline_edit(self):
+    """Open element for editing."""
+    self._inline_edit.open()
 
 
 class RelatedPeopleList(object):
@@ -115,23 +133,32 @@ class RelatedPeopleList(object):
         class_name="people-group__title", text=acr_name).parent(
             class_name="people-group")
     if with_inline_edit:
-      self._inline_edit = InlineEdit(self._root)
+      self.inline_edit = InlineEdit(self._root)
     else:
-      self._inline_edit = None
+      self.inline_edit = None
+
+  @property
+  def add_person_text_field(self):
+    """Returns 'Add person' text field object."""
+    return self._root.text_field(placeholder="Add person")
 
   def add_person(self, person):
     """Adds person to Related People list."""
-    if self._inline_edit:
-      self._inline_edit.open()
+    if self.inline_edit:
+      self.inline_edit.open()
     email = person.email
-    self._root.text_field(placeholder="Add person").set(email)
+    self.add_person_text_field.set(email)
     ui_utils.select_user(self._root, email)
-    if self._inline_edit:
-      self._inline_edit.confirm()
+    if self.inline_edit:
+      self.inline_edit.confirm()
 
   def get_people_emails(self):
     """Get emails of people"""
     return [el.text for el in self._root.elements(class_name="person-name")]
+
+  def exists(self):
+    """Returns whether element exists."""
+    return self._root.exists
 
 
 class RelatedUrls(object):
@@ -149,7 +176,8 @@ class AssessmentEvidenceUrls(object):
 
   def __init__(self, container):
     self._root = container.element(
-        class_name="info-pane__section-title", text="Evidence URL").parent()
+        class_name="info-pane__section-title_spinnerable",
+        text="Evidence URL").parent()
 
   def add_url(self, url):
     """Add url"""
@@ -166,13 +194,20 @@ class CommentArea(object):
   """Represents comment area (form and mapped comments) on info widget"""
 
   def __init__(self, container):
+    self._container = container
     self.add_section = container.element(
-        class_name="comment-add-form__section")
+        text="Responses/Comments").parent().button(text="Add")
 
   @property
   def exists(self):
     """Returns whether comment area exists."""
     return self.add_section.exists
+
+  @property
+  def control_add_section(self):
+    """Returns controls Add Comment button."""
+    return self._container.element(tag_name="comments-section").element(
+        tag_name="questionnaire-link").link(class_name="questionnaire-link")
 
 
 class CustomAttributeManager(object):
@@ -232,6 +267,7 @@ class CustomAttribute(object):
         AdminWidgetCustomAttributes.RICH_TEXT: RichTextCAActionsStrategy,
         AdminWidgetCustomAttributes.DATE: DateCAActionsStrategy,
         AdminWidgetCustomAttributes.CHECKBOX: CheckboxCAActionsStrategy,
+        AdminWidgetCustomAttributes.MULTISELECT: MultiselectCAActionsStrategy,
         AdminWidgetCustomAttributes.DROPDOWN: DropdownCAActionsStrategy,
         AdminWidgetCustomAttributes.PERSON: PersonCAActionsStrategy
     }[self.ca_type](self._root, self._label_el)
@@ -262,6 +298,7 @@ class CustomAttribute(object):
         "text": AdminWidgetCustomAttributes.RICH_TEXT,
         "date": AdminWidgetCustomAttributes.DATE,
         "checkbox": AdminWidgetCustomAttributes.CHECKBOX,
+        "multiselect": AdminWidgetCustomAttributes.MULTISELECT,
         "dropdown": AdminWidgetCustomAttributes.DROPDOWN,
         "person": AdminWidgetCustomAttributes.PERSON
     }[js_type]
@@ -274,7 +311,7 @@ class CustomAttribute(object):
       value = self._ca_strategy.get_lcas_from_inline()
     empty_string_strategies = (
         TextCAActionsStrategy, RichTextCAActionsStrategy,
-        DropdownCAActionsStrategy)
+        MultiselectCAActionsStrategy, DropdownCAActionsStrategy)
     if isinstance(self._ca_strategy, empty_string_strategies) and value == "":
       return None
     elif (isinstance(self._ca_strategy, DateCAActionsStrategy) and
@@ -296,6 +333,11 @@ class CustomAttribute(object):
     else:
       self._ca_strategy.set_gcas_from_popup(value)
 
+  def open_edit(self):
+    """Opens edit form for custom attribute."""
+    self._ca_strategy.open_gcas_from_inline()
+    return self._ca_strategy
+
 
 class CAActionsStrategy(object):
   """Parent class for custom attribute actions."""
@@ -303,6 +345,10 @@ class CAActionsStrategy(object):
     self._root = root
     self._label_el = label_el
     self._inline_edit = InlineEdit(self._root)
+
+  def open_gcas_from_inline(self):
+    """Opens GCA inline field for editing."""
+    self._inline_edit.open()
 
   def get_gcas_from_inline(self):
     """Gets value of inline GCA field."""
@@ -350,6 +396,11 @@ class RichTextCAActionsStrategy(CAActionsStrategy):
   def __init__(self, *args):
     super(RichTextCAActionsStrategy, self).__init__(*args)
     self._input = self._root.element(class_name="ql-editor")
+
+  @property
+  def is_inline_edit_opened(self):
+    """Checks if input opened."""
+    return self._input.exists
 
   def get_lcas_from_inline(self):
     """Gets value of inline LCA field."""
@@ -410,6 +461,35 @@ class CheckboxCAActionsStrategy(CAActionsStrategy):
   def _fill_input_field(self, value):
     """Fills input field."""
     self._input.set(value)
+
+
+class MultiselectCAActionsStrategy(CAActionsStrategy):
+  """Actions for Multiselect CA."""
+
+  def __init__(self, *args):
+    super(MultiselectCAActionsStrategy, self).__init__(*args)
+    self._dropdown = self._root.element(class_name="multiselect-dropdown")
+
+  def get_lcas_from_inline(self):
+    """Gets value of inline LCA field."""
+    return self._dropdown.input().value
+
+  def set_lcas_from_inline(self, value):
+    """Sets value of inline LCA field."""
+    self._set_value(value)
+
+  def set_gcas_from_popup(self, value):
+    """Sets value of GCA field."""
+    self._set_value(value)
+
+  def _set_value(self, value):
+    """Sets value of CA field."""
+    self._dropdown.click()
+    self._fill_input_field(value)
+
+  def _fill_input_field(self, value):
+    """Fills input field."""
+    self._dropdown.label(text=value).click()
 
 
 class DropdownCAActionsStrategy(CAActionsStrategy):

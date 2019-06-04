@@ -1,5 +1,5 @@
 /*
- Copyright (C) 2018 Google Inc.
+ Copyright (C) 2019 Google Inc.
  Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
  */
 
@@ -9,18 +9,17 @@ import {getRole} from '../../plugins/utils/acl-utils';
 import {sortByName} from '../../plugins/utils/label-utils';
 import tracker from '../../tracker';
 import {getPageInstance} from '../../plugins/utils/current-page-utils';
-import uniqueTitle from '../mixins/unique-title';
 import caUpdate from '../mixins/ca-update';
 import autoStatusChangeable from '../mixins/auto-status-changeable';
 import timeboxed from '../mixins/timeboxed';
-import inScopeObjects from '../mixins/in-scope-objects';
 import accessControlList from '../mixins/access-control-list';
 import refetchHash from '../mixins/refetch-hash';
 import assessmentIssueTracker from '../mixins/assessment-issue-tracker';
 import relatedAssessmentsLoader from '../mixins/related-assessments-loader';
 import {getInstance} from '../../plugins/utils/models-utils';
+import {REFRESH_MAPPING, REFRESHED} from '../../events/eventTypes';
 
-export default Cacheable('CMS.Models.Assessment', {
+export default Cacheable.extend({
   root_object: 'assessment',
   root_collection: 'assessments',
   category: 'governance',
@@ -30,9 +29,9 @@ export default Cacheable('CMS.Models.Assessment', {
   destroy: 'DELETE /api/assessments/{id}',
   create: 'POST /api/assessments',
   mixins: [
-    uniqueTitle, caUpdate,
+    caUpdate,
     autoStatusChangeable, timeboxed,
-    inScopeObjects, accessControlList, refetchHash,
+    accessControlList, refetchHash,
     assessmentIssueTracker, relatedAssessmentsLoader,
   ],
   is_custom_attributable: true,
@@ -46,8 +45,10 @@ export default Cacheable('CMS.Models.Assessment', {
   },
   statuses: ['Not Started', 'In Progress', 'In Review',
     'Verified', 'Completed', 'Deprecated', 'Rework Needed'],
+  unchangeableIssueTrackerIdStatuses: ['In Review', 'Verified', 'Completed',
+    'Deprecated'],
   tree_view_options: {
-    add_item_view: GGRC.mustache_path + '/assessments/tree_add_item.mustache',
+    add_item_view: 'assessments/tree_add_item',
     attr_list: [{
       attr_title: 'Title',
       attr_name: 'title',
@@ -146,43 +147,8 @@ export default Cacheable('CMS.Models.Assessment', {
   },
   conclusions: ['Effective', 'Ineffective', 'Needs improvement',
     'Not Applicable'],
-  init: function () {
-    if (this._super) {
-      this._super(...arguments);
-    }
-    this.validatePresenceOf('audit');
-    this.validateNonBlank('title');
-
-
-    this.validate(
-      'issue_tracker_title',
-      function () {
-        if (this.attr('can_use_issue_tracker') &&
-          this.attr('issue_tracker.enabled') &&
-          !this.attr('issue_tracker.title')) {
-          return 'cannot be blank';
-        }
-      }
-    );
-    this.validate(
-      'issue_tracker_component_id',
-      function () {
-        if (this.attr('can_use_issue_tracker') &&
-          this.attr('issue_tracker.enabled') &&
-          !this.attr('issue_tracker.component_id')) {
-          return 'cannot be blank';
-        }
-      }
-    );
-    this.validate(
-      '_gca_valid',
-      function () {
-        if (!this._gca_valid) {
-          return 'Missing required global custom attribute';
-        }
-      }
-    );
-  },
+  editModeStatuses: ['In Progress', 'Rework Needed', 'Not Started'],
+  readModeStatuses: ['Completed', 'Verified', 'In Review'],
   prepareAttributes: function (attrs) {
     return attrs[this.root_object] ? attrs[this.root_object] : attrs;
   },
@@ -246,11 +212,40 @@ export default Cacheable('CMS.Models.Assessment', {
     return model;
   },
 }, {
+  define: {
+    title: {
+      value: '',
+      validate: {
+        required: true,
+      },
+    },
+    audit: {
+      value: null,
+      validate: {
+        required: true,
+      },
+    },
+    issue_tracker: {
+      value: {},
+      validate: {
+        validateAssessmentIssueTracker: true,
+        validateIssueTrackerTitle: true,
+        validateIssueTrackerIssueId() {
+          return this.constructor.unchangeableIssueTrackerIdStatuses;
+        },
+      },
+    },
+  },
   init: function () {
     if (this._super) {
       this._super(...arguments);
     }
     this.bind('refreshInstance', this.refresh.bind(this));
+    this.bind(REFRESH_MAPPING.type, () => {
+      if (this.constructor.readModeStatuses.includes(this.status)) {
+        this.refresh();
+      }
+    });
   },
   before_create: function () {
     if (!this.audit) {
@@ -339,9 +334,7 @@ export default Cacheable('CMS.Models.Assessment', {
     }
   },
   refresh: function () {
-    let dfd;
     let href = this.selfLink || this.href;
-    let that = this;
 
     if (!href) {
       return $.Deferred().reject();
@@ -349,35 +342,36 @@ export default Cacheable('CMS.Models.Assessment', {
     if (!this._pending_refresh) {
       this._pending_refresh = {
         dfd: $.Deferred(),
-        fn: _.throttle(function () {
-          let dfd = that._pending_refresh.dfd;
+        fn: _.throttle(() => {
+          let dfd = this._pending_refresh.dfd;
           can.ajax({
             url: href,
             type: 'get',
             dataType: 'json',
           })
-            .then($.proxy(that, 'cleanupAcl'))
-            .then(function (model) {
-              delete that._pending_refresh;
+            .then((model) => {
+              model = this.cleanupAcl(model);
+              delete this._pending_refresh;
               if (model) {
-                model = that.constructor.model(model, that);
-                that.after_refresh && that.after_refresh();
+                model = this.constructor.model(model, this);
+                this.after_refresh && this.after_refresh();
                 model.backup();
                 return model;
               }
             })
-            .done(function () {
-              dfd.resolve(...arguments);
+            .done((...args) => {
+              dfd.resolve(...args);
+              this.dispatch(REFRESHED);
             })
-            .fail(function () {
-              dfd.reject(...arguments);
+            .fail((...args) => {
+              dfd.reject(...args);
             });
         }, 300, {trailing: false}),
       };
     }
-    dfd = this._pending_refresh.dfd;
+
     this._pending_refresh.fn();
-    return dfd;
+    return this._pending_refresh.dfd;
   },
   getRelatedObjects() {
     const stopFn = tracker.start(

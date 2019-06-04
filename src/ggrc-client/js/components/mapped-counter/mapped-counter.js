@@ -1,5 +1,5 @@
 /*
- Copyright (C) 2018 Google Inc.
+ Copyright (C) 2019 Google Inc.
  Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
  */
 
@@ -9,6 +9,7 @@ import {
 } from '../../plugins/utils/query-api-utils';
 import Mappings from '../../models/mappers/mappings';
 import {REFRESH_MAPPED_COUNTER} from '../../events/eventTypes';
+import template from './mapped-counter.stache';
 
 let titlesMap = {
   Total: {
@@ -42,7 +43,10 @@ let viewModel = can.Map.extend({
     },
   },
   instance: null,
-  type: '@',
+  isSpinnerVisible: false,
+  isTitleVisible: true,
+  extraCssClass: '',
+  type: '',
   count: 0,
   /**
    * Just to avoid multiple dispatching of deferredUpdateCounter event,
@@ -68,6 +72,7 @@ let viewModel = can.Map.extend({
         return count + counts[ind][type].total;
       }, 0);
 
+      this.attr('isSpinnerVisible', false);
       this.attr('count', total);
     }.bind(this));
   },
@@ -94,7 +99,8 @@ let viewModel = can.Map.extend({
 
 export default can.Component.extend({
   tag: 'mapped-counter',
-  template: '<i class="fa fa-{{icon}}"></i> {{title}}: {{count}}',
+  view: can.stache(template),
+  leakScope: true,
   viewModel,
   events: {
     inserted: function () {
@@ -105,7 +111,7 @@ export default can.Component.extend({
         vm.addContent(promise);
       }
     },
-    [`{viewModel.instance} ${REFRESH_MAPPED_COUNTER.type}`](instance, {
+    [`{viewModel.instance} ${REFRESH_MAPPED_COUNTER.type}`]([instance], {
       modelType,
     }) {
       const viewModel = this.viewModel;

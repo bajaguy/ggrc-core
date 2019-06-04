@@ -1,5 +1,5 @@
 /*
-    Copyright (C) 2018 Google Inc.
+    Copyright (C) 2019 Google Inc.
     Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 */
 
@@ -8,6 +8,6 @@ import {gapiClient} from '../../plugins/ggrc-gapi-client';
 
 gapiClient.loadGapiClient();
 
-$('#csv_import').html(can.view.mustache('<csv-import/>'));
-$('#page-header').html(can.view.mustache('<page-header/>'));
+$('#csv_import').html(can.stache('<csv-import/>'));
+$('#page-header').html(can.stache('<page-header/>'));
 initWidgets();

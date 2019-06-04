@@ -1,5 +1,5 @@
 /*
- Copyright (C) 2018 Google Inc.
+ Copyright (C) 2019 Google Inc.
  Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
  */
 
@@ -10,16 +10,18 @@ import '../object-list-item/document-object-list-item';
 import '../object-popover/related-assessment-popover';
 import '../reusable-objects/reusable-objects-item';
 import '../state-colors-map/state-colors-map';
-import '../spinner/spinner';
-import '../tree_pagination/tree_pagination';
+import '../spinner-component/spinner-component';
+import '../tree-pagination/tree-pagination';
 import Pagination from '../base-objects/pagination';
-import template from './templates/related-assessments.mustache';
+import template from './templates/related-assessments.stache';
 import {prepareCustomAttributes} from '../../plugins/utils/ca-utils';
+import isFunction from 'can-util/js/is-function/is-function';
 import {backendGdriveClient} from '../../plugins/ggrc-gapi-client';
 import tracker from '../../tracker';
 import Evidence from '../../models/business-models/evidence';
 import Context from '../../models/service-models/context';
 import * as businessModels from '../../models/business-models';
+import {REFRESH_RELATED} from '../../events/eventTypes';
 
 const defaultOrderBy = [
   {field: 'finished_date', direction: 'desc'},
@@ -28,8 +30,9 @@ const defaultOrderBy = [
 
 export default can.Component.extend({
   tag: 'related-assessments',
-  template,
-  viewModel: {
+  view: can.stache(template),
+  leakScope: true,
+  viewModel: can.Map.extend({
     define: {
       unableToReuse: {
         get: function () {
@@ -90,6 +93,8 @@ export default can.Component.extend({
       return new Evidence(data);
     },
     reuseSelected: function () {
+      this.attr('isSaving', true);
+
       let reusedObjectList = this.attr('selectedEvidences').map((evidence) => {
         let model = this.buildEvidenceModel(evidence);
 
@@ -98,14 +103,17 @@ export default can.Component.extend({
         });
       });
 
-      this.attr('isSaving', true);
-
-      $.when(...reusedObjectList).always(() => {
-        this.attr('selectedEvidences').replace([]);
-        this.attr('isSaving', false);
-        this.dispatch('afterObjectReused');
-        this.attr('instance').dispatch('refreshInstance');
-      });
+      return $.when(...reusedObjectList)
+        .done((...evidence) => {
+          this.dispatch({
+            type: 'reusableObjectsCreated',
+            items: evidence,
+          });
+        })
+        .always(() => {
+          this.attr('selectedEvidences').replace([]);
+          this.attr('isSaving', false);
+        });
     },
     loadRelatedAssessments() {
       const limits = this.attr('paging.limits');
@@ -158,7 +166,10 @@ export default can.Component.extend({
 
       return isAble;
     },
-  },
+    isFunction(evidence) {
+      return isFunction(evidence) ? evidence() : evidence;
+    },
+  }),
   init() {
     this.viewModel.loadRelatedAssessments();
   },
@@ -172,17 +183,22 @@ export default can.Component.extend({
     '{viewModel.orderBy} changed'() {
       this.viewModel.loadRelatedAssessments();
     },
+    [`{viewModel.instance} ${REFRESH_RELATED.type}`]([scope], event) {
+      if (event.model === 'Related Assessments') {
+        this.viewModel.loadRelatedAssessments();
+      }
+    },
   },
   helpers: {
     isAllowedToReuse(evidence) {
-      evidence = Mustache.resolve(evidence);
+      evidence = this.isFunction(evidence);
 
       let isAllowed = this.checkReuseAbility(evidence);
 
       return isAllowed;
     },
     ifAllowedToReuse(evidence, options) {
-      evidence = Mustache.resolve(evidence);
+      evidence = this.isFunction(evidence);
 
       let isAllowed = this.checkReuseAbility(evidence);
 

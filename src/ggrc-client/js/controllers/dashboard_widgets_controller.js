@@ -1,21 +1,17 @@
 /*
-    Copyright (C) 2018 Google Inc.
+    Copyright (C) 2019 Google Inc.
     Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 */
 
-import {
-  getCounts,
-} from '../plugins/utils/widgets-utils';
 import {getPageModel} from '../plugins/utils/current-page-utils';
 
-export default can.Control({
-  pluginName: 'dashboard_widgets',
+export default can.Control.extend({
   defaults: {
     model: null,
     widget_id: '',
     widget_name: '',
     widget_icon: '',
-    widget_view: '/static/mustache/dashboard/object_widget.mustache',
+    widget_view: '/static/templates/dashboard/object_widget.stache',
     widget_guard: null,
     widget_initial_content: '',
     show_filter: false,
@@ -39,37 +35,24 @@ export default can.Control({
       this.options.object_category = this.options.model.category;
     }
 
-    this.options.widget_count = new can.Map();
-
     this.element
       .addClass('widget')
       .addClass(this.options.object_category)
       .addClass(this.options.widgetType)
       .attr('id', this.options.widget_id);
-
-    if (this.options.widgetType && this.options.widgetType === 'treeview') {
-      let counts = getCounts();
-
-      let countsName = this.options.countsName ||
-        (this.options.content_controller_options &&
-          this.options.content_controller_options.countsName) ||
-        this.options.model.shortName;
-
-      this.options.widget_count.attr('count', counts.attr(countsName));
-
-      counts.on(countsName, function (ev, newVal, oldVal) {
-        can.trigger(this.element, 'updateCount', [newVal]);
-      }.bind(this));
-    }
   },
   prepare: function () {
     if (this._prepare_deferred) {
       return this._prepare_deferred;
     }
 
-    this._prepare_deferred =
-      can.view(this.options.widget_view, $.when(this.options))
-        .then(this.proxy('draw_widget'));
+    this._prepare_deferred = $.when(this.options, $.ajax({
+      url: this.options.widget_view,
+      dataType: 'text',
+    })).then((ctx, view) => {
+      let frag = can.stache(view[0])(ctx);
+      this.draw_widget(frag);
+    });
 
     return this._prepare_deferred;
   },
@@ -122,8 +105,5 @@ export default can.Control({
     });
 
     return this._display_deferred;
-  },
-  updateCount: function (el, ev, count, updateCount) {
-    this.options.widget_count.attr('count', count);
   },
 });

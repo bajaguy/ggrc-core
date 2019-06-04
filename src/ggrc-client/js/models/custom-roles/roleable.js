@@ -1,5 +1,5 @@
 /*
-    Copyright (C) 2018 Google Inc.
+    Copyright (C) 2019 Google Inc.
     Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 */
 
@@ -14,13 +14,14 @@ import {getRoleableModels} from '../../plugins/utils/models-utils';
  *
  * @class
  */
-export default Cacheable('CMS.Models.Roleable', {
+export default Cacheable.extend({
+  root_object: 'roleable',
   findAll: function () {
     // We do not query the backend, this implementation is used to diplay
     // a list of objects in the Custom Roles widget.
     let types = _.orderBy(getRoleableModels(), 'category', false);
 
-    let instances = can.map(types, (type, i) => {
+    let instances = _.filteredMap(types, (type, i) => {
       let withId = Object.assign({}, type, {id: i});
       return new this(withId);
     });

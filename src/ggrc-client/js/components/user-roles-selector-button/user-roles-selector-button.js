@@ -1,11 +1,12 @@
 /*
-  Copyright (C) 2018 Google Inc., authors, and contributors <see AUTHORS file>
+  Copyright (C) 2019 Google Inc., authors, and contributors <see AUTHORS file>
   Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 */
 
 export default can.Component.extend({
   tag: 'user-roles-selector-button',
-  viewModel: {
+  leakScope: true,
+  viewModel: can.Map.extend({
     personId: null,
     async openModal(ev) {
       let $trigger = $(ev.target);
@@ -24,5 +25,5 @@ export default can.Component.extend({
       // Trigger the controller
       userRolesModalSelector.launch($trigger, options);
     },
-  },
+  }),
 });

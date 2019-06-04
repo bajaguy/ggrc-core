@@ -1,0 +1,108 @@
+{{!
+  Copyright (C) 2019 Google Inc.
+  Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
+}}
+
+<div class="row-fluid wrap-row">
+  <div class="span12">
+      <h6>Ticket Tracker</h6>
+      <div class="small-text">
+        <small>
+          <em>{{note}}</em>
+        </small>
+      </div>
+      <div>
+        {{#if instance.issue_tracker.enabled}}
+          On
+        {{else}}
+          Off
+        {{/if}}
+      </div>
+      {{#if_instance_of instance 'Audit'}}
+        {{#if instance.issue_tracker.enabled}}
+          <label class="people-sync">
+            <input disabled type="checkbox"
+              el:checked:bind="instance.issue_tracker.people_sync_enabled">
+            Sync people with Ticket Tracker
+          </label>
+        {{/if}}
+      {{/if_instance_of}}
+  </div>
+</div>
+{{#if instance.issue_tracker.enabled}}
+
+  <content></content>
+
+  {{#if showId}}
+  <div class="row-fluid wrap-row">
+    <div class="span8">
+      <h6>Ticket ID</h6>
+      <div class="small-text">
+        <small>
+          <em>{{linkingNote}}</em>
+        </small>
+      </div>
+      {{instance.issue_tracker.issue_id}}
+    </div>
+  </div>
+  {{/if}}
+
+  <div class="row-fluid wrap-row">
+    <div class="span4">
+      <h6>Hotlist ID</h6>
+      {{#if instance.issue_tracker.hotlist_id}}
+        {{instance.issue_tracker.hotlist_id}}
+      {{else}}
+        <span class="empty-message">None</span>
+      {{/if}}
+    </div>
+    <div class="span4">
+      <div class="form-header">
+        <h6>Component ID
+          <i class="fa fa-asterisk"></i>
+        </h6>
+      </div>
+      {{#if instance.issue_tracker.component_id}}
+        {{instance.issue_tracker.component_id}}
+      {{else}}
+        <span class="empty-message">None</span>
+      {{/if}}
+    </div>
+    <div class="span4">
+      <h6>Ticket Type</h6>
+      {{#if instance.issue_tracker.issue_type}}
+        {{instance.issue_tracker.issue_type}}
+      {{else}}
+        <span class="empty-message">None</span>
+      {{/if}}
+    </div>
+  </div>
+  <div class="row-fluid wrap-row">
+    <div class="span4">
+      <h6>Ticket Priority</h6>
+      {{#if instance.issue_tracker.issue_priority}}
+        {{instance.issue_tracker.issue_priority}}
+      {{else}}
+        <span class="empty-message">None</span>
+      {{/if}}
+    </div>
+    <div class="span4">
+      <h6>Ticket Severity</h6>
+      {{#if instance.issue_tracker.issue_severity}}
+        {{instance.issue_tracker.issue_severity}}
+      {{else}}
+        <span class="empty-message">None</span>
+      {{/if}}
+    </div>
+    {{#if showTitle}}
+    <div class="span4">
+        <h6>Ticket Title <i class="fa fa-asterisk"></i></h6>
+        {{#if instance.issue_tracker.title}}
+          {{instance.issue_tracker.title}}
+        {{else}}
+          <span class="empty-message">None</span>
+        {{/if}}
+      </div>
+    {{/if}}
+  </div>
+{{/if}}

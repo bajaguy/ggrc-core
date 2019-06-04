@@ -1,4 +1,4 @@
-# Copyright (C) 2018 Google Inc.
+# Copyright (C) 2019 Google Inc.
 # Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 
 """Audit RBAC Factory."""
@@ -62,7 +62,6 @@ class BaseRBACFactory(object):
       self.task = wf_factories.TaskGroupTaskFactory(task_group=self.task_group)
       self.task_id = self.task.id
       self.assign_person(self.task, acr, user_id)
-
     self.generate_cycle(self.workflow_id)
     cycle_task = all_models.CycleTaskGroupObjectTask.query.first()
     self.cycle_task_id = cycle_task.id
@@ -78,6 +77,7 @@ class BaseRBACFactory(object):
         "cycle": {
             "context": None,
             "autogenerate": True,
+            "title": factories.random_str(prefix="cycle - "),
             "isOverdue": False,
             "workflow": {
                 "id": workflow_id,

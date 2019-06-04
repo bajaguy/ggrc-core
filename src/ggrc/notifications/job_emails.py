@@ -1,4 +1,4 @@
-# Copyright (C) 2018 Google Inc.
+# Copyright (C) 2019 Google Inc.
 # Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 
 
@@ -26,8 +26,14 @@ IMPORT_BLOCKED = {
 
 IMPORT_FAILED = {
     "title": u"[WARNING] Could not import {filename} due to errors",
-    "body": u"Go to import page to check details or submit new import "
-            u"request.",
+    "body": u"Your Import job failed due to a server error. Please "
+            u"retry import/export.",
+    "url": u"import"
+}
+
+IMPORT_STOPPED = {
+    "title": (u"[WARNING] Import of {filename} was stopped"),
+    "body": u"The import was stopped. Only partial data was saved.",
     "url": u"import"
 }
 
@@ -36,13 +42,6 @@ EXPORT_COMPLETED = {
     "body": u"Go to export page to download the result. "
             u"If the file generated for this export request "
             u"has been downloaded, you can ignore the email.",
-    "url": u"export"
-}
-
-EXPORT_FAILED = {
-    "title": (u"[WARNING] Your GGRC export request did not finish due "
-              u"to errors"),
-    "body": u"Please follow the link to write to sheets or download .csv",
     "url": u"export"
 }
 

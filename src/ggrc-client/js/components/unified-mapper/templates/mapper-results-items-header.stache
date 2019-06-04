@@ -1,0 +1,27 @@
+{{!
+  Copyright (C) 2019 Google Inc.
+  Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
+}}
+
+<div class="columns-wrapper">
+  {{#each aggregatedColumns}}
+    {{#if disable_sorting}}
+      <div class="title">
+        {{attr_title}}
+      </div>
+    {{else}}
+      <div class="title title_sortable" on:el:click="applySort">
+        {{attr_title}}
+        {{#if isSorted}}
+          <i class="fa
+            {{#if isSortedAsc}}
+              fa-caret-up
+            {{else}}
+              fa-caret-down
+            {{/if}}">
+          </i>
+        {{/if}}
+      </div>
+    {{/if}}
+  {{/each}}
+</div>

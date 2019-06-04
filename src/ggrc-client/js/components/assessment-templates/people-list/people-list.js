@@ -1,14 +1,18 @@
 /*
-    Copyright (C) 2018 Google Inc.
+    Copyright (C) 2019 Google Inc.
     Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 */
 
-import template from './people-list.mustache';
+import template from './people-list.stache';
+import {validateAttr} from '../../../plugins/utils/validation-utils';
+
+const OtherOption = 'other';
 
 export default can.Component.extend({
   tag: 'people-list',
-  template,
-  viewModel: {
+  view: can.stache(template),
+  leakScope: true,
+  viewModel: can.Map.extend({
     peopleList: [],
     instance: null,
     hasEmptyValue: false,
@@ -17,6 +21,7 @@ export default can.Component.extend({
     listName: '',
     labelName: '',
     peopleValues: [],
+    mandatory: false,
 
     define: {
       peopleValues: {
@@ -36,6 +41,25 @@ export default can.Component.extend({
             }
           }
           return newValue;
+        },
+      },
+      hidable: {
+        get() {
+          if (this.attr('mandatory')) {
+            return false;
+          }
+
+          const isOtherSelected = this.attr('selectedValue') === OtherOption;
+          const isNotEmptyPeople = !!this.attr('peopleList.length');
+
+          return !isOtherSelected || (isOtherSelected && isNotEmptyPeople);
+        },
+      },
+      validationError: {
+        type: String,
+        get() {
+          let attr = this.attr('listName');
+          return validateAttr(this.instance, `default_people.${attr}`);
         },
       },
     },
@@ -90,7 +114,7 @@ export default can.Component.extend({
 
       if (peopleIds instanceof can.List) {
         this.attr('peopleList', peopleIds);
-        this.attr('selectedValue', 'other');
+        this.attr('selectedValue', OtherOption);
       } else {
         this.attr('peopleList', []);
         this.attr('selectedValue', peopleIds);
@@ -103,9 +127,9 @@ export default can.Component.extend({
     */
     packPeopleData() {
       const data = this.attr('selectedValue');
-      return data === 'other' ? this.attr('peopleList') : data;
+      return data === OtherOption ? this.attr('peopleList') : data;
     },
-  },
+  }),
   init() {
     this.viewModel.unpackPeopleData();
   },

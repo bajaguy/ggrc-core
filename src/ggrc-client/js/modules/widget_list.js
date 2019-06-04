@@ -1,5 +1,5 @@
 /*
-    Copyright (C) 2018 Google Inc.
+    Copyright (C) 2019 Google Inc.
     Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 */
 
@@ -96,7 +96,7 @@ export default can.Construct.extend({
   */
   get_current_page_widgets: function () {
     return this.get_widget_list_for(
-      getPageInstance().constructor.shortName);
+      getPageInstance().constructor.model_singular);
   },
 }, {
   init: function (name, opts) {

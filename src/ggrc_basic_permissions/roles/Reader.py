@@ -1,4 +1,4 @@
-# Copyright (C) 2018 Google Inc.
+# Copyright (C) 2019 Google Inc.
 # Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 
 """A module with configuration of the Reader role's permissions."""
@@ -6,7 +6,7 @@
 # pylint: disable=invalid-name
 
 
-from ggrc_basic_permissions.roles.Creator import owner_update
+from ggrc_basic_permissions.roles.Creator import owner_delete, owner_update
 
 
 scope = "System"
@@ -18,13 +18,10 @@ permissions = {
     "read": [
         "AccessControlRole",
         "AccessControlList",
+        "AccountBalance",
         "Audit",
         "BackgroundTask",
         "Snapshot",
-        "Categorization",
-        "Category",
-        "ControlCategory",
-        "ControlAssertion",
         "Control",
         "Comment",
         "Assessment",
@@ -32,7 +29,6 @@ permissions = {
         "CustomAttributeDefinition",
         "CustomAttributeValue",
         "Issue",
-        "ControlControl",
         "DataAsset",
         "AccessGroup",
         "Directive",
@@ -63,6 +59,7 @@ permissions = {
         "Requirement",
         "SystemOrProcess",
         "System",
+        "KeyReport",
         "Process",
         "Metric",
         "SystemControl",
@@ -83,10 +80,11 @@ permissions = {
         "Cycle",
         "CycleTaskGroup",
         "CycleTaskGroupObjectTask",
-        "CycleTaskEntry",
         "NotificationConfig",
+        "PersonProfile",
     ],
     "create": [
+        "AccountBalance",
         {
             "type": "Audit",
             "condition": "is_allowed_based_on",
@@ -127,22 +125,10 @@ permissions = {
             "terms": {},
         },
         {
-            "type": "CycleTaskEntry",
-            "condition": "is_allowed_based_on",
-            "terms": {
-                "property_name": "cycle_task_group_object_task",
-                "action": "update",
-            }
-        },
-        {
             "type": "TaskGroupObject",
             "condition": "is_workflow_admin",
             "terms": {},
         },
-        "Categorization",
-        "Category",
-        "ControlCategory",
-        "ControlAssertion",
         "Control",
         "Comment",
         "Issue",
@@ -179,6 +165,7 @@ permissions = {
         "Requirement",
         "SystemOrProcess",
         "System",
+        "KeyReport",
         "Process",
         "Metric",
         "TechnologyEnvironment",
@@ -191,5 +178,5 @@ permissions = {
         "Review"
     ],
     "update": owner_update,
-    "delete": owner_update,
+    "delete": owner_delete,
 }

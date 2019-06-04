@@ -1,5 +1,5 @@
 /*
-    Copyright (C) 2018 Google Inc.
+    Copyright (C) 2019 Google Inc.
     Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 */
 
@@ -10,7 +10,7 @@ import timeboxed from '../mixins/timeboxed';
 import accessControlList from '../mixins/access-control-list';
 import Stub from '../stub';
 
-export default Cacheable('CMS.Models.Workflow', {
+export default Cacheable.extend({
   root_object: 'workflow',
   root_collection: 'workflows',
   category: 'workflow',
@@ -58,14 +58,16 @@ export default Cacheable('CMS.Models.Workflow', {
       }],
     display_attr_names: ['title', 'status', 'updated_at', 'Admin',
       'Workflow Member'],
-    adminRoleName: 'Admin',
-  },
-
-  init: function () {
-    this._super && this._super(...arguments);
-    this.validateNonBlank('title');
   },
 }, {
+  define: {
+    title: {
+      value: '',
+      validate: {
+        required: true,
+      },
+    },
+  },
   /**
    * Saves or updates workflow
    * @param {Boolean} createDefaultTaskGroup if set to true default TaskGroup
@@ -92,8 +94,7 @@ export default Cacheable('CMS.Models.Workflow', {
         taskGroup = new TaskGroup({
           title: taskGroupTitle,
           workflow: instance,
-          contact: instance.people && instance.people[0]
-            || instance.modified_by,
+          contact: instance.modified_by,
           context: instance.context,
         });
         return taskGroup.save();

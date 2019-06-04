@@ -1,5 +1,5 @@
 /*
- Copyright (C) 2018 Google Inc.
+ Copyright (C) 2019 Google Inc.
  Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
  */
 
@@ -12,7 +12,8 @@
  */
 export default can.Component.extend({
   tag: 'inline-autocomplete-wrapper',
-  viewModel: {
+  leakScope: true,
+  viewModel: can.Map.extend({
     /**
      * Contains a model.
      * @type {Can.Map}
@@ -81,5 +82,5 @@ export default can.Component.extend({
       }
       instance.attr('_transient.' + path, value);
     },
-  },
+  }),
 });

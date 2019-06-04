@@ -1,4 +1,4 @@
-# Copyright (C) 2018 Google Inc.
+# Copyright (C) 2019 Google Inc.
 # Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 """Rows of tree widgets on workflow tabs."""
 from lib.app_entity_factory import workflow_entity_factory
@@ -94,8 +94,10 @@ class _CycleTaskGroupRow(_BaseCycleSubRow):
     """Returns cycle task rows."""
     task_group_row_els = self._root.next_sibling(
         class_name="sub-tier").elements(class_name="tree-item-element")
-    return [_CycleTaskRow(row_el, self._table_header_names, parent_row=self)
-            for row_el in task_group_row_els]
+    return [_CycleTaskRow(
+        row_el.wait_until(lambda e: e.present), self._table_header_names,
+        parent_row=self)
+        for row_el in task_group_row_els]
 
   def get_cycle_task_row_by(self, **conditions):
     """Returns a cycle task group row by conditions."""

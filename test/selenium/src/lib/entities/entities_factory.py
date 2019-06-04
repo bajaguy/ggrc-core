@@ -1,4 +1,4 @@
-# Copyright (C) 2018 Google Inc.
+# Copyright (C) 2019 Google Inc.
 # Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 """Factories that create entities."""
 # pylint: disable=too-many-arguments
@@ -12,13 +12,13 @@ import random
 from lib import factory, users
 from lib.constants import (
     objects, roles, value_aliases, messages, object_states)
-from lib.constants.element import AdminWidgetCustomAttributes
+from lib.constants.element import AdminWidgetCustomAttributes, ReviewStates
 from lib.decorator import lazy_property
 from lib.entities import entity
 from lib.entities.entity import (
     PersonEntity, CustomAttributeDefinitionEntity, CommentEntity,
     ControlEntity)
-from lib.utils import help_utils, string_utils
+from lib.utils import date_utils, help_utils, string_utils
 from lib.utils.string_utils import StringMethods
 
 
@@ -53,6 +53,10 @@ class EntitiesFactory(object):
     obj = self._set_attrs(is_add_rest_attrs, **attrs)
     if "custom_roles" in attrs:
       self._acl_roles.extend(attrs["custom_roles"])
+    elif "admins" in attrs:
+      for acr_name, role_id, default_list in self._acl_roles:
+        if acr_name == "admins":
+          default_list.extend(attrs["admins"])
     for acr_name, role_id, default_list in self._acl_roles:
       if acr_name in attrs:
         people_list = attrs[acr_name]
@@ -68,7 +72,8 @@ class EntitiesFactory(object):
         is_allow_none=False, **attrs)
 
   @classmethod
-  def generate_string(cls, first_part,
+  def generate_string(cls,
+                      first_part,
                       allowed_chars=StringMethods.ALLOWED_CHARS):
     """Generate random string in unicode format according to object type.
     Symbols allowed in random part may be specified by
@@ -77,6 +82,11 @@ class EntitiesFactory(object):
     return unicode("{first_part}_{uuid}_{rand_str}".format(
         first_part=first_part, uuid=StringMethods.random_uuid(),
         rand_str=StringMethods.random_string(chars=allowed_chars)))
+
+  @classmethod
+  def generate_external_id(cls):
+    """Generate external id."""
+    return random.randint(10000, 99999)
 
   @classmethod
   def generate_slug(cls):
@@ -121,6 +131,13 @@ class PeopleFactory(EntitiesFactory):
       from lib.service import rest_service
       return rest_service.ObjectsInfoService().get_person(
           users.FAKE_SUPER_USER.email)
+
+    @lazy_property
+    def external_app_user(cls):
+      """Return Person instance for default system external app user."""
+      from lib.service import rest_service
+      return rest_service.ObjectsInfoService().get_person(
+          users.EXTERNAL_APP_USER.email)
 
   @staticmethod
   def extract_people_emails(people):
@@ -217,7 +234,8 @@ class CustomAttributeDefinitionsFactory(EntitiesFactory):
         attr_value = datetime.datetime.today().strftime("%Y-%m-%d")
       if cad_type == AdminWidgetCustomAttributes.CHECKBOX:
         attr_value = random.choice((True, False))
-      if cad_type == AdminWidgetCustomAttributes.DROPDOWN:
+      if cad_type in (AdminWidgetCustomAttributes.MULTISELECT,
+                      AdminWidgetCustomAttributes.DROPDOWN):
         attr_value = unicode(
             random.choice(cad.multi_choice_options.split(",")))
     if cad_type == AdminWidgetCustomAttributes.PERSON:
@@ -307,7 +325,8 @@ class CustomAttributeDefinitionsFactory(EntitiesFactory):
                      objects.get_singular(random.choice(objects.ALL_CA_OBJS)))
     attrs.setdefault("title",
                      self.generate_ca_title(attrs["attribute_type"]))
-    if attrs["attribute_type"] == AdminWidgetCustomAttributes.DROPDOWN:
+    if attrs["attribute_type"] in (AdminWidgetCustomAttributes.MULTISELECT,
+                                   AdminWidgetCustomAttributes.DROPDOWN):
       attrs.setdefault("multi_choice_options",
                        StringMethods.random_list_strings())
     else:
@@ -322,11 +341,15 @@ class CustomAttributeDefinitionsFactory(EntitiesFactory):
 
   def generate_ca_title(self, first_part):
     """Generate title of custom attribute
-    (same as usual title but without a star as it's disallowed, see GGRC-4954)
+    (same as usual title but
+    - without a star as it's disallowed, see GGRC-4954, GGRC-7024
+    - replacing : with _ in the first part as map:, unmap:, delete are
+    disallowed, see GGRC-5635)
     """
     chars = StringMethods.ALLOWED_CHARS.replace(string_utils.Symbols.STAR,
                                                 string_utils.Symbols.BLANK)
-    return self.generate_string(first_part, allowed_chars=chars)
+    return self.generate_string(
+        first_part.replace(':', '_'), allowed_chars=chars)
 
 
 class ProgramsFactory(EntitiesFactory):
@@ -344,13 +367,36 @@ class ProgramsFactory(EntitiesFactory):
     'is_add_rest_attrs' then add attributes for REST."""
     program_obj = self.obj_inst().update_attrs(
         title=self.obj_title, slug=self.obj_slug,
-        status=unicode(object_states.DRAFT))
+        status=unicode(object_states.DRAFT),
+        review=ReviewsFactory().default_review()
+    )
     if is_add_rest_attrs:
       program_obj.update_attrs(
           recipients=",".join((
-              unicode(roles.ADMIN), unicode(roles.PRIMARY_CONTACTS),
+              unicode(objects.get_plural(roles.PROGRAM_MANAGER, title=True)),
+              unicode(objects.get_plural(roles.PROGRAM_EDITOR, title=True)),
+              unicode(objects.get_plural(roles.PROGRAM_READER, title=True)),
+              unicode(roles.PRIMARY_CONTACTS),
               unicode(roles.SECONDARY_CONTACTS))))
     return program_obj
+
+
+class ProductsFactory(EntitiesFactory):
+  """Factory class for Products entities."""
+  def __init__(self):
+    super(ProductsFactory, self).__init__(objects.PRODUCTS)
+    self._acl_roles = [
+        ("managers",
+         roles.ACLRolesIDs.PRODUCT_MANAGERS,
+         [users.current_user()])
+    ]
+
+  def _create_random_obj(self, is_add_rest_attrs):
+    """Create Product entity."""
+    product_object = self.obj_inst().update_attrs(
+        title=self.obj_title
+    )
+    return product_object
 
 
 class ControlsFactory(EntitiesFactory):
@@ -365,31 +411,20 @@ class ControlsFactory(EntitiesFactory):
     """Create random object's instance, if 'is_add_rest_attrs' then add
     attributes for REST, if 'attrs' then update attributes accordingly.
     """
-    assertions = attrs.get("assertions", ["Security"])
+    assertions = attrs.get("assertions", ["security"])
     obj = self.obj_inst().update_attrs(
         title=self.obj_title, slug=self.obj_slug,
-        assertions=self._generate_assertions(assertions),
-        status=unicode(object_states.DRAFT), **attrs)
+        assertions=[ControlEntity.ASSERTIONS[name] for name in assertions],
+        status=unicode(object_states.DRAFT),
+        external_slug=self.generate_slug(),
+        external_id=self.generate_external_id(),
+        review_status=ReviewStates.UNREVIEWED,
+        review_status_display_name=ReviewStates.UNREVIEWED, **attrs)
     if is_add_rest_attrs:
       obj.update_attrs(recipients=",".join((
           unicode(roles.ADMIN), unicode(roles.CONTROL_OPERATORS),
           unicode(roles.CONTROL_OWNERS))))
     return obj
-
-  @classmethod
-  def _generate_assertions(cls, assertion_names):
-    """Generate assertions for control obj."""
-    assertion_dict_pattern = {"context_id": None,
-                              "href": "", "id": "",
-                              "type": "ControlAssertion"}
-    assertion_list = []
-    for name in assertion_names:
-      assertion_dict = copy.deepcopy(assertion_dict_pattern)
-      assertion_dict["id"] = ControlEntity.ASSERTIONS[name]
-      assertion_dict["href"] = (
-          "/api/control_assertions/" + str(assertion_dict["id"]))
-      assertion_list.append(assertion_dict)
-    return assertion_list
 
 
 class ObjectivesFactory(EntitiesFactory):
@@ -677,7 +712,8 @@ class IssuesFactory(EntitiesFactory):
     'is_add_rest_attrs' then add attributes for REST."""
     issue_obj = self.obj_inst().update_attrs(
         title=self.obj_title, slug=self.obj_slug,
-        status=unicode(object_states.DRAFT))
+        status=unicode(object_states.DRAFT),
+        due_date=date_utils.first_working_day_after_today())
     if is_add_rest_attrs:
       issue_obj.update_attrs(
           recipients=",".join((
@@ -697,3 +733,21 @@ class ProposalsFactory(EntitiesFactory):
     return self.obj_inst().update_attrs(
         is_allow_none=False, author=users.current_user().email,
         status=unicode(object_states.PROPOSED))
+
+
+class ReviewsFactory(EntitiesFactory):
+  """Factory class for Review entities."""
+
+  def __init__(self):
+    super(ReviewsFactory, self).__init__(objects.REVIEWS)
+    self._acl_roles = [("reviewers", roles.ACLRolesIDs.REVIEWERS, [])]
+
+  def _create_random_obj(self, is_add_rest_attrs):
+    """Create Review entity."""
+    return self.obj_inst().update_attrs(
+        status=unicode(ReviewStates.UNREVIEWED),
+        type=self.obj_type)
+
+  def default_review(self):
+    """Returns default review value as dict."""
+    return self.create().convert_review_to_dict()

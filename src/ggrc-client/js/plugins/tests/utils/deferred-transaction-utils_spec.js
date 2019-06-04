@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2018 Google Inc.
+  Copyright (C) 2019 Google Inc.
   Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 */
 
@@ -34,9 +34,9 @@ describe('DeferredTransaction module', function () {
     });
     setTimeout(function () {
       deferredTransaction.push(action).then(function () {
-        done();
         expect(completeTransactionCount).toBe(1);
         expect(completeActionsCount).toBe(2);
+        done();
       });
     }, 150);
   });
@@ -46,9 +46,9 @@ describe('DeferredTransaction module', function () {
     deferredTransaction.push(action);
     setTimeout(function () {
       deferredTransaction.push(action).then(function () {
-        done();
         expect(completeTransactionCount).toBe(1);
         expect(completeActionsCount).toBe(2);
+        done();
       });
     }, 50);
   });
@@ -61,6 +61,6 @@ describe('DeferredTransaction module', function () {
         expect(completeTransactionCount).toBe(1);
         expect(completeActionsCount).toBe(2);
         done();
-      }, 0);
+      }, 10);
     });
 });

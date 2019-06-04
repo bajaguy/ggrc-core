@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2018 Google Inc.
+  Copyright (C) 2019 Google Inc.
   Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 */
 
@@ -28,13 +28,16 @@ describe('assessmentIssueTracker mixin', () => {
   describe('"after:init" event', () => {
     const asmtProto = Assessment.prototype;
 
-    it('should call "initIssueTrackerForAssessment" for audit', () => {
+    it('should call "initIssueTrackerForAssessment" for audit', (done) => {
       let dfd = new $.Deferred();
-      dfd.resolve(audit);
       spyOn(asmtProto, 'ensureParentAudit').and.returnValue(dfd);
       spyOn(asmtProto, 'initIssueTrackerForAssessment');
       makeFakeInstance({model: Assessment})({type: 'Assessment'});
-      expect(asmtProto.initIssueTrackerForAssessment).toHaveBeenCalled();
+
+      dfd.resolve(audit).then(() => {
+        expect(asmtProto.initIssueTrackerForAssessment).toHaveBeenCalled();
+        done();
+      });
     });
 
     it('should call "trackAuditUpdates" method', (done) => {

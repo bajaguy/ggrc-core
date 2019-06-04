@@ -1,22 +1,23 @@
 /*
- Copyright (C) 2018 Google Inc.
+ Copyright (C) 2019 Google Inc.
  Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
  */
 
 import '../related-objects/related-assessments';
-import template from './show-related-assessments-button.mustache';
+import template from './show-related-assessments-button.stache';
 import {hasRelatedAssessments} from '../../plugins/utils/models-utils';
 
 export default can.Component.extend({
   tag: 'show-related-assessments-button',
-  template,
-  viewModel: {
+  view: can.stache(template),
+  leakScope: true,
+  viewModel: can.Map.extend({
     define: {
       cssClasses: {
         type: String,
         get: function () {
           return !this.attr('resetStyles') ?
-            'btn btn-lightBlue ' + this.attr('extraBtnCSS') : '';
+            'btn btn-lightBlue ' + this.attr('extraBtnCss') : '';
         },
       },
       resetStyles: {
@@ -42,8 +43,8 @@ export default can.Component.extend({
     state: {
       open: false,
     },
-    extraBtnCSS: '@',
-    text: '@',
+    extraBtnCss: '',
+    text: '',
     modalTitle: 'Related Assessments',
     showRelatedAssessments: function () {
       this.attr('state.open', true);
@@ -52,5 +53,5 @@ export default can.Component.extend({
     isAllowedToShow: function () {
       return hasRelatedAssessments(this.attr('instance.type'));
     },
-  },
+  }),
 });

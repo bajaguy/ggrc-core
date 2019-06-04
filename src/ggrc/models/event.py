@@ -1,4 +1,4 @@
-# Copyright (C) 2018 Google Inc.
+# Copyright (C) 2019 Google Inc.
 # Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 
 from sqlalchemy import orm
@@ -42,8 +42,8 @@ class Event(Base, db.Model):
     )
 
   @classmethod
-  def eager_query(cls):
-    query = super(Event, cls).eager_query()
+  def eager_query(cls, **kwargs):
+    query = super(Event, cls).eager_query(**kwargs)
     return query.options(
         orm.subqueryload('revisions').undefer_group('Revision_complete'),
     )

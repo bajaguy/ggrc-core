@@ -1,5 +1,5 @@
 /*
- Copyright (C) 2018 Google Inc.
+ Copyright (C) 2019 Google Inc.
  Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
  */
 
@@ -11,6 +11,7 @@ const path = require('path');
 const getReleaseNotesDate = require('./getReleaseNotesDate.js');
 const ENV = process.env;
 const isProd = ENV.NODE_ENV === 'production';
+const isCoverage = ENV.COVERAGE === 'true';
 
 const contextDir = path.resolve(__dirname, 'src', 'ggrc-client');
 const imagesDir = path.resolve(contextDir, 'images');
@@ -92,7 +93,7 @@ module.exports = function (env) {
           options: '$',
         }],
       }, {
-        test: /\.mustache/,
+        test: /\.stache/,
         loader: 'raw-loader',
       }, {
         test: /\.js$/,
@@ -117,7 +118,7 @@ module.exports = function (env) {
     resolve: {
       modules: [nodeModulesDir, vendorDir],
       alias: {
-        can: 'canjs/amd/can/',
+        can: 'can-util/namespace',
         entrypoints: './js/entrypoints',
       },
     },
@@ -131,10 +132,10 @@ module.exports = function (env) {
         'window.jQuery': 'jquery',
         _: 'lodash',
         moment: 'moment',
+        can: 'can',
       }),
       new webpack.DefinePlugin({
         GOOGLE_ANALYTICS_ID: JSON.stringify(ENV.GOOGLE_ANALYTICS_ID),
-        DEV_MODE: JSON.stringify(!isProd),
         BUILD_DATE: JSON.stringify(new Date()),
         RELEASE_NOTES_DATE: JSON.stringify(
           getReleaseNotesDate(`${contextDir}/js/components/release-notes-list/release-notes.md`)
@@ -169,6 +170,18 @@ module.exports = function (env) {
         },
       }),
     ];
+  }
+
+  if (isCoverage) {
+    config.module.rules.push({
+      test: /\.js$/,
+      use: {
+        loader: 'istanbul-instrumenter-loader',
+        options: {esModules: true},
+      },
+      enforce: 'post',
+      exclude: /(node_modules)|[_]spec\.js/,
+    });
   }
 
   if (!env || (env && !env.test)) {

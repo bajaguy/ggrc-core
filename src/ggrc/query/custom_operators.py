@@ -1,4 +1,4 @@
-# Copyright (C) 2018 Google Inc.
+# Copyright (C) 2019 Google Inc.
 # Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 
 """This module contains custom operators for query helper"""
@@ -16,12 +16,12 @@ from ggrc.models import all_models
 from ggrc.fulltext.mysql import MysqlRecordProperty as Record
 from ggrc.models import inflector
 from ggrc.models import relationship_helper
+from ggrc.models import revision
 from ggrc.models.mixins.filterable import Filterable
 from ggrc.query import autocast
 from ggrc.query import my_objects
 from ggrc.query.exceptions import BadQueryException
 from ggrc.snapshotter import rules
-from ggrc.utils.revisions_diff import builder as revdiff_builder
 
 
 GETATTR_WHITELIST = {
@@ -93,7 +93,12 @@ def build_op_shortcut(predicate):
 @build_op_shortcut
 def like(left, right):
   """Handle ~ operator with SQL LIKE."""
-  return left.ilike(u"%{}%".format(right))
+  # pylint: disable=anomalous-backslash-in-string
+  # We need to escape special characters in LIKE string content
+  escaped = right.replace(u'\\', u'\\\\')\
+                 .replace(u'_', u'\_')\
+                 .replace(u'%', u'\%')
+  return left.ilike(u"%{}%".format(escaped))
 
 
 def reverse(operation):
@@ -259,21 +264,11 @@ def relevant(exp, object_class, target_class, query):
     exp = query[exp['ids'][0]]
   object_name = exp['object_name']
   ids = exp['ids']
-  check_snapshots = (
-      object_class.__name__ in rules.Types.scoped | rules.Types.trans_scope and
-      object_name in rules.Types.all
-  )
-  check_direct = (not check_snapshots or
-                  object_class.__name__ in rules.Types.trans_scope)
+
+  check_snapshots = (object_class.__name__ in rules.Types.scoped and
+                     object_name in rules.Types.all)
 
   result = set()
-
-  if check_direct:
-    result.update(*relationship_helper.get_ids_related_to(
-        object_class.__name__,
-        object_name,
-        ids,
-    ))
 
   if check_snapshots:
     snapshot_qs = all_models.Snapshot.query.filter(
@@ -301,6 +296,12 @@ def relevant(exp, object_class, target_class, query):
     )
     ids_qs = dest_qs.union(source_qs)
     result.update(*ids_qs.all())
+  else:
+    result.update(*relationship_helper.get_ids_related_to(
+        object_class.__name__,
+        object_name,
+        ids,
+    ))
 
   if not result:
     return sqlalchemy.sql.false()
@@ -485,30 +486,67 @@ def cascade_unmappable(exp, object_class, target_class, query):
 
 @validate("resource_type", "resource_id")
 def not_empty_revisions(exp, object_class, target_class, query):
-  """Filter revisions containing object state changes."""
-  if object_class is not all_models.Revision:
+  """Filter revisions containing object state changes.
+
+  This operator is useful if revisions with object state changes are needed.
+  Revisions without object state changes are created when object editing
+  without any actual changes is performed.
+  """
+  if object_class is not revision.Revision:
     raise BadQueryException("'not_empty_revisions' operator works with "
                             "Revision only")
 
-  query = db.session.query(
-      all_models.Revision
+  resource_type = exp["resource_type"]
+  resource_id = exp["resource_id"]
+
+  resource_cls = getattr(all_models, resource_type, None)
+  if resource_cls is None:
+    raise BadQueryException("'{}' resource type does not exist"
+                            .format(resource_type))
+
+  rev_q = db.session.query(
+      revision.Revision.id,
   ).filter(
-      all_models.Revision.resource_type == exp["resource_type"],
-      all_models.Revision.resource_id == exp["resource_id"]
+      revision.Revision.resource_type == resource_type,
+      revision.Revision.resource_id == resource_id,
+      sqlalchemy.not_(revision.Revision.is_empty),
   ).order_by(
-      all_models.Revision.created_at
+      revision.Revision.created_at,
   )
 
-  revision_with_changes = []
-  prev_content = {}
-  resource_type = getattr(all_models, exp["resource_type"])
-  for revision in query:
-    diff = revdiff_builder.differ(resource_type, revision.content,
-                                  prev_content)
-    if any(diff.values()):
-      revision_with_changes.append(revision.id)
-      prev_content = revision.content
-  return all_models.Revision.id.in_(revision_with_changes)
+  result = {_id for _id, in rev_q}
+  if not result:
+    return sqlalchemy.sql.false()
+
+  return object_class.id.in_(result)
+
+
+@validate("object_name", "ids")
+def child_op(exp, object_class, *_):
+  """Filter by children objects"""
+  if not(exp["object_name"] == "Program" and
+         object_class is all_models.Program):
+    raise BadQueryException("child operation "
+                            "works with object Program only")
+  ids = exp["ids"]
+  _children_ids = set()
+  for _id in ids:
+    _children_ids.update(object_class.get_relatives_ids(_id, "children"))
+  return object_class.id.in_(_children_ids)
+
+
+@validate("object_name", "ids")
+def parent_op(exp, object_class, target_class, query):
+  """Filter by parents objects"""
+  if not(exp["object_name"] == "Program" and
+         object_class is all_models.Program):
+    raise BadQueryException("parent operation "
+                            "works with object Program only")
+  ids = exp["ids"]
+  _parents_ids = set()
+  for _id in ids:
+    _parents_ids.update(object_class.get_relatives_ids(_id, "parents"))
+  return object_class.id.in_(_parents_ids)
 
 
 EQ_OPERATOR = validate("left", "right")(build_op_shortcut(operator.eq))
@@ -516,6 +554,7 @@ LT_OPERATOR = validate("left", "right")(build_op_shortcut(operator.lt))
 GT_OPERATOR = validate("left", "right")(build_op_shortcut(operator.gt))
 LE_OPERATOR = validate("left", "right")(build_op_shortcut(operator.le))
 GE_OPERATOR = validate("left", "right")(build_op_shortcut(operator.ge))
+
 
 OPS = {
     "AND": and_operation,
@@ -538,4 +577,6 @@ OPS = {
     "is": is_filter,
     "cascade_unmappable": cascade_unmappable,
     "not_empty_revisions": not_empty_revisions,
+    "child": child_op,
+    "parent": parent_op,
 }

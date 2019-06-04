@@ -1,4 +1,4 @@
--# Copyright (C) 2018 Google Inc.
+-# Copyright (C) 2019 Google Inc.
 -# Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 
 -extends 'layouts/base.haml'
@@ -12,14 +12,12 @@
   GGRC.model_attr_defs =  ={ all_attributes_json()|safe }
 
 -block body
-  .area.flex-box.flex-col{ 'class': '={ model_display_class } ' }
+  #pageContent.page-content.flex-box.flex-col{ 'class': '={ model_display_class } ' }
     #page-header
       -block header
 
     -block nav
-      .top-inner-nav
-        .object-nav
-          %div.nav{ 'class': "internav" }
+      #inner-nav.top-inner-nav
 
     %section.content.flex-size-1
       .flash
@@ -29,7 +27,7 @@
               %div{ 'class': "{{category}}" }
                 %p
                   {{message}}
-                %a.close{'href': "#", 'data-dismiss': "alert" }
+                %a.close{'href': "javascript:void(0)", 'data-dismiss': "alert" }
                   %i.fa.fa-times
       -block main
         .object-area.row-fluid.full-width
@@ -44,4 +42,4 @@
       =config.get('VERSION')
 
   #lhn
-    #lhs.lhs.accordion{ 'data-template': '/dashboard/lhn.mustache' }
+    #lhs.lhs.accordion{ 'data-template': 'dashboard/lhn' }

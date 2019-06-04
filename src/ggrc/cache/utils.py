@@ -1,4 +1,4 @@
-# Copyright (C) 2018 Google Inc.
+# Copyright (C) 2019 Google Inc.
 # Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 
 """Common operations on cache managers."""
@@ -9,7 +9,8 @@ import flask
 
 from ggrc import cache
 import ggrc.models
-from ggrc import settings
+from ggrc.utils.memcache import blob_get_chunk_keys
+from ggrc.cache.memcache import has_memcache
 
 
 logger = logging.getLogger(__name__)
@@ -17,6 +18,7 @@ logger = logging.getLogger(__name__)
 
 def get_cache_manager():
   """Returns an instance of CacheManager."""
+
   cache_manager = cache.CacheManager()
   cache_manager.initialize(cache.MemCache())
   return cache_manager
@@ -113,7 +115,7 @@ def update_memcache_before_commit(context, modified_objects, expiry_time):
     None
 
   """
-  if getattr(settings, 'MEMCACHE_MECHANISM', False) is False:
+  if not has_memcache():
     return
 
   context.cache_manager = get_cache_manager()
@@ -135,14 +137,16 @@ def update_memcache_before_commit(context, modified_objects, expiry_time):
   if status_entries:
     logger.info("CACHE: status entries: %s", status_entries)
     ret = context.cache_manager.bulk_add(status_entries, expiry_time)
-    if ret is not None and not ret:
-      pass
-    else:
-      logger.error('CACHE: Unable to add status for newly created entries %s',
-                   ret)
+    if ret:
+      if ret == status_entries:
+        logger.error('CACHE: Unable to add status for newly created entries '
+                     'because of Network/RPC/Server errors')
+      else:
+        logger.error('CACHE: Newly created entries already exist in cache: %s',
+                     ret)
 
 
-def update_memcache_after_commit(context):
+def update_memcache_after_commit(context):  # noqa: C901
   """
   The memccache entries is updated after DB commit
   Logs error if there are errors in updating entries in cache
@@ -154,7 +158,7 @@ def update_memcache_after_commit(context):
     None
 
   """
-  if getattr(settings, 'MEMCACHE_MECHANISM', False) is False:
+  if not has_memcache():
     return
 
   if context.cache_manager is None:
@@ -189,7 +193,8 @@ def update_memcache_after_commit(context):
     if delete_result is not True:
       logger.error("CACHE: Failed to remove status entries from cache")
 
-  clear_permission_cache()
+  if getattr(context, "operation", "") != "import":
+    clear_permission_cache()
   cache_manager.clear_cache()
 
 
@@ -210,24 +215,50 @@ def build_cache_status(data, key, expiry_timeout, status):
 
 def clear_permission_cache():
   """Drop cached permissions for all users."""
-  if not getattr(settings, 'MEMCACHE_MECHANISM', False):
+  if not has_memcache():
     return
+
   client = get_cache_manager().cache_object.memcache_client
-  cached_keys_set = client.get('permissions:list') or set()
-  cached_keys_set.add('permissions:list')
+
   # We delete all the cached user permissions as well as
   # the permissions:list value itself
-  client.delete_multi(cached_keys_set)
+  keys_to_delete = ['permissions:list']
+  for user_key in client.get('permissions:list') or set():
+    keys_to_delete.append(user_key)
+    keys_to_delete.extend(blob_get_chunk_keys(client, user_key))
+
+  client.delete_multi(keys_to_delete)
 
 
 def clear_users_permission_cache(user_ids):
   """ Drop cached permissions for a list of users. """
-  if not getattr(settings, 'MEMCACHE_MECHANISM', False) or not user_ids:
+  if not has_memcache() or not user_ids:
     return
+
   client = get_cache_manager().cache_object.memcache_client
+
+  keys_to_delete = list()
   cached_keys_set = client.get('permissions:list') or set()
   for user_id in user_ids:
     key = 'permissions:{}'.format(user_id)
     if key in cached_keys_set:
       cached_keys_set.remove(key)
+      keys_to_delete.append(key)
+      keys_to_delete.extend(blob_get_chunk_keys(client, key))
+
   client.set('permissions:list', cached_keys_set)
+  client.delete_multi(keys_to_delete)
+
+
+def clear_memcache():
+  """Flush memcahce if available"""
+
+  if not has_memcache():
+    return
+
+  get_cache_manager().clean()
+
+
+def get_ie_cache_key(ie_job):
+  """Create key for export status entry"""
+  return "ImportExport:{}".format(ie_job.id)

@@ -1,19 +1,17 @@
 /*
-    Copyright (C) 2018 Google Inc.
+    Copyright (C) 2019 Google Inc.
     Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 */
 
 import Cacheable from '../cacheable';
 import caUpdate from '../mixins/ca-update';
 import timeboxed from '../mixins/timeboxed';
-import inScopeObjects from '../mixins/in-scope-objects';
-import inScopeObjectsPreload from '../mixins/in-scope-objects-preload';
 import accessControlList from '../mixins/access-control-list';
-import baseNotifications from '../mixins/base-notifications';
+import baseNotifications from '../mixins/notifications/base-notifications';
 import issueTracker from '../mixins/issue-tracker';
 import Stub from '../stub';
 
-export default Cacheable('CMS.Models.Issue', {
+export default Cacheable.extend({
   root_object: 'issue',
   root_collection: 'issues',
   category: 'governance',
@@ -25,8 +23,6 @@ export default Cacheable('CMS.Models.Issue', {
   mixins: [
     caUpdate,
     timeboxed,
-    inScopeObjects,
-    inScopeObjectsPreload,
     accessControlList,
     baseNotifications,
     issueTracker,
@@ -73,10 +69,12 @@ export default Cacheable('CMS.Models.Issue', {
     status: 'Draft',
   },
   statuses: ['Draft', 'Deprecated', 'Active', 'Fixed', 'Fixed and Verified'],
+  unchangeableIssueTrackerIdStatuses:
+    ['Fixed', 'Fixed and Verified', 'Deprecated'],
   buildIssueTrackerConfig(instance) {
     return {
-      hotlist_id: '864697',
-      component_id: '188208',
+      hotlist_id: '1498476',
+      component_id: '398781',
       issue_severity: 'S2',
       issue_priority: 'P2',
       issue_type: 'PROCESS',
@@ -84,29 +82,29 @@ export default Cacheable('CMS.Models.Issue', {
       enabled: instance.isNew(),
     };
   },
-  init: function () {
-    if (this._super) {
-      this._super(...arguments);
-    }
-    this.validateNonBlank('title');
-
-    this.validate(
-      'issue_tracker_component_id',
-      function () {
-        if (this.attr('issue_tracker.enabled') &&
-          !this.attr('issue_tracker.component_id')) {
-          return 'cannot be blank';
-        }
-      }
-    );
-    this.validate(
-      'issue_tracker_title',
-      function () {
-        if (this.attr('issue_tracker.enabled') &&
-          !this.attr('issue_tracker.title')) {
-          return 'cannot be blank';
-        }
-      }
-    );
+}, {
+  define: {
+    title: {
+      value: '',
+      validate: {
+        required: true,
+      },
+    },
+    due_date: {
+      value: '',
+      validate: {
+        required: true,
+      },
+    },
+    issue_tracker: {
+      value: {},
+      validate: {
+        validateIssueTracker: true,
+        validateIssueTrackerTitle: true,
+        validateIssueTrackerIssueId() {
+          return this.constructor.unchangeableIssueTrackerIdStatuses;
+        },
+      },
+    },
   },
-}, {});
+});

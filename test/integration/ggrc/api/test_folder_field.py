@@ -1,10 +1,11 @@
-# Copyright (C) 2018 Google Inc.
+# Copyright (C) 2019 Google Inc.
 # Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 """Add test about folder in api."""
 
 import ddt
 
 from ggrc import db
+from ggrc.models.mixins.synchronizable import Synchronizable
 from integration.ggrc import TestCase, Api
 from integration.ggrc.models import factories
 
@@ -18,12 +19,14 @@ class TestFolderField(TestCase):
 
   FOLDERABLE_FACTORIES = [
       factories.AccessGroupFactory,
+      factories.AccountBalanceFactory,
       factories.ContractFactory,
       factories.ControlFactory,
       factories.DataAssetFactory,
       factories.DirectiveFactory,
       factories.FacilityFactory,
       factories.IssueFactory,
+      factories.KeyReportFactory,
       factories.MarketFactory,
       factories.MetricFactory,
       factories.ObjectiveFactory,
@@ -47,7 +50,7 @@ class TestFolderField(TestCase):
   def setUp(self):
     super(TestFolderField, self).setUp()
     self.api = Api()
-    self.client.get("/login")
+    self.api.login_as_normal()
 
   @ddt.data(*FOLDERABLE_FACTORIES)
   def test_create_object(self, factory):
@@ -84,6 +87,11 @@ class TestFolderField(TestCase):
       with self.assertRaises(NotImplementedError):
         self.api.put(obj, {"folder": update_test_folder_name})
     else:
+      if isinstance(obj, Synchronizable):
+        # Currently external user can't modify folder field
+        # because of WithProtectedAttributes mixin
+        return
+
       self.api.put(obj, {"folder": update_test_folder_name})
       self.assertEqual(
           update_test_folder_name,
@@ -106,6 +114,9 @@ class TestFolderField(TestCase):
       with self.assertRaises(NotImplementedError):
         self.api.post(model, post_data)
     else:
+      if isinstance(obj, Synchronizable):
+        self.api.login_as_external()
+
       resp = self.api.post(model, post_data)
       new_obj_id = resp.json[key]["id"]
       self.assertNotEqual(obj_id, new_obj_id)

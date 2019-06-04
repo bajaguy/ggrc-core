@@ -1,0 +1,56 @@
+{{!
+    Copyright (C) 2019 Google Inc.
+    Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
+}}
+
+<div>
+    {{#if hasPermissions}}
+      <div class="attachment-upload-control">
+      {{#if canAttach}}
+        {{#if isFolderAttached}}
+          <ggrc-gdrive-picker-launcher class="attachment-upload-control__button"
+                                       modelType:from="'Evidence'"
+                                       instance:from="instance"
+                                       click_event="trigger_upload_parent"
+                                       tooltip:from="'A new copy of the file will be stored at the destination Audit folder if exists or main gDrive folder of user.'"
+                                       disabled:from="isAttachActionDisabled"
+                                       confirmationCallback:from="@confirmationCallback"
+                                       on:created="created(scope.event)"
+                                       on:beforeAttach="onBeforeCreate(scope.event)">Attach
+          </ggrc-gdrive-picker-launcher>
+        {{else}}
+         <ggrc-gdrive-picker-launcher class="attachment-upload-control__button"
+                                       modelType:from="'Evidence'"
+                                       instance:from="instance"
+                                       click_event="trigger_upload"
+                                       tooltip:from="'A new copy of the file will be stored at the destination Audit folder if exists or main gDrive folder of user.'"
+                                       disabled:from="isAttachActionDisabled"
+                                       confirmationCallback:from="@confirmationCallback"
+                                       on:created="created(scope.event)"
+                                       on:beforeAttach="onBeforeCreate(scope.event)">Attach
+          </ggrc-gdrive-picker-launcher>
+          <div class="attachment-upload-control__icon attachment-upload-control__icon__error">
+            <i class="fa fa-exclamation-triangle red attachments-list-alert"
+               rel="tooltip"
+               data-placement="bottom"
+               data-original-title="Audit folder not set. Files will be uploaded to your GDrive root folder.">
+            </i>
+          </div>
+        {{/if}}
+      {{else}}
+        <small>
+        {{#if error.errors}}
+            You need permission to upload files to the audit folder. <a
+            href="https://drive.google.com/folderview?id={{folderId}}&usp=sharing#">Request
+            access.</a>
+        {{else}}
+            <strong>Warning:</strong> GDrive folder could not be accessed without authorization. <a
+              on:el:click="checkFolder()"
+              >Authorize again.
+            </a>
+        {{/if}}
+        </small>
+      {{/if}}
+      </div>
+    {{/if}}
+</div>

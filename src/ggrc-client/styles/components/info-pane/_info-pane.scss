@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2018 Google Inc.
+ * Copyright (C) 2019 Google Inc.
  * Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
  */
 
@@ -46,7 +46,8 @@
     margin: 0 0 16px 0;
   }
 
-  &__section-title {
+  &__section-title,
+  &__section-title_spinnerable {
     font-size: 11px;
     text-transform: uppercase;
     font-weight: bold;
@@ -54,23 +55,17 @@
     margin: 0;
     padding: 0;
     position: relative;
+  }
+
+  &__section-title {
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+    max-width: 450px;
   }
 
-  &__section-title-icon {
-    position: absolute;
-    width: 28px;
-    height: 28px;
-    left: -28px;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-  }
-
-  &__section-title-text {
-
+  &__loading-icon {
+    @extend %field-spinnerable;
   }
 
   &__main-content {
@@ -127,7 +122,6 @@
       .state-value {
         box-sizing: border-box;
         white-space: nowrap;
-        margin-right: 8px;
         line-height: 18px;
         display: flex;
         align-items: center;
@@ -144,6 +138,7 @@
       overflow: hidden;
       white-space: nowrap;
       text-overflow: ellipsis;
+      margin-left: 8px;
     }
 
     &__toolbar {

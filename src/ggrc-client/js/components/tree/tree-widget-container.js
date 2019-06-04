@@ -1,5 +1,5 @@
 /*
- Copyright (C) 2018 Google Inc.
+ Copyright (C) 2019 Google Inc.
  Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
  */
 
@@ -19,6 +19,7 @@ import './tree-filter-input';
 import './tree-status-filter';
 import './tree-item-status-for-workflow';
 import './tree-no-results';
+import './tree-field-wrapper';
 import './tree-field';
 import './tree-people-with-role-list-field';
 import '../advanced-search/advanced-search-filter-container';
@@ -27,10 +28,10 @@ import '../bulk-update-button/bulk-update-button';
 import '../assessment-template-clone-button/assessment-template-clone-button';
 import '../create-document-button/create-document-button';
 import '../dropdown/multiselect-dropdown';
-import '../dropdown/dropdown-options-loader';
+import '../dropdown/dropdown-wrapper';
 import '../assessment/assessment-generator-button';
 import '../last-comment/last-comment';
-import template from './templates/tree-widget-container.mustache';
+import template from './templates/tree-widget-container.stache';
 import * as StateUtils from '../../plugins/utils/state-utils';
 import {
   REFRESH_RELATED,
@@ -42,8 +43,8 @@ import {
 } from '../../plugins/utils/current-page-utils';
 import {
   getCounts,
-  initCounts,
 } from '../../plugins/utils/widgets-utils';
+import {getMegaObjectRelation} from '../../plugins/utils/mega-object-utils';
 import * as AdvancedSearch from '../../plugins/utils/advanced-search-utils';
 import Pagination from '../base-objects/pagination';
 import tracker from '../../tracker';
@@ -52,8 +53,9 @@ import {notifier} from '../../plugins/utils/notifiers-utils';
 import Cacheable from '../../models/cacheable';
 import Relationship from '../../models/service-models/relationship';
 import * as businessModels from '../../models/business-models';
-import exportMessage from './templates/export-message.mustache';
+import exportMessage from './templates/export-message.stache';
 import QueryParser from '../../generated/ggrc_filter_query_parser';
+import {isSnapshotType} from '../../plugins/utils/snapshot-utils';
 
 let viewModel;
 
@@ -94,7 +96,7 @@ viewModel = can.Map.extend({
     modelName: {
       type: String,
       get: function () {
-        return this.attr('model').shortName;
+        return this.attr('model').model_singular;
       },
     },
     statusFilterVisible: {
@@ -147,17 +149,6 @@ viewModel = can.Map.extend({
       },
     },
   },
-  /**
-   * This deferred describes operations which should be executed before
-   * the moment when info pane is loaded. Initial need of this deferred was
-   * for the case when Task Group's info pane is opened - without it
-   * mapped objects might be reloaded before instance.refresh() which is
-   * preformed in selectedItemHandler() method.
-   */
-  infoPaneLoadDfd: $.Deferred(),
-  /**
-   *
-   */
   sortingInfo: {
     sortDirection: null,
     sortBy: null,
@@ -211,11 +202,11 @@ viewModel = can.Map.extend({
     pageInfo.attr('disabled', true);
     this.attr('loading', true);
 
-    if (this._getFilterByName('status')) {
-      initCounts([countsName], parent.type, parent.id);
-    }
-
     let loadSnapshots = this.attr('options.objectVersion');
+    const operation = this.attr('options.megaRelated')
+      ? getMegaObjectRelation(this.attr('options.widgetId')).relation
+      : null;
+
     return TreeViewUtils
       .loadFirstTierItems(
         modelName,
@@ -223,7 +214,8 @@ viewModel = can.Map.extend({
         page,
         filter,
         request,
-        loadSnapshots)
+        loadSnapshots,
+        operation)
       .then((data) => {
         const total = data.total;
 
@@ -393,12 +385,16 @@ viewModel = can.Map.extend({
     }
 
     function onDestroyed(ev, instance) {
-      let current;
+      const activeTabType = businessModels[activeTabModel].model_singular;
+      const isSnapshotTab =
+        isSnapshotType(instance) &&
+        instance.child_type === activeTabType;
 
       if (_verifyRelationship(instance, activeTabModel) ||
-        instance instanceof businessModels[activeTabModel]) {
+        instance instanceof businessModels[activeTabModel] ||
+        isSnapshotTab) {
         if (self.attr('showedItems').length === 1) {
-          current = self.attr('pageInfo.current');
+          const current = self.attr('pageInfo.current');
           self.attr('pageInfo.current',
             current > 1 ? current - 1 : 1);
         }
@@ -411,8 +407,8 @@ viewModel = can.Map.extend({
 
         // TODO: This is a workaround.We need to update communication between
         //       info-pin and tree views through Observer
-        if (!self.attr('$el').closest('.cms_controllers_info_pin').length) {
-          $('.cms_controllers_info_pin').control().unsetInstance();
+        if (!self.attr('$el').closest('.pin-content').length) {
+          $('.pin-content').control().unsetInstance();
         }
       } else {
         // reinit mapped instances (subTree uses mapped instances)
@@ -460,7 +456,7 @@ viewModel = can.Map.extend({
     }
 
     return function (needDestroy) {
-      activeTabModel = this.options.model.shortName;
+      activeTabModel = this.options.model.model_singular;
       self = this;
       if (needDestroy) {
         // Remove listeners for inactive tabs
@@ -578,9 +574,18 @@ viewModel = can.Map.extend({
     let filter = this.attr('currentFilter');
     let request = this.attr('advancedSearch.request');
     let loadSnapshots = this.attr('options.objectVersion');
+    const operation = this.attr('options.megaRelated') ?
+      getMegaObjectRelation(this.attr('options.widgetId')).relation :
+      null;
 
-    TreeViewUtils
-      .startExport(modelName, parent, filter, request, loadSnapshots);
+    TreeViewUtils.startExport(
+      modelName,
+      parent,
+      filter,
+      request,
+      loadSnapshots,
+      operation,
+    );
 
     notifier('info', exportMessage, true);
   },
@@ -600,7 +605,7 @@ viewModel = can.Map.extend({
 
     pinControl.setLoadingIndicator(componentSelector, true);
 
-    const infoPaneLoadDfd = pageLoadDfd
+    pageLoadDfd
       .then(function () {
         const items = this.attr('showedItems');
         const newInstance = items[relativeIndex];
@@ -636,8 +641,6 @@ viewModel = can.Map.extend({
       .always(function () {
         pinControl.setLoadingIndicator(componentSelector, false);
       });
-
-    this.attr('infoPaneLoadDfd', infoPaneLoadDfd);
   },
 });
 
@@ -646,7 +649,8 @@ viewModel = can.Map.extend({
  */
 export default can.Component.extend({
   tag: 'tree-widget-container',
-  template,
+  view: can.stache(template),
+  leakScope: true,
   viewModel,
   init: function () {
     this.viewModel.setColumnsConfiguration();
@@ -699,7 +703,7 @@ export default can.Component.extend({
       ev.stopPropagation();
       this.reloadTree();
     },
-    [`{viewModel.parent_instance} ${REFRESH_MAPPING.type}`](scope, ev) {
+    [`{viewModel.parent_instance} ${REFRESH_MAPPING.type}`]([scope], ev) {
       const vm = this.viewModel;
       let currentModelName;
 
@@ -707,7 +711,7 @@ export default can.Component.extend({
         return;
       }
 
-      currentModelName = vm.attr('model').shortName;
+      currentModelName = vm.attr('model').model_singular;
 
       if (currentModelName === ev.destinationType) {
         this.reloadTree();
@@ -726,6 +730,15 @@ export default can.Component.extend({
     reloadTree() {
       this.viewModel.closeInfoPane();
       this.viewModel.loadItems();
+    },
+    '{viewModel.parent_instance} displayTree'([scope], event) {
+      const {viewModel} = this;
+      const currentModelName = viewModel.attr('model').model_singular;
+
+      if (currentModelName === event.destinationType) {
+        const forceRefresh = true;
+        viewModel.display(forceRefresh);
+      }
     },
   },
 });

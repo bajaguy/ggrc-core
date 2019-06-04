@@ -1,5 +1,5 @@
 /*
- Copyright (C) 2018 Google Inc.
+ Copyright (C) 2019 Google Inc.
  Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
  */
 
@@ -9,6 +9,7 @@ import * as AdvancedSearch from '../../plugins/utils/advanced-search-utils';
 
 export default can.Component.extend({
   tag: 'advanced-search-wrapper',
+  leakScope: true,
   viewModel: can.Map.extend({
     define: {
       hasStatusFilter: {
@@ -43,12 +44,25 @@ export default can.Component.extend({
     resetFilters: function () {
       this.attr('filterItems', [AdvancedSearch.create.attribute()]);
       this.attr('mappingItems', []);
-      this.attr('statusItem.value', {});
+      this.setDefaultStatusItem();
+    },
+    setDefaultStatusItem: function () {
+      if (this.attr('hasStatusFilter')) {
+        const defaultStatusItem = AdvancedSearch.setDefaultStatusConfig(
+          this.attr('statusItem.value'), this.attr('modelName')
+        );
+        this.attr('statusItem.value', defaultStatusItem);
+      } else {
+        this.attr('statusItem', AdvancedSearch.create.state());
+      }
     },
   }),
   events: {
     '{viewModel} modelName': function () {
       this.viewModel.resetFilters();
     },
+  },
+  init: function () {
+    this.viewModel.setDefaultStatusItem();
   },
 });

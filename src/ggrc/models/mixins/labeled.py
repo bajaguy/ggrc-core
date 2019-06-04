@@ -1,4 +1,4 @@
-# Copyright (C) 2018 Google Inc.
+# Copyright (C) 2019 Google Inc.
 # Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 
 """Mixin for labeled models."""
@@ -135,9 +135,9 @@ class Labeled(object):
     return res
 
   @classmethod
-  def eager_query(cls):
+  def eager_query(cls, **kwargs):
     """Eager query classmethod."""
-    return super(Labeled, cls).eager_query().options(
+    return super(Labeled, cls).eager_query(**kwargs).options(
         orm.subqueryload('_object_labels'))
 
   @classmethod

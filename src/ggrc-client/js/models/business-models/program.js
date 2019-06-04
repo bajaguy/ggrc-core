@@ -1,5 +1,5 @@
 /*
-    Copyright (C) 2018 Google Inc.
+    Copyright (C) 2019 Google Inc.
     Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 */
 
@@ -9,10 +9,12 @@ import uniqueTitle from '../mixins/unique-title';
 import caUpdate from '../mixins/ca-update';
 import timeboxed from '../mixins/timeboxed';
 import accessControlList from '../mixins/access-control-list';
-import baseNotifications from '../mixins/base-notifications';
+import programNotifications from '../mixins/notifications/program-notifications';
+import proposable from '../mixins/proposable';
+import megaObject from '../mixins/mega-object';
 import Stub from '../stub';
 
-export default Cacheable('CMS.Models.Program', {
+export default Cacheable.extend({
   root_object: 'program',
   root_collection: 'programs',
   category: 'programs',
@@ -26,7 +28,9 @@ export default Cacheable('CMS.Models.Program', {
     caUpdate,
     timeboxed,
     accessControlList,
-    baseNotifications,
+    programNotifications,
+    proposable,
+    megaObject,
   ],
   is_custom_attributable: true,
   isRoleable: true,
@@ -68,11 +72,22 @@ export default Cacheable('CMS.Models.Program', {
     status: 'Draft',
   },
   statuses: ['Draft', 'Deprecated', 'Active'],
-  init: function () {
-    this.validateNonBlank('title');
-    this._super(...arguments);
-  },
 }, {
+  define: {
+    title: {
+      value: '',
+      validate: {
+        required: true,
+        validateUniqueTitle: true,
+      },
+    },
+    _transient_title: {
+      value: '',
+      validate: {
+        validateUniqueTitle: true,
+      },
+    },
+  },
   readOnlyProgramRoles: function () {
     const allowedRoles = ['Superuser', 'Administrator', 'Editor'];
     if (allowedRoles.indexOf(GGRC.current_user.system_wide_role) > -1) {

@@ -1,4 +1,4 @@
-# Copyright (C) 2018 Google Inc.
+# Copyright (C) 2019 Google Inc.
 # Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 
 """Test Issue tracker query builder."""
@@ -77,8 +77,8 @@ class TestBaseIssueTrackerParamsBuilder(unittest.TestCase):
         "title": "test_title",
     }
     expected_result = {
-        "component_id": DEFAULT_ISSUETRACKER_VALUES["component_id"],
-        "hotlist_ids": [DEFAULT_ISSUETRACKER_VALUES["hotlist_id"], ],
+        "component_id": DEFAULT_ISSUETRACKER_VALUES["issue_component_id"],
+        "hotlist_ids": [DEFAULT_ISSUETRACKER_VALUES["issue_hotlist_id"], ],
         "title": "test_title",
         "type": DEFAULT_ISSUETRACKER_VALUES["issue_type"],
         "priority": DEFAULT_ISSUETRACKER_VALUES["issue_priority"],

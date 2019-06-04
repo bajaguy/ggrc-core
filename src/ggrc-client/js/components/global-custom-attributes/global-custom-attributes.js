@@ -1,5 +1,5 @@
 /*
- Copyright (C) 2018 Google Inc.
+ Copyright (C) 2019 Google Inc.
  Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
  */
 
@@ -8,17 +8,24 @@ import {
 } from '../../plugins/utils/custom-attribute/custom-attribute-config';
 import Permission from '../../permission';
 import {notifierXHR} from '../../plugins/utils/notifiers-utils';
+import {isProposableExternally} from '../../plugins/utils/ggrcq-utils';
 
 /**
  * Global Custom Attributes is a component representing custom attributes.
  */
 export default can.Component.extend({
   tag: 'global-custom-attributes',
-  viewModel: {
+  leakScope: true,
+  viewModel: can.Map.extend({
     isAttributesDisabled: false,
     define: {
+      redirectionEnabled: {
+        get() {
+          return isProposableExternally(this.attr('instance'));
+        },
+      },
       /**
-       * Indicates whether custome attributes can be edited.
+       * Indicates whether custom attributes can be edited.
        * @type {boolean}
        */
       isEditDenied: {
@@ -44,7 +51,7 @@ export default can.Component.extend({
         return false;
       }
 
-      return instance.class.isProposable;
+      return instance.class.isProposable || instance.attr('readonly');
     },
     initCustomAttributes: function () {
       const instance = this.attr('instance');
@@ -69,13 +76,13 @@ export default can.Component.extend({
           instance.backup();
         })
         .fail(function (instance, xhr) {
-          notifierXHR('error')(xhr);
+          notifierXHR('error', xhr);
         })
         .always(function () {
           this.attr('isSaving', false);
         }.bind(this));
     },
-  },
+  }),
   init: function () {
     this.viewModel.initCustomAttributes();
   },

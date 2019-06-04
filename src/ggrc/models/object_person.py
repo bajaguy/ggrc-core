@@ -1,4 +1,4 @@
-# Copyright (C) 2018 Google Inc.
+# Copyright (C) 2019 Google Inc.
 # Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 
 from sqlalchemy.ext.associationproxy import association_proxy
@@ -56,8 +56,8 @@ class ObjectPerson(Timeboxed, base.ContextRBAC, Base, db.Model):
   ]
 
   @classmethod
-  def eager_query(cls):
-    query = super(ObjectPerson, cls).eager_query()
+  def eager_query(cls, **kwargs):
+    query = super(ObjectPerson, cls).eager_query(**kwargs)
     return query.options(
         orm.subqueryload('person'))
 
@@ -93,7 +93,7 @@ class Personable(object):
   _include_links = []
 
   @classmethod
-  def eager_query(cls):
-    query = super(Personable, cls).eager_query()
+  def eager_query(cls, **kwargs):
+    query = super(Personable, cls).eager_query(**kwargs)
     return cls.eager_inclusions(query, Personable._include_links).options(
         orm.subqueryload('object_people'))

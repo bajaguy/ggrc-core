@@ -1,21 +1,29 @@
 /*
- Copyright (C) 2018 Google Inc., authors, and contributors
+ Copyright (C) 2019 Google Inc., authors, and contributors
  Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
  */
 
 import '../simple-modal/simple-modal';
 import '../gca-controls/gca-controls';
-import template from './templates/mandatory-fields-modal.mustache';
+import template from './templates/mandatory-fields-modal.stache';
 
 export default can.Component.extend({
-  template,
   tag: 'mandatory-fields-modal',
-  viewModel: {
+  view: can.stache(template),
+  leakScope: true,
+  viewModel: can.Map.extend({
     define: {
       showCAs: {
         type: 'boolean',
         get() {
           return this.attr('caFields').length;
+        },
+      },
+      isApplyButtonDisabled: {
+        type: Boolean,
+        get() {
+          let hasErrors = this.instance.computed_unsuppressed_errors();
+          return hasErrors || this.attr('loading');
         },
       },
     },
@@ -47,7 +55,7 @@ export default can.Component.extend({
       this.dispatch('cancel');
       this.attr('state.open', false);
     },
-  },
+  }),
   events: {
     '{viewModel.state} open'() {
       if (this.viewModel.state.open) {

@@ -1,0 +1,27 @@
+{{!
+    Copyright (C) 2019 Google Inc.
+    Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
+}}
+
+{{#each list}}
+<li class="{{class.category}}" data-model="true" {{canData 'model'}}>
+  <a href="{{viewLink}}" class="show-extended">
+    <div>
+      <div class="lhs-main-title">
+        <span class="lhs-item">
+          {{firstnonempty title name email}}
+        </span>
+      </div>
+      <div class="lhs-people">
+        {{^if contact}}
+        <i class="fa fa-person red"></i>
+        {{/if}}
+      </div>
+    </div>
+  </a>
+</li>
+{{/each}}
+
+<li class="spinny">
+  <spinner-component toggle:from="list.is_loading"></spinner-component>
+</li>

@@ -1,5 +1,5 @@
 /*
- Copyright (C) 2018 Google Inc.
+ Copyright (C) 2019 Google Inc.
  Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
  */
 
@@ -33,7 +33,9 @@ GGRC.config = {
     'Requirement',
     'DataAsset',
     'AccessGroup',
+    'AccountBalance',
     'System',
+    'KeyReport',
     'Contract',
     'Standard',
     'Objective',
@@ -83,6 +85,12 @@ GGRC.Bootstrap = {
     title_plural: 'Issues',
     model_singular: 'Issue',
   }, {
+    title_plural: 'Key Reports',
+    title_singular: 'KeyReport',
+  }, {
+    title_plural: 'Account Balance',
+    title_singular: 'AccountBalance',
+  }, {
     title_plural: 'Markets',
     model_singular: 'Market',
   }, {
@@ -115,9 +123,6 @@ GGRC.Bootstrap = {
   }, {
     title_plural: 'Regulations',
     model_singular: 'Regulation',
-  }, {
-    title_plural: 'Risk Assessments',
-    model_singular: 'RiskAssessment',
   }, {
     title_plural: 'Requirements',
     model_singular: 'Requirement',
@@ -168,6 +173,12 @@ GGRC.Bootstrap = {
     title_plural: 'Issues',
     model_singular: 'Issue',
   }, {
+    title_plural: 'Key Reports',
+    model_singular: 'KeyReport',
+  }, {
+    title_plural: 'Account Balance',
+    title_singular: 'AccountBalance',
+  }, {
     title_plural: 'Markets',
     model_singular: 'Market',
   }, {
@@ -200,9 +211,6 @@ GGRC.Bootstrap = {
   }, {
     title_plural: 'Regulations',
     model_singular: 'Regulation',
-  }, {
-    title_plural: 'Risk Assessments',
-    model_singular: 'RiskAssessment',
   }, {
     title_plural: 'Requirements',
     model_singular: 'Requirement',

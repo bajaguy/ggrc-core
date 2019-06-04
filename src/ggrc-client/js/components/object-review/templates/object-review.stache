@@ -1,0 +1,70 @@
+{{!
+  Copyright (C) 2019 Google Inc.
+  Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
+}}
+
+<div class="object-review">
+  <div class="object-review__header">
+    <div class="object-review__header-title">
+      Object Review
+    </div>
+    <div class="object-review__header-status">
+      <div class="state-value state-{{reviewStatus}}">
+        {{reviewStatus}}
+      </div>
+    </div>
+    <div class="object-review__header-spinner">
+      <spinner-component toggle:from="loading"></spinner-component>
+    </div>
+  </div>
+  {{^if isSnapshot}}
+    <div class="object-review__content">
+      {{#if showLastReviewInfo}}
+        <div class="object-review__body">
+          <div class="object-review__body-description">
+            Last reviewed by
+            <person-data class="inline-block" person:from="review.last_reviewed_by"></person-data>
+            on {{dateTime review.last_reviewed_at}}
+          </div>
+          {{^if isReviewed}}
+            <a href="javascript:void(0)" on:el:click="showLastChanges()">
+              Review History
+            </a>
+          {{/if}}
+        </div>
+      {{/if}}
+      {{#if showButtons}}
+        <div class="object-review__buttons">
+          {{^if isReviewed}}
+            <button
+                type="button"
+                {{#if loading}}disabled{{/if}}
+                on:el:click="markReviewed()"
+                class="btn btn-green btn-small">
+              Mark Reviewed
+            </button>
+          {{/if}}
+          <button
+              type="button"
+              {{#if loading}}disabled{{/if}}
+              on:el:click="changeReviewers($element)"
+              class="btn btn-white btn-small">
+            Request Review
+          </button>
+        </div>
+      {{/if}}
+    </div>
+    {{#if hasReviewers}}
+      <custom-roles
+        readOnly:from="true"
+        instance:from="review">
+      </custom-roles>
+    {{/if}}
+    <request-review-modal
+      review:from="review"
+      parentInstance:from="instance"
+      modalState:bind="reviewersModalState"
+      on:reviewersUpdated="reviewersUpdated(scope.event)">
+    </request-review-modal>
+  {{/if}}
+</div>

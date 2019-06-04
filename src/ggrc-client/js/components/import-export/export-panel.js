@@ -1,14 +1,15 @@
 /*
-  Copyright (C) 2018 Google Inc.
+  Copyright (C) 2019 Google Inc.
   Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 */
 
-import template from './templates/export-panel.mustache';
+import template from './templates/export-panel.stache';
 
 export default can.Component.extend({
   tag: 'export-panel',
-  template,
-  viewModel: {
+  view: can.stache(template),
+  leakScope: true,
+  viewModel: can.Map.extend({
     define: {
       showAttributes: {
         value: true,
@@ -45,7 +46,7 @@ export default can.Component.extend({
     },
     exportable: GGRC.Bootstrap.exportable,
     snapshotable_objects: GGRC.config.snapshotable_objects,
-    panel_index: '@',
+    panel_index: '',
     has_parent: false,
     removable: false,
     item: null,
@@ -65,9 +66,9 @@ export default can.Component.extend({
       this.attr('showAttributes', true);
       this.attr('showLocalAttributes', true);
     },
-  },
+  }),
   events: {
-    '[data-action=select_toggle] click': function (el, ev) {
+    '[data-action=select_toggle] click': function (el) {
       let type = el.data('type');
       let value = el.data('value');
       let targetList;
@@ -88,7 +89,7 @@ export default can.Component.extend({
 
       this.viewModel.updateIsSelected(targetList, value);
     },
-    '{viewModel} type': function (viewModel, ev, type) {
+    '{viewModel} type': function ([viewModel], ev, type) {
       viewModel.attr('item').changeType(type);
       viewModel.setSelected();
     },

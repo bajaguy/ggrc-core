@@ -1,9 +1,7 @@
 /*
- Copyright (C) 2018 Google Inc.
+ Copyright (C) 2019 Google Inc.
  Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
  */
-
-import {getPlainText} from '../ggrc_utils';
 
 let customAttributesType = {
   Text: 'input',
@@ -12,6 +10,7 @@ let customAttributesType = {
   Date: 'date',
   Input: 'input',
   Checkbox: 'checkbox',
+  Multiselect: 'multiselect',
   Dropdown: 'dropdown',
 };
 
@@ -90,45 +89,6 @@ function getCustomAttributeType(type) {
 /**
  * @deprecated Use CustomAttributeObject API to get access to the necessary custom
  * attribute field and make some manipulations with it.
- * @param {*} value
- * @param {*} type
- * @param {*} cav
- * @return {*}
- */
-function isEmptyCustomAttribute(value, type, cav) {
-  let result = false;
-  let types = ['Text', 'Rich Text', 'Date', 'Checkbox', 'Dropdown',
-    'Map:Person'];
-  let options = {
-    Checkbox: function (value) {
-      return !value || value === '0';
-    },
-    'Rich Text': function (value) {
-      value = getPlainText(value);
-      return _.isEmpty(value);
-    },
-    'Map:Person': function (value, cav) {
-      // Special case, Map:Person has 'Person' value by default
-      if (cav) {
-        return !cav.attribute_object;
-      }
-      return _.isEmpty(value);
-    },
-  };
-  if (value === undefined) {
-    return true;
-  }
-  if (types.indexOf(type) > -1 && options[type]) {
-    result = options[type](value, cav);
-  } else if (types.indexOf(type) > -1) {
-    result = _.isEmpty(value);
-  }
-  return result;
-}
-
-/**
- * @deprecated Use CustomAttributeObject API to get access to the necessary custom
- * attribute field and make some manipulations with it.
  * Converts custom attribute value for UI controls.
  * @param {String} type - Custom attribute type
  * @param {Object} value - Custom attribute value
@@ -154,7 +114,7 @@ function convertFromCaValue(type, value, valueObj) {
     return null;
   }
 
-  if (type === 'dropdown') {
+  if (type === 'dropdown' || type === 'multiselect') {
     if (value === null || value === undefined) {
       return '';
     }
@@ -391,11 +351,9 @@ function getCustomAttributes(instance, type) {
 function setCustomAttributeValue(ca, value) {
   if (ca.attr('attributeType') === 'person') {
     let attributeObject = value ? {id: value, type: 'Person'} : null;
-    let attributeObjectId = value || null;
 
     ca.attr('attribute_value', 'Person');
     ca.attr('attribute_object', attributeObject);
-    ca.attr('attribute_object_id', attributeObjectId);
   } else {
     let convertedValue = convertToCaValue(ca.attr('attributeType'), value);
     ca.attr('attribute_value', convertedValue || ca.def.default_value);
@@ -467,7 +425,6 @@ export {
   convertToCaValue,
   convertValuesToFormFields,
   prepareCustomAttributes,
-  isEmptyCustomAttribute,
   getCustomAttributes,
   getCustomAttributeType,
   isEvidenceRequired,

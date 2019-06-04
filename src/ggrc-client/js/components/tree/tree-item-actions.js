@@ -1,11 +1,11 @@
 /*
- Copyright (C) 2018 Google Inc.
+ Copyright (C) 2019 Google Inc.
  Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
  */
 
 import '../lazy-render/lazy-render';
 import '../show-related-assessments-button/show-related-assessments-button';
-import template from './templates/tree-item-actions.mustache';
+import template from './templates/tree-item-actions.stache';
 import {
   isSnapshot,
 } from '../../plugins/utils/snapshot-utils';
@@ -15,7 +15,6 @@ import {
 import Permission from '../../permission';
 import Mapper from '../../models/mappers/mappings';
 
-const tag = 'tree-item-actions';
 const forbiddenEditList = ['Cycle', 'CycleTaskGroup'];
 
 const viewModel = can.Map.extend({
@@ -46,7 +45,7 @@ const viewModel = can.Map.extend({
         return isSnapshot(this.attr('instance'));
       },
     },
-    isAllowedToEdit: {
+    denyEditAndMap: {
       type: 'boolean',
       get() {
         let instance = this.attr('instance');
@@ -54,24 +53,35 @@ const viewModel = can.Map.extend({
         let isSnapshot = this.attr('isSnapshot');
         let isArchived = instance.attr('archived');
         let isInForbiddenList = forbiddenEditList.indexOf(type) > -1;
-        return Permission.is_allowed_for('update', instance) &&
-          !(isSnapshot || isInForbiddenList || isArchived);
+        return !Permission.is_allowed_for('update', instance) ||
+          (isSnapshot || isInForbiddenList || isArchived);
+      },
+    },
+    isAllowedToEdit: {
+      type: 'boolean',
+      get() {
+        return !this.attr('denyEditAndMap')
+          && !this.attr('instance').constructor.isChangeableExternally
+          && !this.attr('instance.readonly');
       },
     },
     isAllowedToMap: {
       type: 'boolean',
       get() {
         let type = this.attr('instance.type');
-        let audit = this.attr('instance.audit');
-        if ((type === 'Assessment') &&
-          (!audit ||
-          !Permission.is_allowed_for('read', audit))) {
-          return false;
+
+        if (type === 'Assessment') {
+          let audit = this.attr('instance.audit');
+
+          if (!Permission.is_allowed_for('read', audit)) {
+            return false;
+          }
         }
-        let isAllowedToEdit = this.attr('isAllowedToEdit');
+
+        let denyEditAndMap = this.attr('denyEditAndMap');
         let mappingTypes = Mapper.getMappingList(type);
 
-        return isAllowedToEdit && !!mappingTypes.length;
+        return !denyEditAndMap && !!mappingTypes.length;
       },
     },
   },
@@ -91,9 +101,6 @@ const viewModel = can.Map.extend({
   expand(scope, el, ev) {
     this.dispatch('expand');
     ev.stopPropagation();
-  },
-  subTreeTypes() {
-    can.trigger(this.attr('$el'), 'childTreeTypes');
   },
   instance: null,
   childOptions: null,
@@ -124,8 +131,9 @@ const viewModel = can.Map.extend({
 });
 
 export default can.Component.extend({
-  tag,
-  template,
+  tag: 'tree-item-actions',
+  view: can.stache(template),
+  leakScope: true,
   viewModel,
   events: {
     inserted() {

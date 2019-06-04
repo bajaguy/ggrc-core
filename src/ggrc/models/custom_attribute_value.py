@@ -1,4 +1,4 @@
-# Copyright (C) 2018 Google Inc.
+# Copyright (C) 2019 Google Inc.
 # Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 
 """Custom attribute value model"""
@@ -65,9 +65,11 @@ class CustomAttributeValue(base.ContextRBAC, Base, Indexed, db.Model):
       "Rich Text": lambda self: self._validate_rich_text(),
       "Date": lambda self: self._validate_date(),
       "Dropdown": lambda self: self._validate_dropdown(),
+      "Multiselect": lambda self: self._validate_multiselect(),
       "Map:Person": lambda self: self._validate_map_object(),
       "Checkbox": lambda self: self._validate_checkbox(),
   }
+  TYPES_NO_RICHTEXT_VALIDATE = ["Control"]
 
   @property
   def latest_revision(self):
@@ -100,8 +102,8 @@ class CustomAttributeValue(base.ContextRBAC, Base, Indexed, db.Model):
     )
 
   @classmethod
-  def eager_query(cls):
-    query = super(CustomAttributeValue, cls).eager_query()
+  def eager_query(cls, **kwargs):
+    query = super(CustomAttributeValue, cls).eager_query(**kwargs)
     query = query.options(
         orm.subqueryload('_related_revisions'),
         orm.joinedload('custom_attribute'),
@@ -265,7 +267,11 @@ class CustomAttributeValue(base.ContextRBAC, Base, Indexed, db.Model):
 
   def _validate_mandatory_mapping(self):
     """Validate mandatory mapping attribute"""
-    if self.custom_attribute.mandatory and not self.attribute_object_id:
+    if (
+        self.custom_attribute.is_gca and
+        self.custom_attribute.mandatory and
+        not self.attribute_object_id
+    ):
       raise ValueError('Missing mandatory attribute: %s' %
                        self.custom_attribute.title)
 
@@ -355,12 +361,24 @@ class CustomAttributeValue(base.ContextRBAC, Base, Indexed, db.Model):
 
   def _validate_rich_text(self):
     """Add tags for links."""
-    self.attribute_value = url_parser.parse(self.attribute_value)
+    if self.attributable_type not in self.TYPES_NO_RICHTEXT_VALIDATE:
+      self.attribute_value = url_parser.parse(self.attribute_value)
 
   def _validate_checkbox(self):
     """Set falsy value to zero."""
     if not self.attribute_value:
       self.attribute_value = "0"
+
+  def _validate_multiselect(self):
+    """Validate multiselect checkbox values."""
+    if self.attribute_value:
+      valid_options = set(
+          self.custom_attribute.multi_choice_options.split(","))
+      attr_values = set(self.attribute_value.split(","))
+      if not attr_values.issubset(valid_options):
+        raise ValueError("Invalid custom attribute multiselect options {act}. "
+                         "Expected some of {exp}".format(act=attr_values,
+                                                         exp=valid_options))
 
   def validate(self):
     """Validate custom attribute value."""

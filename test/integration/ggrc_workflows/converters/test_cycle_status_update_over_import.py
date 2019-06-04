@@ -1,4 +1,4 @@
-# Copyright (C) 2018 Google Inc.
+# Copyright (C) 2019 Google Inc.
 # Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 
 """Test on Cycle Task status update over import."""
@@ -254,8 +254,7 @@ class TestCycleTaskStatusUpdate(ggrc_test.TestCase):
   @ddt.data(1, 2, 3)
   def test_finished_to_verified(self, number_of_tasks):
     """Update {0} tasks status from finished from verified and back"""
-    now = datetime.datetime.now().replace(microsecond=0)
-    finished_date = now - datetime.timedelta(1)
+    finished_date = datetime.date.today()
     start_statuses = self._get_start_tasks_statuses(self.FINISHED_STRUCTURE)
     with ggrc_factories.single_commit():
       for task in self.tasks:

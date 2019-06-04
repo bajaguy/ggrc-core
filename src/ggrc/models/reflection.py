@@ -1,4 +1,4 @@
-# Copyright (C) 2018 Google Inc.
+# Copyright (C) 2019 Google Inc.
 # Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 
 """Utilties to deal with introspecting GGRC models for publishing, creation,
@@ -52,6 +52,56 @@ class Attribute(object):
     self.read = read
 
 
+# pylint: disable=too-few-public-methods
+class SerializableAttribute(Attribute):
+  """Base attribute class with serializer."""
+
+  # pylint: disable=unused-argument,no-self-use
+  def deserialize(self, value):
+    """Deserialize json respresentation to internal value."""
+    raise NotImplementedError
+
+
+# pylint: disable=too-few-public-methods
+class ExternalUserAttribute(SerializableAttribute):
+  """Attribute class for deserialization of external user."""
+
+  def __init__(self, attr, force_create=False, **kwargs):
+    super(ExternalUserAttribute, self).__init__(attr, **kwargs)
+
+    self.force_create = force_create
+
+  def deserialize(self, value):
+    """Deserialize json representation to Person object.
+
+    Creates non existing person if force_create attribute is True.
+    """
+    from ggrc.utils import user_generator
+
+    if value.get("email"):
+      email = value.get("email")
+      name = value.get("name")
+      if self.force_create:
+        return user_generator.find_or_create_external_user(email, name)
+      return user_generator.find_user_by_email(email)
+    elif value.get("id"):
+      return user_generator.find_user_by_id(value["id"])
+    else:
+      raise ValueError("Provided data are incorrect.")
+
+
+class HybridAttribute(Attribute):
+  """Class for attributes which are hybrid_properties on models."""
+
+  __slots__ = ["hybrid"]
+
+  def __init__(self, attr, create=True, update=True, read=True):
+    super(HybridAttribute, self).__init__(
+        attr, create=create, update=update, read=read
+    )
+    self.hybrid = True
+
+
 class ApiAttributes(dict):
   """Class to collect all required api attributes."""
 
@@ -103,7 +153,6 @@ class AttributeInfo(object):
       "test_plan",
       "owners",
       "task_type",
-      "due_on",
       "start_date",
       "end_date",
       "last_deprecated_date",
@@ -116,6 +165,7 @@ class AttributeInfo(object):
       "status",
       "labels",
       "review_status",
+      "review_status_display_name",
       "reviewers",
       "assertions",
       "categories",
@@ -155,6 +205,7 @@ class AttributeInfo(object):
       "delete",
       "repeat_every",
       "unit",
+      "readonly",
       ALIASES_PREFIX,
       "comments",
       "last_comment",
@@ -189,6 +240,15 @@ class AttributeInfo(object):
     self._update_raw = AttributeInfo.gather_update_raw(tgt_class)
     self._aliases = AttributeInfo.gather_aliases(tgt_class)
     self._visible_aliases = AttributeInfo.gather_visible_aliases(tgt_class)
+
+  @classmethod
+  def get_attr(cls, tgt_class, src_attr, attr):
+    """Get the particular attribute from `tgt_class` or it's base classes."""
+    for base in tgt_class.__mro__:
+      attrs = getattr(base, src_attr, None) or {}
+      if attr in attrs:
+        return attrs[attr]
+    return None
 
   @classmethod
   def gather_attr_dicts(cls, tgt_class, src_attr):
@@ -398,8 +458,8 @@ class AttributeInfo(object):
     return set(sum(unique_columns, []))
 
   @classmethod
-  def get_object_attr_definitions(cls, object_class,
-                                  ca_cache=None, fields=None):
+  def get_object_attr_definitions(cls, object_class, ca_cache=None,
+                                  fields=None, include_hidden=False):
     """Get all column definitions for object_class.
 
     This function joins custom attribute definitions, mapping definitions and
@@ -408,6 +468,9 @@ class AttributeInfo(object):
     Args:
       object_class: Model for which we want the attribute definitions.
       ca_cache: dictionary containing custom attribute definitions.
+      include_hidden (bool): Flag which specifies if we should include
+        attribute definition for hidden attributes (they marked as 'hidden'
+        in _aliases dict).
     """
     definitions = {}
 
@@ -423,6 +486,12 @@ class AttributeInfo(object):
     unique_columns = cls.get_unique_constraints(object_class)
 
     for key, value in aliases:
+      if (
+          not include_hidden and
+          isinstance(value, dict) and
+          value.get("hidden")
+      ):
+        continue
       column = object_class.__table__.columns.get(key)
       mandatory = False
       if column is not None:
@@ -456,7 +525,7 @@ class AttributeInfo(object):
   def get_attr_definitions_array(cls, object_class, ca_cache=None):
     """ get all column definitions containing only json serializable data """
     definitions = cls.get_object_attr_definitions(object_class,
-                                                  ca_cache=ca_cache)
+                                                  ca_cache=ca_cache,)
     order = cls.get_column_order(definitions.keys())
     result = []
     for key in order:

@@ -1,9 +1,9 @@
 /*
- Copyright (C) 2018 Google Inc.
+ Copyright (C) 2019 Google Inc.
  Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
  */
 
-import template from './bulk-update-target-state.mustache';
+import template from './bulk-update-target-state.stache';
 
 let objectStateToWarningMap = {
   CycleTaskGroupObjectTask: {
@@ -20,8 +20,9 @@ let objectStateToWarningMap = {
 
 export default can.Component.extend({
   tag: 'bulk-update-target-state',
-  template: template,
-  viewModel: {
+  view: can.stache(template),
+  leakScope: true,
+  viewModel: can.Map.extend({
     define: {
       warningMessage: {
         get: function () {
@@ -37,5 +38,5 @@ export default can.Component.extend({
     targetState: null,
     targetStates: [],
     enabled: false,
-  },
+  }),
 });

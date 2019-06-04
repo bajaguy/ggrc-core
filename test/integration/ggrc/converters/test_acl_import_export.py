@@ -1,4 +1,4 @@
-# Copyright (C) 2018 Google Inc.
+# Copyright (C) 2019 Google Inc.
 # Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 
 """Test import and export of objects with custom attributes."""
@@ -293,9 +293,10 @@ class TestACLImportExport(TestCase):
       "Market": {"role name": set(_random_emails[:2])},
       "Facility": {"role name": set(_random_emails[2:])},
   }, {
-      "Control": {"role name": set(_random_emails[:3])},
+      "AccountBalance": {"role name": set(_random_emails)},
       "Market": {"role name": set(_random_emails[2:])},
       "System": {"role name": set(_random_emails)},
+      "KeyReport": {"role name": set(_random_emails)},
       "Objective": {"role name": set()},
       "Product": {"role name": set(_random_emails[:1])},
       "Policy": {"other role name": set(_random_emails[:1])},

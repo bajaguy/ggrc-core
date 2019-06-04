@@ -1,15 +1,16 @@
 /*
- Copyright (C) 2018 Google Inc.
+ Copyright (C) 2019 Google Inc.
  Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
  */
 
-import '../../dropdown/dropdown';
-import template from './dropdown-form-field.mustache';
+import '../../dropdown/dropdown-component';
+import template from './dropdown-form-field.stache';
 
 export default can.Component.extend({
   tag: 'dropdown-form-field',
-  template,
-  viewModel: {
+  view: can.stache(template),
+  leakScope: true,
+  viewModel: can.Map.extend({
     define: {
       isNoneSelected: {
         get: function () {
@@ -56,5 +57,5 @@ export default can.Component.extend({
         value: newValue,
       });
     },
-  },
+  }),
 });

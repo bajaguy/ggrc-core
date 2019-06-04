@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2018 Google Inc.
+  Copyright (C) 2019 Google Inc.
   Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 */
 
@@ -19,16 +19,14 @@ describe('assessment-template-clone component', () => {
     describe('inserted handler', () => {
       beforeEach(() => {
         vm = new can.Map({
-          submitCbs: {
-            fire: jasmine.createSpy(),
-          },
+          onSubmit: jasmine.createSpy(),
         });
         handler = events.inserted.bind({viewModel: vm});
       });
 
-      it('calls fire() of submitCbs attribute', () => {
+      it('calls onSubmit()', () => {
         handler();
-        expect(vm.submitCbs.fire).toHaveBeenCalled();
+        expect(vm.onSubmit).toHaveBeenCalled();
       });
     });
 

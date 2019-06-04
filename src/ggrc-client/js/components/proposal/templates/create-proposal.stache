@@ -1,0 +1,28 @@
+{{!
+  Copyright (C) 2019 Google Inc.
+  Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
+}}
+
+<div class="ggrc-form proposal">
+  <div class="ggrc-form-item">
+    <div class="ggrc-form-item__row">
+      <label class="ggrc-form-item__label">
+        Comment
+      </label>
+      <rich-text
+          hiddenToolbar:from="true"
+          placeholder:from="'Enter Proposal Agenda'"
+          content:bind="proposalAgenda"
+          withMentions:from="true">
+      </rich-text>
+    </div>
+  </div>
+
+  <div class="proposal__save-button">
+    <spinner-component class="proposal__spinner" toggle:from="loading"></spinner-component>
+    <a class="btn btn-small btn-green {{#if isDisabled}}disabled{{/isDisabled}}"
+       on:el:click="create(scope.element, scope.event)">
+        Propose
+    </a>
+  </div>
+</div>

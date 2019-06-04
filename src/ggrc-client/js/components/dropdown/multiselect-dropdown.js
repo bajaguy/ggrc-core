@@ -1,15 +1,19 @@
 /*
-    Copyright (C) 2018 Google Inc.
+    Copyright (C) 2019 Google Inc.
     Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 */
 
-import template from './multiselect_dropdown.mustache';
+import template from './multiselect-dropdown.stache';
 
 export default can.Component.extend({
   tag: 'multiselect-dropdown',
-  template,
-  viewModel: {
+  view: can.stache(template),
+  leakScope: true,
+  viewModel: can.Map.extend({
     disabled: false,
+    isHighlightable: true,
+    isInlineMode: false,
+    isOpen: false,
     _stateWasUpdated: false,
     selected: [],
     options: [],
@@ -39,9 +43,15 @@ export default can.Component.extend({
           });
         },
       },
-      isOpen: {
-        type: 'boolean',
-        value: false,
+      isOpenOrInline: {
+        get() {
+          return this.attr('isOpen') || this.attr('isInlineMode');
+        },
+      },
+      isHighlighted: {
+        get() {
+          return this.attr('isHighlightable') && this.attr('isOpen');
+        },
       },
       options: {
         value: [],
@@ -118,7 +128,7 @@ export default can.Component.extend({
     dropdownBodyClick: function (ev) {
       ev.stopPropagation();
     },
-  },
+  }),
   events: {
     '{window} click': function () {
       if (this.viewModel.attr('disabled')) {

@@ -1,5 +1,5 @@
 /*
-    Copyright (C) 2018 Google Inc.
+    Copyright (C) 2019 Google Inc.
     Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 */
 
@@ -7,6 +7,7 @@ import {confirm} from '../plugins/utils/modals';
 import {hasPending as hasPendingUtil} from '../plugins/ggrc_utils';
 import {navigate} from '../plugins/utils/current-page-utils';
 import {changeUrl} from '../router';
+import {trigger} from 'can-event';
 
 (function ($) {
   'use strict';
@@ -194,7 +195,6 @@ import {changeUrl} from '../router';
           return;
         }
         if (instance) {
-          instance._backupStore()['-1'] = instance['-1'];
           changedInstance = instance.isDirty(true);
           if (!instance.id) {
             hasPending = false;
@@ -209,12 +209,12 @@ import {changeUrl} from '../router';
             modal_description: 'Are you sure that you want' +
             ' to discard your changes?',
             modal_confirm: 'Continue Editing',
-            button_view: GGRC.mustache_path +
-              '/modals/discard_buttons.mustache',
+            button_view: GGRC.templates_path +
+              '/modals/discard_buttons.stache',
             skip_refresh: true,
           }, function () {
-            can.trigger(instance, 'modal:dismiss');
-            can.trigger(instance, 'modal:discard');
+            trigger.call(instance, 'modal:dismiss');
+            trigger.call(instance, 'modal:discard');
             this.$element.trigger('modal:discard');
             this.$trigger.trigger('modal:dismiss');
             this.$element
@@ -232,7 +232,7 @@ import {changeUrl} from '../router';
 
       // Hide the modal like normal
       if (instance) {
-        can.trigger(instance, 'modal:dismiss');
+        trigger.call(instance, 'modal:dismiss');
       }
       $.fn.modal.Constructor.prototype.hide.apply(this, [e]);
       this.$element.trigger('modal:dismiss');
@@ -415,7 +415,7 @@ import {changeUrl} from '../router';
       }
 
       for (type in flash) {
-        // data prop is reserved for mustache template data and
+        // data prop is reserved for template data and
         // we don't expect to have ajax:flash of a "data" type
         if ( type === 'data' ) {
           continue;
@@ -452,9 +452,10 @@ import {changeUrl} from '../router';
                 $html.append($(textContainer).text(message));
                 if (addLink) {
                   $html.removeClass('alert-autohide');
-                  $link = $(`<a href="javascript://" class="reload-link">
-                                Show results
-                             </a>`);
+                  $link = $(
+                    '<a href="javascript://" class="reload-link">Show results' +
+                    '</a>'
+                  );
                   $link.on('click', function () {
                     if (redirectLink) {
                       $('html').addClass('no-js');
@@ -469,7 +470,7 @@ import {changeUrl} from '../router';
           }
 
           $html.append(
-            '<a href="#" class="close" data-dismiss="alert">' +
+            '<a href="javascript:void(0)" class="close" data-dismiss="alert">' +
               '<i class="fa fa-times" aria-hidden="true"></i>' +
             '</a>'
           );

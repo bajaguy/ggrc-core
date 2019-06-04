@@ -1,4 +1,4 @@
-# Copyright (C) 2018 Google Inc.
+# Copyright (C) 2019 Google Inc.
 # Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 
 """Resource for handling special endpoints for people."""
@@ -8,21 +8,19 @@ import collections
 import functools
 
 from logging import getLogger
-from werkzeug.exceptions import Forbidden, BadRequest, MethodNotAllowed
-from sqlalchemy.orm.exc import NoResultFound
-from dateutil import parser as date_parser
+import sqlalchemy as sa
+
+from werkzeug.exceptions import Forbidden
 
 from ggrc import db
 from ggrc import login
 from ggrc import models
 from ggrc.utils import benchmark
-from ggrc.utils.log_event import log_event
 from ggrc.services import common
 from ggrc.views import converters
 from ggrc.query import my_objects
 from ggrc.query import builder
-from ggrc.models.person_profile import PersonProfile
-from ggrc.models.person import Person
+from ggrc.models import all_models
 
 
 # pylint: disable=invalid-name
@@ -34,7 +32,7 @@ ALL_MODELS = {
     "OrgGroup", "Policy", "Process", "Product", "Program", "Project",
     "Regulation", "Risk", "Requirement", "Standard", "System",
     "TechnologyEnvironment", "Threat", "Vendor", "CycleTaskGroupObjectTask",
-    "Workflow", "Metric", "ProductGroup",
+    "Workflow", "Metric", "ProductGroup", "KeyReport", "AccountBalance",
 }
 
 MY_WORK_MODELS = ALL_MODELS - {"Workflow"}
@@ -102,24 +100,16 @@ class PersonResource(common.ExtendedResource):
 
     return wrapper
 
-  @staticmethod
-  def raise_not_allowed_exception(*args, **kwargs):
-    """Raise not allowed exception for person resource."""
-    del args
-    del kwargs
-    raise MethodNotAllowed(description="Creation of new profile for person "
-                                       "by POST request is not allowed")
-
   def get(self, *args, **kwargs):  # pylint: disable=arguments-differ
     # This is to extend the get request for additional data.
     command_map = {
         None: super(PersonResource, self).get,
         "task_count": self.verify_is_current(self._task_count),
         "my_work_count": self.verify_is_current(self._my_work_count),
+        "my_workflows": self.verify_is_current(self._my_workflows),
         "all_objects_count": self.verify_is_current(self._all_objects_count),
         "imports": self.verify_is_current(converters.handle_import_get),
         "exports": self.verify_is_current(converters.handle_export_get),
-        "profile": self.verify_is_current(self._get_profile),
     }
     return self._process_request(command_map, *args, **kwargs)
 
@@ -131,7 +121,6 @@ class PersonResource(common.ExtendedResource):
         "imports": self.verify_is_current(converters.handle_import_post),
         # create export entry and start export background task
         "exports": self.verify_is_current(converters.handle_export_post),
-        "profile": self.raise_not_allowed_exception,
     }
     return self._process_request(command_map, *args, **kwargs)
 
@@ -141,7 +130,6 @@ class PersonResource(common.ExtendedResource):
         None: super(PersonResource, self).put,
         "imports": self.verify_is_current(converters.handle_import_put),
         "exports": self.verify_is_current(converters.handle_export_put),
-        "profile": self.verify_is_current(self._set_profile),
     }
     return self._process_request(command_map, *args, **kwargs)
 
@@ -268,6 +256,115 @@ class PersonResource(common.ExtendedResource):
 
       return self.json_success_response(response_object, )
 
+  def _my_workflows(self, id):
+    """Returns workflow statistic for authorized user."""
+    # pylint: disable=invalid-name,redefined-builtin
+    base_query = db.session.query(
+        all_models.Workflow,
+    ).join(
+        all_models.AccessControlList,
+        all_models.AccessControlList.object_id ==
+        all_models.Workflow.id,
+    ).join(
+        all_models.AccessControlPerson,
+        all_models.AccessControlPerson.ac_list_id ==
+        all_models.AccessControlList.id,
+    ).join(
+        all_models.AccessControlRole,
+        all_models.AccessControlList.ac_role_id ==
+        all_models.AccessControlRole.id,
+    ).join(
+        all_models.Person,
+        all_models.AccessControlPerson.person_id ==
+        all_models.Person.id,
+    )
+
+    finish_condition = sa.or_(
+        sa.and_(
+            all_models.Workflow.is_verification_needed ==
+            sa.true(),
+            all_models.CycleTaskGroupObjectTask.status ==
+            'Verified',
+        ),
+        sa.and_(
+            all_models.Workflow.is_verification_needed ==
+            sa.false(),
+            all_models.CycleTaskGroupObjectTask.status ==
+            'Finished',
+        )
+    )
+
+    tasks_query = base_query.join(
+        all_models.Cycle,
+        all_models.Workflow.id == all_models.Cycle.workflow_id,
+    ).join(
+        all_models.CycleTaskGroupObjectTask,
+        all_models.CycleTaskGroupObjectTask.cycle_id == all_models.Cycle.id,
+    ).filter(
+        sa.and_(
+            all_models.AccessControlPerson.person_id == id,
+            all_models.Workflow.status == 'Active',
+            all_models.AccessControlList.object_type == 'Workflow',
+            all_models.AccessControlRole.name == 'Admin',
+        )
+    ).group_by(
+        all_models.Workflow.id,
+    ).order_by(
+        "due_date"
+    ).with_entities(
+        all_models.Workflow.id.label("workflow_id"),
+        all_models.Workflow.title.label("workflow_title"),
+        sa.func.min(
+            all_models.CycleTaskGroupObjectTask.end_date).label("due_date"),
+        sa.func.sum(
+            sa.func.IF(finish_condition, 1, 0)
+        ).label("completed"),
+        sa.func.count(all_models.Workflow.id).label("total"),
+        sa.func.sum(
+            sa.func.IF(sa.and_(sa.not_(finish_condition),
+                               all_models.CycleTaskGroupObjectTask.end_date <
+                               datetime.date.today()), 1, 0)
+        ).label("overdue")
+    )
+    wf_tasks_result = tasks_query.all()
+    workflow_ids = [res.workflow_id for res in wf_tasks_result]
+
+    owners_query = base_query.filter(
+        sa.and_(
+            all_models.Workflow.id.in_(workflow_ids),
+            all_models.Workflow.status == 'Active',
+            all_models.AccessControlList.object_type == 'Workflow',
+            all_models.AccessControlRole.name == 'Admin',
+        )
+    ).group_by(
+        all_models.Workflow.id,
+    ).with_entities(
+        all_models.Workflow.id.label("workflow_id"),
+        sa.func.group_concat(all_models.Person.email).label("owners"),
+    )
+    owners_result = dict(owners_query.all())
+
+    response_object = {
+        "workflows": []
+    }
+    for row in wf_tasks_result:
+      response_object["workflows"].append({
+          "workflow": {
+              "id": row.workflow_id,
+              "title": row.workflow_title,
+          },
+          "owners": sorted(owners_result[row.workflow_id].split(",")),
+          "task_stat": {
+              "counts": {
+                  "total": int(row.total),
+                  "overdue": int(row.overdue),
+                  "completed": int(row.completed),
+              },
+              "due_in_date": row.due_date
+          }
+      })
+    return self.json_success_response(response_object, )
+
   def _all_objects_count(self, **kwargs):  # pylint: disable=unused-argument
     """Get object counts for all objects page."""
     with benchmark("Make response"):
@@ -286,53 +383,3 @@ class PersonResource(common.ExtendedResource):
         response_object[model_type] = count
 
       return self.json_success_response(response_object, )
-
-  @staticmethod
-  def _get_or_create_profile(person_id):
-    """Returns profile if it exists, otherwise returns created one
-
-    Returns:
-        A tuple (created, profile). Created is set True for created profile,
-        False otherwise. Profile is profile for Person with id=person_id.
-      """
-    try:
-      profile = PersonProfile.query.filter_by(person_id=person_id).one()
-    except NoResultFound:
-      person = Person.query.filter_by(id=person_id).one()
-      person.profile = PersonProfile()
-      return (True, person.profile)
-    return (False, profile)
-
-  def _get_profile(self, **kwargs):
-    """Get person profile"""
-    get_profile = self._get_or_create_profile(kwargs["id"])
-    if get_profile[0]:
-      log_event(db.session, get_profile[1])
-      db.session.commit()
-
-    response_json = {
-        "last_seen_whats_new": get_profile[1].last_seen_whats_new
-    }
-    return self.json_success_response(response_json, )
-
-  def _set_profile(self, **kwargs):
-    """Update person profile"""
-    json = self.request.json
-
-    get_profile = self._get_or_create_profile(kwargs["id"])
-
-    try:
-      requested_date_time = date_parser.parse(json["last_seen_whats_new"])
-      offset_naive = requested_date_time.replace(tzinfo=None)
-      get_profile[1].last_seen_whats_new = offset_naive
-    except Exception as err:
-      logger.exception(err)
-      raise BadRequest()
-
-    log_event(db.session, get_profile[1])
-
-    db.session.commit()
-    response_json = {
-        "Person": {"id": kwargs["id"], "profile": json}
-    }
-    return self.json_success_response(response_json, )

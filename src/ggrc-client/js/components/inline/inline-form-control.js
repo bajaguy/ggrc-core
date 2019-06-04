@@ -1,5 +1,5 @@
 /*
-    Copyright (C) 2018 Google Inc.
+    Copyright (C) 2019 Google Inc.
     Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 */
 
@@ -7,7 +7,8 @@ import {notifierXHR} from '../../plugins/utils/notifiers-utils';
 
 export default can.Component.extend({
   tag: 'inline-form-control',
-  viewModel: {
+  leakScope: true,
+  viewModel: can.Map.extend({
     deferredSave: null,
     instance: null,
 
@@ -17,8 +18,8 @@ export default can.Component.extend({
       this.attr('deferredSave').push(function () {
         self.attr('instance.' + args.propName, args.value);
       }).fail(function (instance, xhr) {
-        notifierXHR('error')(xhr);
+        notifierXHR('error', xhr);
       });
     },
-  },
+  }),
 });

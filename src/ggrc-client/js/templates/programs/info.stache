@@ -1,0 +1,119 @@
+{{!
+    Copyright (C) 2019 Google Inc.
+    Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
+}}
+
+{{#instance}}
+  <section class="info{{#if is_info_pin}} sticky-info-panel{{/if}}">
+    <div class="tier-content">
+      <general-page-header instance:from="instance"></general-page-header>
+
+      <tab-container instance:from="instance">
+        <tab-panel panels:bind="panels" titleText:from="'Attributes'">
+          <div class="info-pane__body">
+            <div class="info-pane__main-content info-pane__main-content-with-sidebar">
+              {{> /static/templates/base_objects/object-review.stache}}
+              {{> /static/templates/base_objects/description.stache}}
+              {{> /static/templates/base_objects/notes.stache}}
+              <div class="row-fluid wrap-row">
+                <div data-test-id="title_manager_7a906d2e">
+                  <custom-roles readOnly:from="instance.readOnlyProgramRoles"
+                                includeRoles:from="instance.class.programRoles"
+                                instance:from="instance">
+                  </custom-roles>
+                  <custom-roles excludeRoles:from="instance.class.programRoles"
+                                instance:from="instance">
+                  </custom-roles>
+                </div>
+              </div>
+              {{> /static/templates/base_objects/reference-urls.stache}}
+              {{> /static/templates/base_objects/folder-attachments.stache}}
+
+              <div class="custom-attr-wrap info-pane__section">
+                <div class="row-fluid">
+                  <div class="span12">
+                    <div class="info-expand">
+                      <a data-test-id="button_advanced_cf47bc01"
+                        class="show-hidden-fields info-show-hide active" href="javascript://">
+                        <span class="out">
+                          <i class="fa fa-caret-right"></i>
+                          Show
+                        </span>
+                        <span class="in">
+                          <i class="fa fa-caret-down"></i>
+                          Hide
+                        </span>
+                        Advanced
+                      </a>
+                    </div>
+                  </div>
+                </div><!-- row-fluid end -->
+                <div class="hidden-fields-area">
+                  <div class="row-fluid wrap-row">
+                    <div data-test-id="title_code_cf47bc01" class="span4">
+                      <h6>Code</h6>
+                      <p>
+                        {{slug}}
+                      </p>
+                    </div>
+                    <div data-test-id="title_effective_date_cf47bc01" class="span4">
+                      <h6>Effective Date</h6>
+                      {{#if start_date}}
+                        <p>
+                          {{localize_date start_date}}
+                        </p>
+                      {{else}}
+                        <span class="empty-message">None</span>
+                      {{/if}}
+                    </div>
+                    <div data-test-id="title_stop_date_cf47bc01" class="span4">
+                      <h6>Last Deprecated Date</h6>
+                      {{#if end_date}}
+                        <p>
+                          {{localize_date end_date}}
+                        </p>
+                      {{else}}
+                        <span class="empty-message">None</span>
+                      {{/if}}
+                    </div>
+                  </div>
+                </div>
+                {{> /static/templates/custom_attributes/info.stache}}
+              </div><!-- custom-attr-wrap end -->
+            </div>
+            {{^if isSnapshot}}
+              <div class="info-pane__sidebar">
+                <div class="info-pane__section-title">Responses/Comments</div>
+                <comments-section class="flex-box flex-col"
+                  instance:from="instance"
+                  notification:from="'Notify Contacts'">
+                </comments-section>
+              </div>
+            {{/if}}
+          </div>
+        </tab-panel>
+        {{^if isSnapshot}}
+          <tab-panel panels:bind="panels" titleText:from="'Change Proposals'"
+                     parentInstance:from="instance"
+                     warningText:from="'Some proposals are pending approval'"
+                     extraClasses:from="'proposal proposal__tab-warning'"
+                     tabId:from="'tab-related-proposals'"
+                     canDisplayWarning:from="true"
+                     preRenderContent:from="true">
+            <related-proposals baseInstance:from="instance"
+                               on:updateProposalsWarning="updateWarningState(scope.event)">
+            </related-proposals>
+          </tab-panel>
+          <tab-panel tabId:from="'change-log'" panels:bind="panels" titleText:from="'Change Log'">
+            <revision-log instance:from="instance" options:from="tabOptions"></revision-log>
+          </tab-panel>
+        {{/if}}
+      </tab-container>
+    </div><!-- tier-content end -->
+
+  </section>
+
+  {{#if is_info_widget}}
+    <info-pane-footer createdAt:from="instance.created_at" modifiedAt:from="instance.updated_at" modifiedBy:from="instance.modified_by"></info-pane-footer>
+  {{/if}}
+{{/instance}}

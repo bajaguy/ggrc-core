@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2018 Google Inc.
+  Copyright (C) 2019 Google Inc.
   Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 */
 
@@ -8,6 +8,7 @@ import {makeFakeInstance} from '../../../../js_specs/spec_helpers';
 import {getComponentVM} from '../../../../js_specs/spec_helpers';
 import Component from '../attach-button';
 import Assessment from '../../../models/business-models/assessment';
+import pubSub from '../../../pub-sub';
 
 describe('attach-button component', function () {
   'use strict';
@@ -21,39 +22,43 @@ describe('attach-button component', function () {
     );
   });
 
-  describe('finish() method', function () {
-    it('dispatches "finish" event', function () {
-      spyOn(viewModel, 'dispatch');
-      viewModel.finish();
+  describe('created() method', function () {
+    it('dispatches "created" event', function () {
+      spyOn(pubSub, 'dispatch');
+      viewModel.created();
 
-      expect(viewModel.dispatch)
-        .toHaveBeenCalledWith('finish');
+      expect(pubSub.dispatch).toHaveBeenCalledWith(
+        jasmine.objectContaining({type: 'relatedItemSaved'}));
     });
   });
 
   describe('checkFolder() method', function () {
     it('should set isFolderAttached to true when folder is attached',
-      function () {
+      function (done) {
         viewModel.attr('isFolderAttached', false);
         viewModel.attr('instance.folder', 'gdrive_folder_id');
 
         spyOn(viewModel, 'findFolder').and
           .returnValue($.Deferred().resolve({}));
 
-        viewModel.checkFolder();
-        expect(viewModel.attr('isFolderAttached')).toBe(true);
+        viewModel.checkFolder().then(() => {
+          expect(viewModel.attr('isFolderAttached')).toBe(true);
+          done();
+        });
       });
 
     it('should set isFolderAttached to false when folder is not attached',
-      function () {
+      function (done) {
         viewModel.attr('isFolderAttached', true);
         viewModel.attr('instance.folder', null);
 
         spyOn(viewModel, 'findFolder').and
           .returnValue($.Deferred().resolve());
 
-        viewModel.checkFolder();
-        expect(viewModel.attr('isFolderAttached')).toBe(false);
+        viewModel.checkFolder().then(() => {
+          expect(viewModel.attr('isFolderAttached')).toBe(false);
+          done();
+        });
       });
 
     it('set correct isFolderAttached if instance refreshes during ' +

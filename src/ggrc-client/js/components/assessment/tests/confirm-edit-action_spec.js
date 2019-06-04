@@ -1,5 +1,5 @@
 /*
-   Copyright (C) 2018 Google Inc.
+   Copyright (C) 2019 Google Inc.
    Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 */
 
@@ -27,26 +27,28 @@ describe('confirm-edit-action component', function () {
       });
 
       it('dispatches setEditMode event if instance is in editable state',
-        function () {
+        function (done) {
           spyOn(viewModel, 'isInEditableState').and.returnValue(true);
           spyOn(viewModel, 'dispatch');
 
-          viewModel.openEditMode();
-
-          expect(viewModel.dispatch).toHaveBeenCalledWith('setEditMode');
+          viewModel.openEditMode().then(() => {
+            expect(viewModel.dispatch).toHaveBeenCalledWith('setEditMode');
+            done();
+          });
         });
     });
   });
 
   describe('isInEditableState() method', function () {
     it('returns true if instance state is ' +
-    '"In Progress", "Not Started" or "Rework Needed"',
+    '"In Progress", "Not Started", "Rework Needed" or "Deprecated"',
     function functionName() {
-      ['In Progress', 'Not Started', 'Rework Needed'].forEach(function (state) {
-        viewModel.attr('instance.status', state);
+      ['In Progress', 'Not Started', 'Rework Needed', 'Deprecated'].forEach(
+        function (state) {
+          viewModel.attr('instance.status', state);
 
-        expect(viewModel.isInEditableState()).toBe(true);
-      });
+          expect(viewModel.isInEditableState()).toBe(true);
+        });
     });
 
     it('returns false if instance state is not "In Progress" or "Not Started"',
@@ -90,7 +92,7 @@ describe('confirm-edit-action component', function () {
         modal_description: 'You are about to move Assessment from "' +
           'In Review' +
           '" to "In Progress" - are you sure about that?',
-        button_view: GGRC.mustache_path + '/modals/prompt_buttons.mustache',
+        button_view: GGRC.templates_path + '/modals/prompt_buttons.stache',
       }, jasmine.any(Function), jasmine.any(Function));
     });
 

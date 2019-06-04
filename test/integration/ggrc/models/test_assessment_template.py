@@ -1,4 +1,4 @@
-# Copyright (C) 2018 Google Inc.
+# Copyright (C) 2019 Google Inc.
 # Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 
 """Tests for AssessmentTemplate model."""
@@ -59,6 +59,7 @@ class TestAssessmentTemplate(TestCase):
         {
             u"type": u"Audit",
             u"id": long(audit.id),
+            u'title': unicode(audit.title),
             u"href": u"/api/audits/{}".format(long(audit.id)),
             u"context_id": long(audit.context.id),
             u"issue_tracker": {
@@ -71,7 +72,8 @@ class TestAssessmentTemplate(TestCase):
                 u"issue_priority": None,
                 u"issue_type": default_issue_type,
                 u"issue_url": None,
-                u"title": "some title"
+                u"title": "some title",
+                u"people_sync_enabled": True,
             }
         }
     )

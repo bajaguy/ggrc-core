@@ -1,10 +1,10 @@
 /*
- Copyright (C) 2018 Google Inc., authors, and contributors
+ Copyright (C) 2019 Google Inc., authors, and contributors
  Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
  */
 
 import {getComponentVM} from '../../../../js_specs/spec_helpers';
-import Component, {keyMap} from '../autocomplete-input';
+import Component, {KEY_MAP} from '../autocomplete-input';
 
 describe('autocomplete-input component', () => {
   let viewModel;
@@ -37,14 +37,14 @@ describe('autocomplete-input component', () => {
   describe('makeServiceAction() method', () => {
     it('should call "escape" method if keyCode matches to ESCAPE key', () => {
       spyOn(viewModel, 'escape');
-      viewModel.makeServiceAction(keyMap.ESCAPE);
+      viewModel.makeServiceAction(KEY_MAP.ESCAPE);
 
       expect(viewModel.escape).toHaveBeenCalled();
     });
 
     it('should not call "escape" method when keyCode is not ESCAPE key', () => {
       spyOn(viewModel, 'escape');
-      viewModel.makeServiceAction(keyMap.ENTER);
+      viewModel.makeServiceAction(KEY_MAP.ENTER);
 
       expect(viewModel.escape).not.toHaveBeenCalled();
     });
@@ -63,15 +63,6 @@ describe('autocomplete-input component', () => {
   describe('inputLatency() method', () => {
     const msTime = 501;
 
-    beforeEach(() => {
-      jasmine.clock().uninstall(); // required to fix jasmin.clock issue
-      jasmine.clock().install();
-    });
-
-    afterEach(() => {
-      jasmine.clock().uninstall();
-    });
-
     it('should set "isPending" to true before dispatching event', () => {
       const value = 'f';
       viewModel.attr('value', value);
@@ -86,6 +77,8 @@ describe('autocomplete-input component', () => {
     });
 
     it('should notify that value is changed when value is not empty', () => {
+      jasmine.clock().install();
+
       const value = 'f';
       viewModel.attr('value', value);
       spyOn(viewModel, 'dispatch');
@@ -98,9 +91,13 @@ describe('autocomplete-input component', () => {
         type: 'inputChanged',
         value,
       });
+
+      jasmine.clock().uninstall();
     });
 
     it('should not notify that value is changed when value is empty', () => {
+      jasmine.clock().install();
+
       const value = '';
       viewModel.attr('value', value);
       spyOn(viewModel, 'dispatch');
@@ -110,9 +107,13 @@ describe('autocomplete-input component', () => {
       jasmine.clock().tick(msTime);
 
       expect(viewModel.dispatch).not.toHaveBeenCalled();
+
+      jasmine.clock().uninstall();
     });
 
     it('should set "isPending" to false after delay', () => {
+      jasmine.clock().install();
+
       ['any value', null, '', undefined].forEach((value) => {
         viewModel.attr('value', value);
         viewModel.attr('isPending', true);
@@ -122,6 +123,8 @@ describe('autocomplete-input component', () => {
 
         expect(viewModel.attr('isPending')).toBe(false);
       });
+
+      jasmine.clock().uninstall();
     });
   });
 
@@ -161,12 +164,12 @@ describe('autocomplete-input component', () => {
       expect(viewModel.inputLatency).toHaveBeenCalled();
     });
 
-    it('should make service action when key code in "keyMap"' +
+    it('should make service action when key code in "KEY_MAP"' +
     ' and isPending is FALSE', () => {
       viewModel.attr('isPending', false);
       spyOn(viewModel, 'makeServiceAction');
 
-      _.forEach(keyMap, (value) => {
+      _.forEach(KEY_MAP, (value) => {
         event.keyCode = value;
         handler(element, event);
         expect(viewModel.makeServiceAction)
@@ -174,12 +177,12 @@ describe('autocomplete-input component', () => {
       });
     });
 
-    it('should not call "inputLatency" method when key code in "keyMap"' +
+    it('should not call "inputLatency" method when key code in "KEY_MAP"' +
     ' and isPending is FALSE', () => {
       viewModel.attr('isPending', false);
       spyOn(viewModel, 'inputLatency');
 
-      _.forEach(keyMap, (value) => {
+      _.forEach(KEY_MAP, (value) => {
         event.keyCode = value;
         handler(element, event);
         expect(viewModel.inputLatency).not.toHaveBeenCalled();

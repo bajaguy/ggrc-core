@@ -1,0 +1,29 @@
+{{!
+    Copyright (C) 2019 Google Inc.
+    Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
+}}
+
+<comment-data-provider instance:from="instance">
+  {{^if isDeniedToAddComment}}
+    <comment-add-form class="comment-add-form"
+                      instance:from="instance"
+                      isSaving:from="isLoading"
+                      on:beforeCreate="addComment(scope.event)"
+                      on:afterCreate="processComment(scope.event)"
+                      notificationsInfo:from="notification">
+    </comment-add-form>
+  {{/if}}
+  <mapped-comments baseInstance:from="instance" 
+                   mappedItems:from="comments"
+                   isLoading:from="isLoading"
+                   showNoItemsText:from="isDeniedToAddComment">
+  </mapped-comments>
+  {{#if isAllowedToAddCommentExternally}}
+    <questionnaire-link instance:from="instance"
+      linkType:from="'comment'"
+      showIcon:from="true"
+      viewType:from="'button'">
+      Add Comment
+    </questionnaire-link>
+  {{/if}}
+</comment-data-provider>

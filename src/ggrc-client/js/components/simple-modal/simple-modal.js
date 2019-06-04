@@ -1,9 +1,9 @@
 /*
- Copyright (C) 2018 Google Inc.
+ Copyright (C) 2019 Google Inc.
  Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
  */
 
-import template from './simple-modal.mustache';
+import template from './simple-modal.stache';
 
 /**
  * Simple Modal Component is a general abstraction to visualize
@@ -14,9 +14,10 @@ import template from './simple-modal.mustache';
  */
 export default can.Component.extend({
   tag: 'simple-modal',
-  template,
-  viewModel: {
-    extraCssClass: '@',
+  view: can.stache(template),
+  leakScope: true,
+  viewModel: can.Map.extend({
+    extraCssClass: '',
     instance: {},
     modalTitle: '',
     replaceContent: false,
@@ -42,7 +43,7 @@ export default can.Component.extend({
         $modalWrapper.modal('hide').off('hidden.bs.modal');
       }
     },
-  },
+  }),
   events: {
     inserted() {
       const viewModel = this.viewModel;

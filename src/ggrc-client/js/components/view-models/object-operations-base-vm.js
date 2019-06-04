@@ -1,10 +1,11 @@
 /*
- Copyright (C) 2018 Google Inc.
+ Copyright (C) 2019 Google Inc.
  Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
  */
 
 import Mappings from '../../models/mappers/mappings';
 import {getInstance} from '../../plugins/utils/models-utils';
+import * as businessModels from '../../models/business-models';
 
 /**
  *  @typedef SpecialConfig
@@ -57,7 +58,7 @@ const ObjectOperationsBaseVM = can.Map.extend({
     },
     model: {
       get: function () {
-        return this.modelFromType(this.attr('type'));
+        return businessModels[this.attr('type')];
       },
     },
     type: {
@@ -111,7 +112,7 @@ const ObjectOperationsBaseVM = can.Map.extend({
   /**
    * There is situation when user switch type from one two another.
    * After it current config is changed immediately. It leads to the fact
-   * that all things in the mustache templates are rerendered.
+   * that all things in the templates are rerendered.
    * But several controls must not be rerenderd till submit action will not be
    * occurred (for example it's a results in unified mapper - when we switch
    * object type the results should not be painted in another color (if
@@ -136,20 +137,12 @@ const ObjectOperationsBaseVM = can.Map.extend({
   options: [],
   newEntries: [],
   relevant: [],
-  submitCbs: $.Callbacks(),
   useSnapshots: false,
-  modelFromType: function (type) {
-    let types = _.reduce(_.values(
-      this.availableTypes()), function (memo, val) {
-      if (val.items) {
-        return memo.concat(val.items);
-      }
-      return memo;
-    }, []);
-    return _.find(types, {value: type});
-  },
+  onSearchCallback: $.noop(),
   onSubmit: function () {
-    this.attr('submitCbs').fire();
+    if (this.onSearchCallback) {
+      this.onSearchCallback();
+    }
   },
   onLoaded(element) {
     // set focus on the top modal window

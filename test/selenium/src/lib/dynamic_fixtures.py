@@ -1,4 +1,4 @@
-# Copyright (C) 2018 Google Inc.
+# Copyright (C) 2019 Google Inc.
 # Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 "Logical model of dynamic fixtures creation."
 # pylint: disable=invalid-name
@@ -29,7 +29,7 @@ def get_fixture_from_dict_fixtures(fixture):
     parent_obj = get_fixture_from_dict_fixtures("new_audit_rest")[0]
     dict_executed_fixtures.update(
         {fixture: Representation.convert_repr_to_snapshot(
-            objs=origin_obj, parent_obj=parent_obj)})
+            obj=origin_obj, parent_obj=parent_obj)})
   return {k: v for k, v in dict_executed_fixtures.iteritems()
           if k == fixture}[fixture]
 
@@ -225,6 +225,7 @@ def generate_common_fixtures(*fixtures):  # noqa: ignore=C901
       return deleted_objs
 
   for fixture in fixtures:
+
     fixture_params = None
     if isinstance(fixture, tuple):
       fixture, fixture_params = fixture

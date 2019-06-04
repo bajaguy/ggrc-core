@@ -1,11 +1,11 @@
 /*
-    Copyright (C) 2018 Google Inc.
+    Copyright (C) 2019 Google Inc.
     Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 */
 
 import Cacheable from '../cacheable';
 import CycleTaskGroup from './cycle-task-group';
-import {getRole} from '../../plugins/utils/acl-utils';
+import Workflow from './workflow';
 import {REFRESH_SUB_TREE} from '../../events/eventTypes';
 import {getPageType} from '../../plugins/utils/current-page-utils';
 import {getClosestWeekday} from '../../plugins/utils/date-utils';
@@ -13,10 +13,9 @@ import timeboxed from '../mixins/timeboxed';
 import isOverdue from '../mixins/is-overdue';
 import accessControlList from '../mixins/access-control-list';
 import caUpdate from '../mixins/ca-update';
-import cycleTaskNotifications from '../mixins/cycle-task-notifications';
+import cycleTaskNotifications from '../mixins/notifications/cycle-task-notifications';
 import Stub from '../stub';
-
-const _mustachePath = GGRC.mustache_path + '/cycle_task_group_object_tasks';
+import {reify} from '../../plugins/utils/reify-utils';
 
 function populateFromWorkflow(form, workflow) {
   if (!workflow || typeof workflow === 'string') {
@@ -25,15 +24,12 @@ function populateFromWorkflow(form, workflow) {
     form.removeAttr('workflow');
     form.removeAttr('context');
     form.removeAttr('cycle');
-    form.removeAttr('cycle_task_group');
+    form.attr('cycle_task_group', null);
     return;
   }
-  if (workflow.reify) {
-    workflow = workflow.reify();
-  } else {
-    console.warn('Can\'t reify workflow');
-    return;
-  }
+
+  workflow = Workflow.findInCacheById(workflow.id);
+
   if (typeof workflow.cycles === undefined || !workflow.cycles) {
     $(document.body).trigger(
       'ajax:flash',
@@ -61,11 +57,11 @@ function populateFromWorkflow(form, workflow) {
     form.attr('cycle', {id: activeCycle.id, type: 'Cycle'});
 
     // reset cycle task group after workflow updating
-    form.removeAttr('cycle_task_group');
+    form.attr('cycle_task_group', null);
   });
 }
 
-export default Cacheable('CMS.Models.CycleTaskGroupObjectTask', {
+export default Cacheable.extend({
   root_object: 'cycle_task_group_object_task',
   root_collection: 'cycle_task_group_object_tasks',
   mixins: [
@@ -92,14 +88,8 @@ export default Cacheable('CMS.Models.CycleTaskGroupObjectTask', {
     context: Stub,
     cycle: Stub,
   },
-  info_pane_options: {
-    mapped_objects: {
-      mapping: 'info_related_objects',
-      show_view: GGRC.mustache_path + '/base_templates/subtree.mustache',
-    },
-  },
   tree_view_options: {
-    add_item_view: _mustachePath + '/tree_add_item.mustache',
+    add_item_view: 'cycle_task_group_object_tasks/tree_add_item',
     attr_list: [
       {
         attr_title: 'Task Title',
@@ -165,29 +155,7 @@ export default Cacheable('CMS.Models.CycleTaskGroupObjectTask', {
     default_filter: ['Control'],
   },
   init: function () {
-    let assigneeRole = getRole('CycleTaskGroupObjectTask', 'Task Assignees');
-
     this._super(...arguments);
-    this.validateNonBlank('title');
-    this.validateNonBlank('workflow');
-    this.validateNonBlank('cycle');
-    this.validateNonBlank('cycle_task_group');
-    this.validateNonBlank('start_date');
-    this.validateNonBlank('end_date');
-
-    // instance.attr('access_control_list')
-    //   .replace(...) doesn't raise change event
-    // that's why we subscribe on access_control_list.length
-    this.validate('access_control_list.length', function () {
-      let that = this;
-      let hasAssignee = assigneeRole && _.some(that.access_control_list, {
-        ac_role_id: assigneeRole.id,
-      });
-
-      if (!hasAssignee) {
-        return 'No valid contact selected for assignee';
-      }
-    });
 
     this.bind('created', (ev, instance) => {
       if (
@@ -223,6 +191,50 @@ export default Cacheable('CMS.Models.CycleTaskGroupObjectTask', {
     });
   },
 }, {
+  define: {
+    title: {
+      value: '',
+      validate: {
+        required: true,
+      },
+    },
+    workflow: {
+      value: null,
+      validate: {
+        required: true,
+      },
+    },
+    cycle: {
+      value: null,
+      validate: {
+        required: true,
+      },
+    },
+    cycle_task_group: {
+      value: null,
+      validate: {
+        required: true,
+      },
+    },
+    start_date: {
+      value: '',
+      validate: {
+        required: true,
+      },
+    },
+    end_date: {
+      value: '',
+      validate: {
+        required: true,
+      },
+    },
+    access_control_list: {
+      value: [],
+      validate: {
+        validateAssignee: 'CycleTaskGroupObjectTask',
+      },
+    },
+  },
   _workflow: function () {
     return this.refresh_all('cycle', 'workflow').then(function (workflow) {
       return workflow;
@@ -258,20 +270,12 @@ export default Cacheable('CMS.Models.CycleTaskGroupObjectTask', {
         return;
       }
     } else {
-      cycle = form.cycle.reify();
+      cycle = reify(form.cycle);
       if (!_.isUndefined(cycle.workflow)) {
-        form.attr('workflow', cycle.workflow.reify());
+        form.attr('workflow', reify(cycle.workflow));
       }
     }
   },
-  object: function () {
-    return this.refresh_all(
-      'task_group_object', 'object'
-    ).then(function (object) {
-      return object;
-    });
-  },
-
   /**
    * Determine whether the Task's response options can be edited, taking
    * the Task and Task's Cycle status into account.
@@ -280,8 +284,8 @@ export default Cacheable('CMS.Models.CycleTaskGroupObjectTask', {
    *   false otherwise
    */
   responseOptionsEditable: function () {
-    let cycle = this.attr('cycle').reify();
-    let status = this.attr('status');
+    const cycle = reify(this.attr('cycle'));
+    const status = this.attr('status');
 
     return cycle.attr('is_current') &&
       !_.includes(['Finished', 'Verified'], status);

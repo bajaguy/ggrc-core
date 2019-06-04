@@ -1,4 +1,4 @@
-# Copyright (C) 2018 Google Inc.
+# Copyright (C) 2019 Google Inc.
 # Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 
 """Tests for /api/related_assessments endpoint.
@@ -195,6 +195,7 @@ class TestRelatedAssessments(TestCase):
 
       cad = factories.CustomAttributeDefinitionFactory(
           definition_type="assessment",
+          definition_id=self.assessment1.id,
           attribute_type="Map:Person"
       )
       cav = factories.CustomAttributeValueFactory(

@@ -1,0 +1,19 @@
+{{!
+    Copyright (C) 2019 Google Inc.
+    Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
+}}
+
+<!-- tabindex is necessary to work of 'Hide optional field' function -->
+<custom-roles-modal
+  tabindex="4"
+  class="custom-roles-modal"
+  instance:from="instance"
+  isProposal:from="isProposal"
+  isNewInstance:from="isNewInstance"
+  includeRoles:from="includeRoles"
+  excludeRoles:from="excludeRoles"
+  readOnly:from="readOnly"
+  orderOfRoles:from="orderOfRoles"
+  showGroupTooltip:from="showGroupTooltip"
+  groupTooltip:from="groupTooltip">
+</custom-roles-modal>

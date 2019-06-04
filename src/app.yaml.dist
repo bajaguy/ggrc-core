@@ -1,4 +1,4 @@
-# # Copyright (C) 2018 Google Inc.
+# # Copyright (C) 2019 Google Inc.
 # Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 #
 # See https://developers.google.com/appengine/docs/python/config/appconfig
@@ -103,6 +103,7 @@ env_variables:
   GGRC_RISK_ASSESSMENT_URL: "{RISK_ASSESSMENT_URL}"
   GGRC_ASSESSMENT_SHORT_URL_PREFIX: "{ASSESSMENT_SHORT_URL_PREFIX}"
   GGRC_NOTIFICATION_PREFIX: "{NOTIFICATION_PREFIX}"
+  GGRC_DAILY_DIGEST_BATCH_SIZE: "{DAILY_DIGEST_BATCH_SIZE}"
   APPENGINE_EMAIL: "{APPENGINE_EMAIL}"
   GGRC_CUSTOM_URL_ROOT: "{CUSTOM_URL_ROOT}"
   GGRC_ABOUT_URL: "{ABOUT_URL}"

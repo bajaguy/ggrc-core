@@ -1,5 +1,5 @@
 /*
- Copyright (C) 2018 Google Inc.
+ Copyright (C) 2019 Google Inc.
  Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
  */
 
@@ -19,13 +19,15 @@ import {
   isObjectContextPage,
   isMyAssessments,
 } from '../../plugins/utils/current-page-utils';
-import template from './page-header.mustache';
+import template from './page-header.stache';
 import {getPageInstance} from '../../plugins/utils/current-page-utils';
 
 let colorsMap = {
+  AccountBalance: 'header-style-1',
   AccessGroup: 'header-style-1',
   OrgGroup: 'header-style-1',
   System: 'header-style-1',
+  KeyReport: 'header-style-1',
   Process: 'header-style-1',
   DataAsset: 'header-style-1',
   Product: 'header-style-1',
@@ -144,8 +146,8 @@ let viewModel = can.Map.extend({
   handleLHNOpening() {
     if (!this.attr('lhnInitialized')) {
       import(/* webpackChunkName: "lhn" */'../../controllers/lhn_controllers')
-        .then(() => {
-          $('#lhn').cms_controllers_lhn();
+        .then((module) => {
+          new module.LhnControl('#lhn');
           this.attr('lhnInitialized', true);
         });
     }
@@ -154,7 +156,8 @@ let viewModel = can.Map.extend({
 
 export default can.Component.extend({
   tag: 'page-header',
-  template,
+  view: can.stache(template),
+  leakScope: true,
   viewModel,
   events: {
     '{window} resize': _.debounce(function () {

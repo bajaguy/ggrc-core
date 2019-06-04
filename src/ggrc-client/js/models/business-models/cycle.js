@@ -1,5 +1,5 @@
 /*
-    Copyright (C) 2018 Google Inc.
+    Copyright (C) 2019 Google Inc.
     Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 */
 
@@ -7,28 +7,26 @@ import Cacheable from '../cacheable';
 import Permission from '../../permission';
 import isOverdue from '../mixins/is-overdue';
 import Stub from '../stub';
+import Workflow from './workflow';
+import {getPageInstance} from '../../plugins/utils/current-page-utils';
+import {REFRESH_MAPPING} from '../../events/eventTypes';
 
-function refreshAttr(instance, attr) {
-  let result;
-  if (instance.attr(attr).reify().selfLink) {
-    result = instance.attr(attr).reify().refresh();
-  } else {
-    result = $.Deferred().resolve();
+function refreshWorkflow(ev, instance) {
+  if (instance instanceof this === false) {
+    return;
   }
 
-  return result;
+  Permission.refresh();
+
+  const workflowId = instance.attr('workflow.id');
+  const model = Workflow.findInCacheById(workflowId);
+
+  if (model.selfLink) {
+    model.refresh();
+  }
 }
 
-function refreshAttrWrap(attr) {
-  return function (ev, instance) {
-    if (instance instanceof this) {
-      Permission.refresh();
-      refreshAttr(instance, attr);
-    }
-  };
-}
-
-export default Cacheable('CMS.Models.Cycle', {
+export default Cacheable.extend({
   root_object: 'cycle',
   root_collection: 'cycles',
   category: 'workflow',
@@ -42,6 +40,9 @@ export default Cacheable('CMS.Models.Cycle', {
     workflow: Stub,
     modified_by: Stub,
     context: Stub,
+  },
+  defaults: {
+    title: '',
   },
   tree_view_options: {
     attr_list: [{
@@ -62,10 +63,18 @@ export default Cacheable('CMS.Models.Cycle', {
   },
   init: function () {
     this._super(...arguments);
-    this.bind('created', refreshAttrWrap('workflow').bind(this));
+    this.bind('created', refreshWorkflow.bind(this));
   },
 }, {
   init: function () {
     this._super(...arguments);
+    this.bind('status', function (ev, newStatus, oldStatus) {
+      if (newStatus === 'Deprecated' || oldStatus === 'Deprecated') {
+        getPageInstance().dispatch({
+          type: `${REFRESH_MAPPING.type}`,
+          destinationType: this.type,
+        });
+      }
+    });
   },
 });

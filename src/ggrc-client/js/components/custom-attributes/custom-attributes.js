@@ -1,17 +1,18 @@
 /*
- Copyright (C) 2018 Google Inc.
+ Copyright (C) 2019 Google Inc.
  Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
  */
 
 import '../form/form-validation-icon';
 import '../form/form-validation-text';
 import '../custom-attributes/custom-attributes-field-view';
-import template from './custom-attributes.mustache';
+import template from './custom-attributes.stache';
 
 export default can.Component.extend({
   tag: 'custom-attributes',
-  template,
-  viewModel: {
+  view: can.stache(template),
+  leakScope: true,
+  viewModel: can.Map.extend({
     fields: [],
     editMode: false,
     fieldValueChanged: function (e, field) {
@@ -22,5 +23,5 @@ export default can.Component.extend({
         field: field,
       });
     },
-  },
+  }),
 });

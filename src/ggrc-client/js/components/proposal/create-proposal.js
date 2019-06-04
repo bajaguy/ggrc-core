@@ -1,25 +1,28 @@
 /*
- Copyright (C) 2018 Google Inc., authors, and contributors
+ Copyright (C) 2019 Google Inc., authors, and contributors
  Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
  */
 
 import Proposal from '../../models/service-models/proposal';
-import template from './templates/create-proposal.mustache';
+import template from './templates/create-proposal.stache';
 import {hasPending as hasPendingUtil} from '../../plugins/ggrc_utils';
 import {
-  REFRESH_TAB_CONTENT,
+  PROPOSAL_CREATED,
   REFRESH_COMMENTS,
 } from '../../events/eventTypes';
-const tag = 'create-proposal';
+import {getRole} from '../../plugins/utils/acl-utils';
 
 export default can.Component.extend({
-  tag,
-  template,
-  viewModel: {
+  tag: 'create-proposal',
+  view: can.stache(template),
+  leakScope: true,
+  viewModel: can.Map.extend({
     define: {
-      isDisabledButton: {
+      isDisabled: {
+        type: Boolean,
         get() {
-          return !this.hasChanges() || this.attr('loading');
+          let hasErrors = this.instance.computed_unsuppressed_errors();
+          return hasErrors || !this.hasChanges() || this.attr('loading');
         },
       },
     },
@@ -29,13 +32,17 @@ export default can.Component.extend({
     create(element, event) {
       const instance = this.attr('instance');
       const instanceFields = instance.attr();
-      let proposal;
+      const proposalEditorRole = getRole('Proposal', 'ProposalEditor');
 
       event.preventDefault();
       this.attr('loading', true);
 
-      proposal = {
+      let proposal = {
         agenda: this.attr('proposalAgenda'),
+        access_control_list: [{
+          ac_role_id: proposalEditorRole.id,
+          person: {type: 'Person', id: GGRC.current_user.id},
+        }],
         instance: {
           id: instanceFields.id,
           type: instanceFields.type,
@@ -50,12 +57,12 @@ export default can.Component.extend({
       const instance = this.attr('instance');
 
       new Proposal(proposal).save().then(
-        () => {
+        (proposal) => {
           this.attr('loading', false);
           instance.restore(true);
           instance.dispatch({
-            ...REFRESH_TAB_CONTENT,
-            tabId: 'tab-related-proposals',
+            ...PROPOSAL_CREATED,
+            proposal,
           });
           instance.dispatch(REFRESH_COMMENTS);
           this.closeModal(element);
@@ -78,5 +85,5 @@ export default can.Component.extend({
 
       return isDirty || hasPending;
     },
-  },
+  }),
 });

@@ -1,4 +1,4 @@
-# Copyright (C) 2018 Google Inc.
+# Copyright (C) 2019 Google Inc.
 # Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 
 """This module contains constants for issue tracker integration."""
@@ -6,11 +6,14 @@
 OBSOLETE_ISSUE_STATUS = "OBSOLETE"
 ISSUE_TRACKED_MODELS = ["Assessment", "Issue"]
 DEFAULT_ISSUETRACKER_VALUES = {
+    'enabled': False,
     'issue_priority': 'P2',
     'issue_severity': 'S2',
     'issue_type': 'PROCESS',
     'component_id': 188208,
-    'hotlist_id': 864697,
+    'issue_hotlist_id': 1498476,
+    'issue_component_id': 398781,
+    'hotlist_id': 766459,
 }
 
 INITIAL_COMMENT_TMPL = (

@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2018 Google Inc.
+  Copyright (C) 2019 Google Inc.
   Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 */
 
@@ -203,9 +203,9 @@ describe('StateUtils', function () {
           'Control', 'Product', 'System', 'Process', 'AccessGroup',
           'Assessment', 'Contract', 'DataAsset', 'Facility',
           'Issue', 'Market', 'OrgGroup', 'Policy', 'Program', 'Project',
-          'Risk', 'Threat', 'Vendor', 'Audit', 'RiskAssessment', 'Workflow',
+          'Risk', 'Threat', 'Vendor', 'Audit', 'Workflow',
           'AssessmentTemplate', 'Person', 'TaskGroup', 'TaskGroupTask',
-          'Cycle', 'CycleTaskGroup'];
+          'Cycle', 'CycleTaskGroup', 'KeyReport', 'AccountBalance'];
 
         _.forEach(models, function (model) {
           expect(StateUtils.getStatusFieldName(model))
@@ -240,9 +240,9 @@ describe('StateUtils', function () {
           'Control', 'Product', 'System', 'Process', 'AccessGroup',
           'Assessment', 'Contract', 'DataAsset', 'Facility',
           'Issue', 'Market', 'OrgGroup', 'Policy', 'Program', 'Project',
-          'Risk', 'Threat', 'Vendor', 'Audit', 'RiskAssessment', 'Workflow',
+          'Risk', 'Threat', 'Vendor', 'Audit', 'Workflow',
           'AssessmentTemplate', 'Person', 'TaskGroup', 'TaskGroupTask',
-          'Cycle', 'CycleTaskGroup'];
+          'Cycle', 'CycleTaskGroup', 'KeyReport', 'AccountBalance'];
 
         _.forEach(models, function (model) {
           expect(StateUtils.getBulkStatesForModel(model))

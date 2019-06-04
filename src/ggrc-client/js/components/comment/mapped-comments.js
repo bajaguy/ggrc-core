@@ -1,19 +1,20 @@
 /*
- Copyright (C) 2018 Google Inc.
+ Copyright (C) 2019 Google Inc.
  Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
  */
 
 import '../object-list-item/comment-list-item';
 import '../object-list/object-list';
-import template from './mapped-comments.mustache';
+import template from './mapped-comments.stache';
 
 /**
  * Assessment specific mapped controls view component
  */
 export default can.Component.extend({
   tag: 'mapped-comments',
-  template: template,
-  viewModel: {
+  view: can.stache(template),
+  leakScope: true,
+  viewModel: can.Map.extend({
     define: {
       noItemsText: {
         type: 'string',
@@ -29,5 +30,5 @@ export default can.Component.extend({
     mappedItems: [],
     baseInstance: {},
     showNoItemsText: false,
-  },
+  }),
 });

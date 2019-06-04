@@ -1,21 +1,22 @@
 /*
- Copyright (C) 2018 Google Inc.
+ Copyright (C) 2019 Google Inc.
  Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
  */
 
 import '../show-more/show-more';
-import template from './object-popover.mustache';
+import template from './object-popover.stache';
 
-const tag = 'object-popover';
 const defaultMaxInnerHeight = 400;
 const defaultRightPosition = 60;
+
 /**
  * Assessment specific mapped objects popover view component
  */
 export default can.Component.extend({
-  tag,
-  template,
-  viewModel: {
+  tag: 'object-popover',
+  view: can.stache(template),
+  leakScope: true,
+  viewModel: can.Map.extend({
     expanded: false,
     direction: 'left',
     maxInnerHeight: defaultMaxInnerHeight,
@@ -28,8 +29,8 @@ export default can.Component.extend({
       return this.attr('active');
     },
     setPopoverStyle: function (el, direction) {
-      let pos = el[0].getBoundingClientRect();
-      let top = Math.floor(el.position().top);
+      let pos = el.getBoundingClientRect();
+      let top = Math.floor($(el).position().top);
       let left = Math.floor(pos.width / 2);
       let width = (direction !== 'right') ?
         Math.floor(window.innerWidth - (pos.right - pos.width / 2)) :
@@ -51,15 +52,15 @@ export default can.Component.extend({
       this.attr('openStyle', style);
       this.attr('expanded', false);
     },
-  },
+  }),
   events: {
-    '{viewModel.item} el': function (scope, ev, el) {
+    '{viewModel.item} el': function ([scope], ev, el) {
       this.viewModel.setStyle(el);
     },
     '.object-popover-wrapper click': function (el, event) {
       event.stopPropagation();
     },
-    '{viewModel} expanded': function (scope, ev, isExpanded) {
+    '{viewModel} expanded': function ([scope], ev, isExpanded) {
       // Double max height property in case additional content is expanded and visible
       let maxInnerHeight = isExpanded ?
         defaultMaxInnerHeight * 2 :

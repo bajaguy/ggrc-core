@@ -1,5 +1,5 @@
 /*
- Copyright (C) 2018 Google Inc.
+ Copyright (C) 2019 Google Inc.
  Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
  */
 
@@ -13,10 +13,10 @@ describe('mapper-results-item-details component', function () {
 
   beforeEach(function () {
     let init;
-    init = Component.prototype.viewModel.init;
-    Component.prototype.viewModel.init = undefined;
+    init = Component.prototype.viewModel.prototype.init;
+    Component.prototype.viewModel.prototype.init = undefined;
     viewModel = getComponentVM(Component);
-    Component.prototype.viewModel.init = init;
+    Component.prototype.viewModel.prototype.init = init;
     viewModel.init = init;
   });
 

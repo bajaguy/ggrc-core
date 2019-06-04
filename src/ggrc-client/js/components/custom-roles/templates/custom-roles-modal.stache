@@ -1,0 +1,92 @@
+{{!
+    Copyright (C) 2019 Google Inc.
+    Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
+}}
+
+<div class="flex-box">
+  <related-people-access-control
+    class="width-100"
+    conflictRoles:from="conflictRoles"
+    orderOfRoles:from="orderOfRoles"
+    includeRoles:from="includeRoles"
+    excludeRoles:from="excludeRoles"
+    updatableGroupId:from="updatableGroupId"
+    isNewInstance:from="isNewInstance"
+    readOnly:from="readOnly"
+    instance:from="instance">
+      <div class="people-groups">
+        {{#groups}}
+          <related-people-access-control-group
+            class="people-group"
+            autoUpdate:from="true"
+            on:updateRoles="updateRoles(scope.event)"
+            isNewInstance:from="isNewInstance"
+            required:from="required"
+            groupId:from="groupId"
+            title:from="title"
+            people:from="people"
+            instance:from="instance"
+            isProposal:from="isProposal"
+            updatableGroupId:from="updatableGroupId"
+            readOnly:from="readOnly"
+            data-original-title="{{groupTooltip}}"
+            singleUserRole:from="singleUserRole"
+            {{#showGroupTooltip}}
+              rel="tooltip"
+              data-placement="bottom"
+            {{/showGroupTooltip}}
+            >
+              <div {{^required}}class="hidable"{{/required}}>
+                <deletable-people-group
+                  showEmptyMessage:from="false"
+                  required:from="required"
+                  on:unmap="removePerson(scope.event)"
+                  canUnmap:from="canEdit"
+                  isLoading:from="isLoading"
+                  groupId:from="groupId"
+                  instance:from="instance"
+                  people:from="people">
+                  <label class="people-group__title-content form-label form-label__extended">
+                    <span class="people-group__title people-group__title--deletable">{{title}}</span>
+                    {{#if required}}
+                      <i class="fa fa-asterisk"></i>
+                    {{/if}}
+                  </label>
+                  {{#if singleUserRole}}
+                    <div class="people-group__title-tooltip">
+                      <small><em>You can add only one person for this role</em></small>
+                    </div>
+                  {{/if}}
+                </deletable-people-group>
+                <div>
+                  {{#if isUpdating}}
+                    <spinner-component toggle:from="isUpdating"></spinner-component>
+                  {{else}}
+                    {{#if canEdit}}
+                      {{^if_config_exist 'external_services.Person'}}
+                      <autocomplete-component
+                          searchItemsType:from="'Person'"
+                          on:itemSelected="addPerson(scope.event.selectedItem, @groupId)"
+                          placeholder:from="placeholder">
+                      </autocomplete-component>
+                      {{else}}
+                      <external-data-autocomplete
+                        type:from="'Person'"
+                        placeholder:from="placeholder"
+                        minLength:from="2"
+                        on:itemSelected="addPerson(scope.event.selectedItem, @groupId)">
+                      </external-data-autocomplete>
+                      {{/if_config_exist}}
+                    {{else}}
+                      {{^if people.length}}
+                        <span class="empty-message">None</span>
+                      {{/if}}
+                    {{/if}}
+                  {{/if}}
+                </div>
+              </div>
+          </related-people-access-control-group>
+        {{/groups}}
+      </div>
+  </related-people-access-control>
+</div>

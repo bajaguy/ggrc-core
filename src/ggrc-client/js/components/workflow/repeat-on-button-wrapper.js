@@ -1,5 +1,5 @@
 /*
- Copyright (C) 2018 Google Inc.
+ Copyright (C) 2019 Google Inc.
  Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
  */
 
@@ -7,12 +7,14 @@ import './repeat-on-button';
 
 export default can.Component.extend({
   tag: 'repeat-on-button-wrapper',
-  template: '<repeat-on-button ' +
-    '{unit}="instance.unit" ' +
-    '{repeat-every}="instance.repeat_every" ' +
-    '{on-save-repeat}="@onSetRepeat">' +
-    '</repeat-on-button>',
-  viewModel: {
+  view: can.stache(
+    '<repeat-on-button unit:from="instance.unit"' +
+    ' repeatEvery:from="instance.repeat_every"' +
+    ' onSaveRepeat:from="@onSetRepeat">' +
+    '</repeat-on-button>'
+  ),
+  leakScope: true,
+  viewModel: can.Map.extend({
     define: {
       autoSave: {
         type: 'boolean',
@@ -53,5 +55,5 @@ export default can.Component.extend({
 
       return $.Deferred().resolve();
     },
-  },
+  }),
 });

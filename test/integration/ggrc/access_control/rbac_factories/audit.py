@@ -1,4 +1,4 @@
-# Copyright (C) 2018 Google Inc.
+# Copyright (C) 2019 Google Inc.
 # Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 
 """Audit RBAC Factory."""
@@ -66,6 +66,8 @@ class AuditRBACFactory(base.BaseRBACFactory):
     return self.api.post(all_models.Audit, {
         "audit": {
             "program": {"id": self.program_id, "type": "Program"},
+            # workaround - title is required for validation
+            "title": "",
             "context": None,
             "operation": "clone",
             "cloneOptions": {

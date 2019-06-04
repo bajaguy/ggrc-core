@@ -1,9 +1,11 @@
 /*
-    Copyright (C) 2018 Google Inc.
+    Copyright (C) 2019 Google Inc.
     Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 */
 
-export default can.Model('GGRC.Models.Search', {
+export default can.Model.extend({
+  ajax: $.ajax,
+  root_object: 'search',
   findOne: 'GET /search',
   init: function () {
     let _findOne;
@@ -64,7 +66,7 @@ export default can.Model('GGRC.Models.Search', {
       this.entries instanceof can.List)) {
       entries = this.entries[modelName] || [];
     } else {
-      entries = can.map(this.entries, function (v) {
+      entries = _.filteredMap(this.entries, (v) => {
         if (v.type === modelName) {
           return v;
         }
@@ -76,8 +78,8 @@ export default can.Model('GGRC.Models.Search', {
   getCountFor: function (type) {
     let result;
 
-    if (type && type.shortName) {
-      type = type.shortName;
+    if (type && type.model_singular) {
+      type = type.model_singular;
     }
     if (!this.counts[type]) {
       result = 0;

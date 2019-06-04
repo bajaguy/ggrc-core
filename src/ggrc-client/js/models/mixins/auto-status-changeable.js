@@ -1,5 +1,5 @@
 /*
-    Copyright (C) 2018 Google Inc.
+    Copyright (C) 2019 Google Inc.
     Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 */
 
@@ -12,7 +12,7 @@ import {confirm} from '../../plugins/utils/modals';
  *
  * @class Mixins.autoStatusChangeable
  */
-export default Mixin({}, {
+export default Mixin.extend({}, {
   /**
    * Display a confirmation dialog before starting to edit the instance.
    *
@@ -46,7 +46,7 @@ export default Mixin({}, {
       confirm({
         modal_description: DESCRIPTION,
         modal_title: TITLE,
-        button_view: GGRC.mustache_path + '/gdrive/confirm_buttons.mustache',
+        button_view: GGRC.templates_path + '/gdrive/confirm_buttons.stache',
       }, confirmation.resolve, confirmation.reject);
     }
 
